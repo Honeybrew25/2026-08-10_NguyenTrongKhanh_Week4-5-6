@@ -1,0 +1,825 @@
+{
+  "schema": "schemas/normalized-findings.schema.json",
+  "schema_version": "1.0",
+  "generated_at": "2026-07-29T09:38:18.867385+00:00",
+  "sources": [
+    {
+      "path": "security-results/bandit-baseline.json",
+      "tool": "bandit",
+      "records_read": 21,
+      "duplicates_ignored": 0
+    },
+    {
+      "path": "security-results/zap-baseline-local.json",
+      "tool": "zap",
+      "records_read": 6,
+      "duplicates_ignored": 0
+    }
+  ],
+  "summary": {
+    "total": 27,
+    "by_tool": {
+      "bandit": 21,
+      "zap": 6
+    },
+    "by_severity": {
+      "medium": 2,
+      "low": 21,
+      "informational": 4
+    }
+  },
+  "findings": [
+    {
+      "id": "bandit-c38035a2a6e76870",
+      "tool": "bandit",
+      "severity": "medium",
+      "file_or_url": "scripts/run_all_tests.py",
+      "title": "B310: Audit url open for permitted schemes. Allowing use of file:/ or custom schemes is often unexpected.",
+      "description": "Audit url open for permitted schemes. Allowing use of file:/ or custom schemes is often unexpected.",
+      "rule_id": "B310",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "high",
+      "cwe": "CWE-22",
+      "line": 43,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b310-urllib-urlopen",
+        "https://cwe.mitre.org/data/definitions/22.html"
+      ],
+      "evidence": "42         try:\n43             with urlopen(\"http://localhost:8080/health\", timeout=2) as response:\n44                 if response.status == 200:",
+      "metadata": {
+        "test_name": "blacklist",
+        "line_range": [
+          43
+        ],
+        "column": 17,
+        "end_column": 67
+      }
+    },
+    {
+      "id": "bandit-4f8d23dbe29b8c35",
+      "tool": "bandit",
+      "severity": "medium",
+      "file_or_url": "scripts/verify_gateway.py",
+      "title": "B310: Audit url open for permitted schemes. Allowing use of file:/ or custom schemes is often unexpected.",
+      "description": "Audit url open for permitted schemes. Allowing use of file:/ or custom schemes is often unexpected.",
+      "rule_id": "B310",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "high",
+      "cwe": "CWE-22",
+      "line": 50,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b310-urllib-urlopen",
+        "https://cwe.mitre.org/data/definitions/22.html"
+      ],
+      "evidence": "49     try:\n50         response = urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS)\n51     except HTTPError as error:",
+      "metadata": {
+        "test_name": "blacklist",
+        "line_range": [
+          50
+        ],
+        "column": 19,
+        "end_column": 68
+      }
+    },
+    {
+      "id": "bandit-13d810debf871aef",
+      "tool": "bandit",
+      "severity": "low",
+      "file_or_url": "scripts/run_all_tests.py",
+      "title": "B404: Consider possible security implications associated with the subprocess module.",
+      "description": "Consider possible security implications associated with the subprocess module.",
+      "rule_id": "B404",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "high",
+      "cwe": "CWE-78",
+      "line": 6,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_imports.html#b404-import-subprocess",
+        "https://cwe.mitre.org/data/definitions/78.html"
+      ],
+      "evidence": "5 import secrets\n6 import subprocess\n7 import sys",
+      "metadata": {
+        "test_name": "blacklist",
+        "line_range": [
+          6
+        ],
+        "column": 0,
+        "end_column": 17
+      }
+    },
+    {
+      "id": "bandit-e747c28aecfc3a84",
+      "tool": "bandit",
+      "severity": "low",
+      "file_or_url": "scripts/run_all_tests.py",
+      "title": "B603: subprocess call - check for execution of untrusted input.",
+      "description": "subprocess call - check for execution of untrusted input.",
+      "rule_id": "B603",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "high",
+      "cwe": "CWE-78",
+      "line": 30,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/plugins/b603_subprocess_without_shell_equals_true.html",
+        "https://cwe.mitre.org/data/definitions/78.html"
+      ],
+      "evidence": "29 ) -> subprocess.CompletedProcess[str]:\n30     return subprocess.run(\n31         arguments,\n32         cwd=ROOT,\n33         env=environment,\n34         check=check,\n35         text=True,\n36     )\n37",
+      "metadata": {
+        "test_name": "subprocess_without_shell_equals_true",
+        "line_range": [
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36
+        ],
+        "column": 11,
+        "end_column": 5
+      }
+    },
+    {
+      "id": "bandit-8fd51f63bd30a525",
+      "tool": "bandit",
+      "severity": "low",
+      "file_or_url": "scripts/run_security_scan.py",
+      "title": "B404: Consider possible security implications associated with the subprocess module.",
+      "description": "Consider possible security implications associated with the subprocess module.",
+      "rule_id": "B404",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "high",
+      "cwe": "CWE-78",
+      "line": 5,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_imports.html#b404-import-subprocess",
+        "https://cwe.mitre.org/data/definitions/78.html"
+      ],
+      "evidence": "4 from pathlib import Path\n5 import subprocess\n6 import sys",
+      "metadata": {
+        "test_name": "blacklist",
+        "line_range": [
+          5
+        ],
+        "column": 0,
+        "end_column": 17
+      }
+    },
+    {
+      "id": "bandit-6798f39c8e7eb35a",
+      "tool": "bandit",
+      "severity": "low",
+      "file_or_url": "scripts/run_security_scan.py",
+      "title": "B603: subprocess call - check for execution of untrusted input.",
+      "description": "subprocess call - check for execution of untrusted input.",
+      "rule_id": "B603",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "high",
+      "cwe": "CWE-78",
+      "line": 44,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/plugins/b603_subprocess_without_shell_equals_true.html",
+        "https://cwe.mitre.org/data/definitions/78.html"
+      ],
+      "evidence": "43     ]\n44     result = subprocess.run(command, cwd=ROOT, check=False)\n45     if output_path.is_file():",
+      "metadata": {
+        "test_name": "subprocess_without_shell_equals_true",
+        "line_range": [
+          44
+        ],
+        "column": 13,
+        "end_column": 59
+      }
+    },
+    {
+      "id": "bandit-16cd47a8144e44ac",
+      "tool": "bandit",
+      "severity": "low",
+      "file_or_url": "scripts/verify_gateway.py",
+      "title": "B105: Possible hardcoded password: 'http://localhost:8081/realms/staging/protocol/openid-connect/token'",
+      "description": "Possible hardcoded password: 'http://localhost:8081/realms/staging/protocol/openid-connect/token'",
+      "rule_id": "B105",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "medium",
+      "cwe": "CWE-259",
+      "line": 16,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/plugins/b105_hardcoded_password_string.html",
+        "https://cwe.mitre.org/data/definitions/259.html"
+      ],
+      "evidence": "15 BACKEND_URL = \"http://localhost:8000\"\n16 TOKEN_URL = \"http://localhost:8081/realms/staging/protocol/openid-connect/token\"\n17 REQUEST_TIMEOUT_SECONDS = 3",
+      "metadata": {
+        "test_name": "hardcoded_password_string",
+        "line_range": [
+          16
+        ],
+        "column": 12,
+        "end_column": 80
+      }
+    },
+    {
+      "id": "bandit-8496bdfdf26647f3",
+      "tool": "bandit",
+      "severity": "low",
+      "file_or_url": "scripts/verify_gateway.py",
+      "title": "B101: Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "description": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "rule_id": "B101",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "high",
+      "cwe": "CWE-703",
+      "line": 91,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html",
+        "https://cwe.mitre.org/data/definitions/703.html"
+      ],
+      "evidence": "90     )\n91     assert status == 200, f\"Token request for {client_id} failed with HTTP {status}\"\n92     assert isinstance(body, dict) and isinstance(body.get(\"access_token\"), str)",
+      "metadata": {
+        "test_name": "assert_used",
+        "line_range": [
+          91
+        ],
+        "column": 4,
+        "end_column": 84
+      }
+    },
+    {
+      "id": "bandit-aa3399dafdc5109d",
+      "tool": "bandit",
+      "severity": "low",
+      "file_or_url": "scripts/verify_gateway.py",
+      "title": "B101: Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "description": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "rule_id": "B101",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "high",
+      "cwe": "CWE-703",
+      "line": 92,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html",
+        "https://cwe.mitre.org/data/definitions/703.html"
+      ],
+      "evidence": "91     assert status == 200, f\"Token request for {client_id} failed with HTTP {status}\"\n92     assert isinstance(body, dict) and isinstance(body.get(\"access_token\"), str)\n93     return body[\"access_token\"]",
+      "metadata": {
+        "test_name": "assert_used",
+        "line_range": [
+          92
+        ],
+        "column": 4,
+        "end_column": 79
+      }
+    },
+    {
+      "id": "bandit-6eff1f04be22c443",
+      "tool": "bandit",
+      "severity": "low",
+      "file_or_url": "scripts/verify_gateway.py",
+      "title": "B101: Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "description": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "rule_id": "B101",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "high",
+      "cwe": "CWE-703",
+      "line": 103,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html",
+        "https://cwe.mitre.org/data/definitions/703.html"
+      ],
+      "evidence": "102     status, body, request_id = gateway_get(\"/health\")\n103     assert status == 200\n104     assert body == {\"status\": \"ok\"}",
+      "metadata": {
+        "test_name": "assert_used",
+        "line_range": [
+          103
+        ],
+        "column": 4,
+        "end_column": 24
+      }
+    },
+    {
+      "id": "bandit-cb741289c048ae77",
+      "tool": "bandit",
+      "severity": "low",
+      "file_or_url": "scripts/verify_gateway.py",
+      "title": "B101: Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "description": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "rule_id": "B101",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "high",
+      "cwe": "CWE-703",
+      "line": 104,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html",
+        "https://cwe.mitre.org/data/definitions/703.html"
+      ],
+      "evidence": "103     assert status == 200\n104     assert body == {\"status\": \"ok\"}\n105     assert request_id",
+      "metadata": {
+        "test_name": "assert_used",
+        "line_range": [
+          104
+        ],
+        "column": 4,
+        "end_column": 35
+      }
+    },
+    {
+      "id": "bandit-d2f4af3de909b4dc",
+      "tool": "bandit",
+      "severity": "low",
+      "file_or_url": "scripts/verify_gateway.py",
+      "title": "B101: Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "description": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "rule_id": "B101",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "high",
+      "cwe": "CWE-703",
+      "line": 105,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html",
+        "https://cwe.mitre.org/data/definitions/703.html"
+      ],
+      "evidence": "104     assert body == {\"status\": \"ok\"}\n105     assert request_id\n106",
+      "metadata": {
+        "test_name": "assert_used",
+        "line_range": [
+          105
+        ],
+        "column": 4,
+        "end_column": 21
+      }
+    },
+    {
+      "id": "bandit-a10332086330974c",
+      "tool": "bandit",
+      "severity": "low",
+      "file_or_url": "scripts/verify_gateway.py",
+      "title": "B101: Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "description": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "rule_id": "B101",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "high",
+      "cwe": "CWE-703",
+      "line": 108,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html",
+        "https://cwe.mitre.org/data/definitions/703.html"
+      ],
+      "evidence": "107     status, metadata, _ = gateway_get(\"/.well-known/oauth-protected-resource\")\n108     assert status == 200\n109     assert metadata[\"resource\"] == GATEWAY_URL",
+      "metadata": {
+        "test_name": "assert_used",
+        "line_range": [
+          108
+        ],
+        "column": 4,
+        "end_column": 24
+      }
+    },
+    {
+      "id": "bandit-0fe1f8c346113bdd",
+      "tool": "bandit",
+      "severity": "low",
+      "file_or_url": "scripts/verify_gateway.py",
+      "title": "B101: Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "description": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "rule_id": "B101",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "high",
+      "cwe": "CWE-703",
+      "line": 109,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html",
+        "https://cwe.mitre.org/data/definitions/703.html"
+      ],
+      "evidence": "108     assert status == 200\n109     assert metadata[\"resource\"] == GATEWAY_URL\n110",
+      "metadata": {
+        "test_name": "assert_used",
+        "line_range": [
+          109
+        ],
+        "column": 4,
+        "end_column": 46
+      }
+    },
+    {
+      "id": "bandit-01c202489557ad0a",
+      "tool": "bandit",
+      "severity": "low",
+      "file_or_url": "scripts/verify_gateway.py",
+      "title": "B101: Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "description": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "rule_id": "B101",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "high",
+      "cwe": "CWE-703",
+      "line": 114,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html",
+        "https://cwe.mitre.org/data/definitions/703.html"
+      ],
+      "evidence": "113     status, _, _ = gateway_get(\"/api/users\")\n114     assert status == 401\n115",
+      "metadata": {
+        "test_name": "assert_used",
+        "line_range": [
+          114
+        ],
+        "column": 4,
+        "end_column": 24
+      }
+    },
+    {
+      "id": "bandit-36b2e529a9f8a7e7",
+      "tool": "bandit",
+      "severity": "low",
+      "file_or_url": "scripts/verify_gateway.py",
+      "title": "B101: Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "description": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "rule_id": "B101",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "high",
+      "cwe": "CWE-703",
+      "line": 117,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html",
+        "https://cwe.mitre.org/data/definitions/703.html"
+      ],
+      "evidence": "116     status, users, _ = gateway_get(\"/api/users\", reader_token)\n117     assert status == 200\n118     assert len(users) == 2",
+      "metadata": {
+        "test_name": "assert_used",
+        "line_range": [
+          117
+        ],
+        "column": 4,
+        "end_column": 24
+      }
+    },
+    {
+      "id": "bandit-e5516d22040ac134",
+      "tool": "bandit",
+      "severity": "low",
+      "file_or_url": "scripts/verify_gateway.py",
+      "title": "B101: Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "description": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "rule_id": "B101",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "high",
+      "cwe": "CWE-703",
+      "line": 118,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html",
+        "https://cwe.mitre.org/data/definitions/703.html"
+      ],
+      "evidence": "117     assert status == 200\n118     assert len(users) == 2\n119",
+      "metadata": {
+        "test_name": "assert_used",
+        "line_range": [
+          118
+        ],
+        "column": 4,
+        "end_column": 26
+      }
+    },
+    {
+      "id": "bandit-0f5d113967468ae0",
+      "tool": "bandit",
+      "severity": "low",
+      "file_or_url": "scripts/verify_gateway.py",
+      "title": "B101: Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "description": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "rule_id": "B101",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "high",
+      "cwe": "CWE-703",
+      "line": 121,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html",
+        "https://cwe.mitre.org/data/definitions/703.html"
+      ],
+      "evidence": "120     status, _, _ = gateway_get(\"/api/admin\", reader_token)\n121     assert status == 403\n122",
+      "metadata": {
+        "test_name": "assert_used",
+        "line_range": [
+          121
+        ],
+        "column": 4,
+        "end_column": 24
+      }
+    },
+    {
+      "id": "bandit-1d33bedac188f31a",
+      "tool": "bandit",
+      "severity": "low",
+      "file_or_url": "scripts/verify_gateway.py",
+      "title": "B101: Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "description": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "rule_id": "B101",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "high",
+      "cwe": "CWE-703",
+      "line": 124,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html",
+        "https://cwe.mitre.org/data/definitions/703.html"
+      ],
+      "evidence": "123     status, _, _ = gateway_get(\"/api/users\", admin_token)\n124     assert status == 200\n125",
+      "metadata": {
+        "test_name": "assert_used",
+        "line_range": [
+          124
+        ],
+        "column": 4,
+        "end_column": 24
+      }
+    },
+    {
+      "id": "bandit-31ec2b93cf2dcb5d",
+      "tool": "bandit",
+      "severity": "low",
+      "file_or_url": "scripts/verify_gateway.py",
+      "title": "B101: Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "description": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "rule_id": "B101",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "high",
+      "cwe": "CWE-703",
+      "line": 127,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html",
+        "https://cwe.mitre.org/data/definitions/703.html"
+      ],
+      "evidence": "126     status, _, _ = gateway_get(\"/api/admin\", admin_token)\n127     assert status == 200\n128",
+      "metadata": {
+        "test_name": "assert_used",
+        "line_range": [
+          127
+        ],
+        "column": 4,
+        "end_column": 24
+      }
+    },
+    {
+      "id": "bandit-e881367bcf4a2fe3",
+      "tool": "bandit",
+      "severity": "low",
+      "file_or_url": "scripts/verify_gateway.py",
+      "title": "B101: Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "description": "Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.",
+      "rule_id": "B101",
+      "source_file": "security-results/bandit-baseline.json",
+      "tool_version": null,
+      "confidence": "high",
+      "cwe": "CWE-703",
+      "line": 130,
+      "method": null,
+      "remediation": "Review the flagged code in context and follow the Bandit rule guidance.",
+      "references": [
+        "https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html",
+        "https://cwe.mitre.org/data/definitions/703.html"
+      ],
+      "evidence": "129     status, _, _ = gateway_get(\"/api/unlisted\", admin_token)\n130     assert status == 403\n131",
+      "metadata": {
+        "test_name": "assert_used",
+        "line_range": [
+          130
+        ],
+        "column": 4,
+        "end_column": 24
+      }
+    },
+    {
+      "id": "zap-0d17f1bd81012cae",
+      "tool": "zap",
+      "severity": "low",
+      "file_or_url": "http://envoy:8080/health",
+      "title": "X-Content-Type-Options Header Missing",
+      "description": "The Anti-MIME-Sniffing header X-Content-Type-Options was not set to 'nosniff'. This allows older versions of Internet Explorer and Chrome to perform MIME-sniffing on the response body, potentially causing the response body to be interpreted and displayed as a content type other than the declared content type. Current (early 2014) and legacy versions of Firefox will use the declared content type (if one is set), rather than performing MIME-sniffing.",
+      "rule_id": "10021",
+      "source_file": "security-results/zap-baseline-local.json",
+      "tool_version": "2.17.0",
+      "confidence": "medium",
+      "cwe": "CWE-693",
+      "line": null,
+      "method": "GET",
+      "remediation": "Ensure that the application/web server sets the Content-Type header appropriately, and that it sets the X-Content-Type-Options header to 'nosniff' for all web pages. If possible, ensure that the end user uses a standards-compliant and modern web browser that does not perform MIME-sniffing at all, or that can be directed by the web application/web server to not perform MIME-sniffing.",
+      "references": [
+        "https://learn.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/compatibility/gg622941(v=vs.85",
+        "https://owasp.org/www-community/Security_Headers",
+        "https://www.zaproxy.org/docs/alerts/10021/"
+      ],
+      "evidence": "x-content-type-options",
+      "metadata": {
+        "plugin_id": "10021",
+        "parameter": "x-content-type-options",
+        "attack": null,
+        "wasc_id": "15",
+        "systemic": false
+      }
+    },
+    {
+      "id": "zap-e1f2e8fa3e273953",
+      "tool": "zap",
+      "severity": "low",
+      "file_or_url": "http://envoy:8080/health",
+      "title": "Cross-Origin-Resource-Policy Header Missing or Invalid",
+      "description": "Cross-Origin-Resource-Policy header is an opt-in header designed to counter side-channels attacks like Spectre. Resource should be specifically set as shareable amongst different origins.",
+      "rule_id": "90004-1",
+      "source_file": "security-results/zap-baseline-local.json",
+      "tool_version": "2.17.0",
+      "confidence": "medium",
+      "cwe": "CWE-693",
+      "line": null,
+      "method": "GET",
+      "remediation": "Ensure that the application/web server sets the Cross-Origin-Resource-Policy header appropriately, and that it sets the Cross-Origin-Resource-Policy header to 'same-origin' for all web pages. 'same-site' is considered as less secured and should be avoided. If resources must be shared, set the header to 'cross-origin'. If possible, ensure that the end user uses a standards-compliant and modern web browser that supports the Cross-Origin-Resource-Policy header (https://caniuse.com/mdn-http_headers_cross-origin-resource-policy).",
+      "references": [
+        "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cross-Origin-Embedder-Policy",
+        "https://www.zaproxy.org/docs/alerts/90004-1/"
+      ],
+      "evidence": "Cross-Origin-Resource-Policy",
+      "metadata": {
+        "plugin_id": "90004",
+        "parameter": "Cross-Origin-Resource-Policy",
+        "attack": null,
+        "wasc_id": "14",
+        "systemic": false
+      }
+    },
+    {
+      "id": "zap-73fc1defba7e53dc",
+      "tool": "zap",
+      "severity": "informational",
+      "file_or_url": "http://envoy:8080/",
+      "title": "Non-Storable Content",
+      "description": "The response contents are not storable by caching components such as proxy servers. If the response does not contain sensitive, personal or user-specific information, it may benefit from being stored and cached, to improve performance.",
+      "rule_id": "10049-1",
+      "source_file": "security-results/zap-baseline-local.json",
+      "tool_version": "2.17.0",
+      "confidence": "medium",
+      "cwe": "CWE-524",
+      "line": null,
+      "method": "GET",
+      "remediation": "The content may be marked as storable by ensuring that the following conditions are satisfied: The request method must be understood by the cache and defined as being cacheable (\"GET\", \"HEAD\", and \"POST\" are currently defined as cacheable) The response status code must be understood by the cache (one of the 1XX, 2XX, 3XX, 4XX, or 5XX response classes are generally understood) The \"no-store\" cache directive must not appear in the request or response header fields For caching by \"shared\" caches such as \"proxy\" caches, the \"private\" response directive must not appear in the response For caching by \"shared\" caches such as \"proxy\" caches, the \"Authorization\" header field must not appear in the request, unless the response explicitly allows it (using one of the \"must-revalidate\", \"public\", or \"s-maxage\" Cache-Control response directives) In addition to the conditions above, at least one of the following conditions must also be satisfied by the response: It must contain an \"Expires\" header field It must contain a \"max-age\" response directive For \"shared\" caches such as \"proxy\" caches, it must contain a \"s-maxage\" response directive It must contain a \"Cache Control Extension\" that allows it to be cached It must have a status code that is defined as cacheable by default (200, 203, 204, 206, 300, 301, 404, 405, 410, 414, 501).",
+      "references": [
+        "https://datatracker.ietf.org/doc/html/rfc7234",
+        "https://datatracker.ietf.org/doc/html/rfc7231",
+        "https://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html",
+        "https://www.zaproxy.org/docs/alerts/10049-1/"
+      ],
+      "evidence": "403",
+      "metadata": {
+        "plugin_id": "10049",
+        "parameter": null,
+        "attack": null,
+        "wasc_id": "13",
+        "systemic": false
+      }
+    },
+    {
+      "id": "zap-99a9e06135a3f314",
+      "tool": "zap",
+      "severity": "informational",
+      "file_or_url": "http://envoy:8080/health",
+      "title": "Storable and Cacheable Content",
+      "description": "The response contents are storable by caching components such as proxy servers, and may be retrieved directly from the cache, rather than from the origin server by the caching servers, in response to similar requests from other users. If the response data is sensitive, personal or user-specific, this may result in sensitive information being leaked. In some cases, this may even result in a user gaining complete control of the session of another user, depending on the configuration of the caching components in use in their environment. This is primarily an issue where \"shared\" caching servers such as \"proxy\" caches are configured on the local network. This configuration is typically found in corporate or educational environments, for instance.",
+      "rule_id": "10049-3",
+      "source_file": "security-results/zap-baseline-local.json",
+      "tool_version": "2.17.0",
+      "confidence": "medium",
+      "cwe": "CWE-524",
+      "line": null,
+      "method": "GET",
+      "remediation": "Validate that the response does not contain sensitive, personal or user-specific information. If it does, consider the use of the following HTTP response headers, to limit, or prevent the content being stored and retrieved from the cache by another user: Cache-Control: no-cache, no-store, must-revalidate, private Pragma: no-cache Expires: 0 This configuration directs both HTTP 1.0 and HTTP 1.1 compliant caching servers to not store the response, and to not retrieve the response (without validation) from the cache, in response to a similar request.",
+      "references": [
+        "https://datatracker.ietf.org/doc/html/rfc7234",
+        "https://datatracker.ietf.org/doc/html/rfc7231",
+        "https://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html",
+        "https://www.zaproxy.org/docs/alerts/10049-3/"
+      ],
+      "evidence": null,
+      "metadata": {
+        "plugin_id": "10049",
+        "parameter": null,
+        "attack": null,
+        "wasc_id": "13",
+        "systemic": false
+      }
+    },
+    {
+      "id": "zap-2d46c991f826c647",
+      "tool": "zap",
+      "severity": "informational",
+      "file_or_url": "http://envoy:8080/robots.txt",
+      "title": "Non-Storable Content",
+      "description": "The response contents are not storable by caching components such as proxy servers. If the response does not contain sensitive, personal or user-specific information, it may benefit from being stored and cached, to improve performance.",
+      "rule_id": "10049-1",
+      "source_file": "security-results/zap-baseline-local.json",
+      "tool_version": "2.17.0",
+      "confidence": "medium",
+      "cwe": "CWE-524",
+      "line": null,
+      "method": "GET",
+      "remediation": "The content may be marked as storable by ensuring that the following conditions are satisfied: The request method must be understood by the cache and defined as being cacheable (\"GET\", \"HEAD\", and \"POST\" are currently defined as cacheable) The response status code must be understood by the cache (one of the 1XX, 2XX, 3XX, 4XX, or 5XX response classes are generally understood) The \"no-store\" cache directive must not appear in the request or response header fields For caching by \"shared\" caches such as \"proxy\" caches, the \"private\" response directive must not appear in the response For caching by \"shared\" caches such as \"proxy\" caches, the \"Authorization\" header field must not appear in the request, unless the response explicitly allows it (using one of the \"must-revalidate\", \"public\", or \"s-maxage\" Cache-Control response directives) In addition to the conditions above, at least one of the following conditions must also be satisfied by the response: It must contain an \"Expires\" header field It must contain a \"max-age\" response directive For \"shared\" caches such as \"proxy\" caches, it must contain a \"s-maxage\" response directive It must contain a \"Cache Control Extension\" that allows it to be cached It must have a status code that is defined as cacheable by default (200, 203, 204, 206, 300, 301, 404, 405, 410, 414, 501).",
+      "references": [
+        "https://datatracker.ietf.org/doc/html/rfc7234",
+        "https://datatracker.ietf.org/doc/html/rfc7231",
+        "https://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html",
+        "https://www.zaproxy.org/docs/alerts/10049-1/"
+      ],
+      "evidence": "403",
+      "metadata": {
+        "plugin_id": "10049",
+        "parameter": null,
+        "attack": null,
+        "wasc_id": "13",
+        "systemic": false
+      }
+    },
+    {
+      "id": "zap-04271b0828fa965d",
+      "tool": "zap",
+      "severity": "informational",
+      "file_or_url": "http://envoy:8080/sitemap.xml",
+      "title": "Non-Storable Content",
+      "description": "The response contents are not storable by caching components such as proxy servers. If the response does not contain sensitive, personal or user-specific information, it may benefit from being stored and cached, to improve performance.",
+      "rule_id": "10049-1",
+      "source_file": "security-results/zap-baseline-local.json",
+      "tool_version": "2.17.0",
+      "confidence": "medium",
+      "cwe": "CWE-524",
+      "line": null,
+      "method": "GET",
+      "remediation": "The content may be marked as storable by ensuring that the following conditions are satisfied: The request method must be understood by the cache and defined as being cacheable (\"GET\", \"HEAD\", and \"POST\" are currently defined as cacheable) The response status code must be understood by the cache (one of the 1XX, 2XX, 3XX, 4XX, or 5XX response classes are generally understood) The \"no-store\" cache directive must not appear in the request or response header fields For caching by \"shared\" caches such as \"proxy\" caches, the \"private\" response directive must not appear in the response For caching by \"shared\" caches such as \"proxy\" caches, the \"Authorization\" header field must not appear in the request, unless the response explicitly allows it (using one of the \"must-revalidate\", \"public\", or \"s-maxage\" Cache-Control response directives) In addition to the conditions above, at least one of the following conditions must also be satisfied by the response: It must contain an \"Expires\" header field It must contain a \"max-age\" response directive For \"shared\" caches such as \"proxy\" caches, it must contain a \"s-maxage\" response directive It must contain a \"Cache Control Extension\" that allows it to be cached It must have a status code that is defined as cacheable by default (200, 203, 204, 206, 300, 301, 404, 405, 410, 414, 501).",
+      "references": [
+        "https://datatracker.ietf.org/doc/html/rfc7234",
+        "https://datatracker.ietf.org/doc/html/rfc7231",
+        "https://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html",
+        "https://www.zaproxy.org/docs/alerts/10049-1/"
+      ],
+      "evidence": "403",
+      "metadata": {
+        "plugin_id": "10049",
+        "parameter": null,
+        "attack": null,
+        "wasc_id": "13",
+        "systemic": false
+      }
+    }
+  ]
+}

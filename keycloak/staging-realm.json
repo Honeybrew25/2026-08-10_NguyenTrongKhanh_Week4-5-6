@@ -1,0 +1,174 @@
+{
+  "realm": "staging",
+  "displayName": "Staging Agent IAM",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "loginWithEmailAllowed": false,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 300,
+  "defaultSignatureAlgorithm": "RS256",
+  "defaultDefaultClientScopes": [],
+  "defaultOptionalClientScopes": [],
+  "clientScopes": [
+    {
+      "name": "users:read",
+      "protocol": "openid-connect",
+      "attributes": {
+        "display.on.consent.screen": "false",
+        "include.in.token.scope": "true"
+      }
+    },
+    {
+      "name": "admin:read",
+      "protocol": "openid-connect",
+      "attributes": {
+        "display.on.consent.screen": "false",
+        "include.in.token.scope": "true"
+      }
+    },
+    {
+      "name": "staging-api-audience",
+      "protocol": "openid-connect",
+      "attributes": {
+        "display.on.consent.screen": "false",
+        "include.in.token.scope": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "staging-api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "staging-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "wrong-api-audience",
+      "protocol": "openid-connect",
+      "attributes": {
+        "display.on.consent.screen": "false",
+        "include.in.token.scope": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "wrong API audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "not-staging-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "staging-api",
+      "name": "Staging API audience",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "bearerOnly": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
+    },
+    {
+      "clientId": "agent-reader",
+      "name": "Reader AI Agent",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${AGENT_READER_CLIENT_SECRET}",
+      "publicClient": false,
+      "bearerOnly": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": false,
+      "defaultClientScopes": [
+        "users:read",
+        "staging-api-audience"
+      ],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "agent-admin",
+      "name": "Administrator AI Agent",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${AGENT_ADMIN_CLIENT_SECRET}",
+      "publicClient": false,
+      "bearerOnly": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": false,
+      "defaultClientScopes": [
+        "users:read",
+        "admin:read",
+        "staging-api-audience"
+      ],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "integration-expired-token",
+      "name": "Integration fixture: expired token",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${INTEGRATION_EXPIRED_CLIENT_SECRET}",
+      "publicClient": false,
+      "bearerOnly": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": false,
+      "attributes": {
+        "access.token.lifespan": "2"
+      },
+      "defaultClientScopes": [
+        "users:read",
+        "staging-api-audience"
+      ],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "integration-wrong-audience",
+      "name": "Integration fixture: wrong audience",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${INTEGRATION_WRONG_AUDIENCE_CLIENT_SECRET}",
+      "publicClient": false,
+      "bearerOnly": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": false,
+      "defaultClientScopes": [
+        "users:read",
+        "wrong-api-audience"
+      ],
+      "optionalClientScopes": []
+    }
+  ]
+}

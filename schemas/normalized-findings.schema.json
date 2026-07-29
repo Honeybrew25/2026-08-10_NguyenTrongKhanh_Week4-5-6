@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/normalized-findings.schema.json",
+  "title": "Normalized Security Findings",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "generated_at",
+    "sources",
+    "summary",
+    "findings"
+  ],
+  "properties": {
+    "schema": {
+      "const": "schemas/normalized-findings.schema.json"
+    },
+    "schema_version": {
+      "const": "1.0"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "tool",
+          "records_read",
+          "duplicates_ignored"
+        ],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "tool": {"type": "string", "minLength": 1},
+          "records_read": {"type": "integer", "minimum": 0},
+          "duplicates_ignored": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "by_tool", "by_severity"],
+      "properties": {
+        "total": {"type": "integer", "minimum": 0},
+        "by_tool": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "by_severity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "informational": {"type": "integer", "minimum": 0},
+            "low": {"type": "integer", "minimum": 0},
+            "medium": {"type": "integer", "minimum": 0},
+            "high": {"type": "integer", "minimum": 0},
+            "critical": {"type": "integer", "minimum": 0},
+            "unknown": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    }
+  },
+  "$defs": {
+    "nullableString": {
+      "type": ["string", "null"]
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tool",
+        "tool_version",
+        "severity",
+        "confidence",
+        "file_or_url",
+        "line",
+        "method",
+        "title",
+        "description",
+        "rule_id",
+        "cwe",
+        "remediation",
+        "references",
+        "evidence",
+        "source_file",
+        "metadata"
+      ],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "tool": {"type": "string", "minLength": 1},
+        "tool_version": {"$ref": "#/$defs/nullableString"},
+        "severity": {
+          "enum": [
+            "informational",
+            "low",
+            "medium",
+            "high",
+            "critical",
+            "unknown"
+          ]
+        },
+        "confidence": {"$ref": "#/$defs/nullableString"},
+        "file_or_url": {"type": "string", "minLength": 1},
+        "line": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "method": {"$ref": "#/$defs/nullableString"},
+        "title": {"type": "string", "minLength": 1},
+        "description": {"type": "string"},
+        "rule_id": {"type": "string", "minLength": 1},
+        "cwe": {"$ref": "#/$defs/nullableString"},
+        "remediation": {"$ref": "#/$defs/nullableString"},
+        "references": {
+          "type": "array",
+          "items": {"type": "string", "format": "uri"},
+          "uniqueItems": true
+        },
+        "evidence": {"$ref": "#/$defs/nullableString"},
+        "source_file": {"type": "string", "minLength": 1},
+        "metadata": {"type": "object"}
+      }
+    }
+  }
+}

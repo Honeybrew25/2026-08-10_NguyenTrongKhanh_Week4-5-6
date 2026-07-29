@@ -1,0 +1,298 @@
+{
+  "schema_version": "1.0",
+  "title": "Week 2 Web Security Knowledge Base",
+  "language": "vi",
+  "sources": [
+    {
+      "name": "OWASP Top 10:2025",
+      "url": "https://owasp.org/Top10/2025/0x00_2025-Introduction/"
+    },
+    {
+      "name": "OWASP Web Security Community",
+      "url": "https://owasp.org/www-community/attacks/"
+    },
+    {
+      "name": "Bandit 1.9.4 documentation",
+      "url": "https://bandit.readthedocs.io/en/1.9.4/"
+    },
+    {
+      "name": "ZAP alert documentation",
+      "url": "https://www.zaproxy.org/docs/alerts/"
+    }
+  ],
+  "documents": [
+    {
+      "id": "sql-injection",
+      "title": "SQL Injection",
+      "aliases": ["SQLi", "SQL query injection", "tiêm nhiễm SQL"],
+      "owasp_top_10": "A05:2025 Injection",
+      "summary": "Dữ liệu không tin cậy được ghép vào câu lệnh SQL, làm thay đổi cấu trúc truy vấn và có thể đọc, sửa hoặc xóa dữ liệu.",
+      "example": "Endpoint tìm kiếm nối trực tiếp query parameter vào SELECT thay vì truyền giá trị bằng parameterized query.",
+      "indicators": ["Nối chuỗi để tạo SQL", "Truy vấn động chứa input người dùng", "Lỗi cú pháp cơ sở dữ liệu xuất hiện trong response"],
+      "remediation": ["Dùng prepared statement hoặc parameterized query", "Giới hạn quyền của tài khoản cơ sở dữ liệu", "Không hiển thị lỗi SQL chi tiết cho client"],
+      "related_scanner_rules": {"bandit": ["B608"], "zap": ["40018"]},
+      "tags": ["sql", "sqli", "database", "injection"],
+      "references": [
+        "https://owasp.org/www-community/attacks/SQL_Injection",
+        "https://owasp.org/Top10/2025/A05_2025-Injection/"
+      ]
+    },
+    {
+      "id": "cross-site-scripting",
+      "title": "Cross-Site Scripting (XSS)",
+      "aliases": ["XSS", "stored XSS", "reflected XSS", "DOM XSS"],
+      "owasp_top_10": "A05:2025 Injection",
+      "summary": "Ứng dụng đưa dữ liệu không tin cậy vào HTML hoặc JavaScript mà không encode đúng ngữ cảnh, khiến trình duyệt thực thi script của kẻ tấn công.",
+      "example": "Giá trị tìm kiếm được phản chiếu nguyên trạng vào HTML và có thể chứa thẻ script hoặc event handler.",
+      "indicators": ["Input xuất hiện trong HTML không được encode", "Sử dụng innerHTML với dữ liệu bên ngoài", "Thiếu Content Security Policy như lớp phòng vệ bổ sung"],
+      "remediation": ["Encode output theo đúng ngữ cảnh HTML, attribute hoặc JavaScript", "Dùng template engine có auto-escaping", "Tránh DOM API nguy hiểm và áp dụng CSP phù hợp"],
+      "related_scanner_rules": {"bandit": ["B701", "B702", "B703"], "zap": ["40012", "40014", "40016"]},
+      "tags": ["xss", "javascript", "browser", "injection"],
+      "references": [
+        "https://owasp.org/www-community/attacks/xss/",
+        "https://owasp.org/Top10/2025/A05_2025-Injection/"
+      ]
+    },
+    {
+      "id": "os-command-injection",
+      "title": "OS Command Injection",
+      "aliases": ["Command Injection", "Shell Injection", "CWE-78"],
+      "owasp_top_10": "A05:2025 Injection",
+      "summary": "Input không tin cậy được đưa vào lệnh hệ điều hành, cho phép kẻ tấn công thay đổi hoặc bổ sung câu lệnh được thực thi.",
+      "example": "Ứng dụng ghép tên file do client cung cấp vào chuỗi shell để chạy tiện ích hệ thống.",
+      "indicators": ["subprocess hoặc os.system nhận input bên ngoài", "shell=True", "Lệnh được tạo bằng nối chuỗi"],
+      "remediation": ["Tránh gọi shell nếu có API thư viện tương đương", "Truyền argv dạng danh sách và giữ shell=False", "Allowlist giá trị đầu vào và chạy với quyền tối thiểu"],
+      "related_scanner_rules": {"bandit": ["B404", "B602", "B603", "B605", "B607"], "zap": []},
+      "tags": ["command", "shell", "subprocess", "injection", "cwe-78"],
+      "references": [
+        "https://owasp.org/www-community/attacks/Command_Injection",
+        "https://bandit.readthedocs.io/en/1.9.4/plugins/b603_subprocess_without_shell_equals_true.html"
+      ]
+    },
+    {
+      "id": "path-traversal",
+      "title": "Path Traversal",
+      "aliases": ["Directory Traversal", "dot dot slash", "CWE-22"],
+      "owasp_top_10": "A01:2025 Broken Access Control",
+      "summary": "Kẻ tấn công điều khiển đường dẫn file để truy cập tài nguyên nằm ngoài thư mục được phép.",
+      "example": "Tham số file chứa chuỗi ../ làm endpoint tải xuống đọc được file cấu hình ngoài upload directory.",
+      "indicators": ["Tên file hoặc đường dẫn lấy trực tiếp từ request", "Chuỗi ../ hoặc biến thể encode", "Không kiểm tra đường dẫn sau khi resolve"],
+      "remediation": ["Dùng ID ánh xạ tới file thay vì nhận đường dẫn tùy ý", "Resolve đường dẫn và xác nhận vẫn nằm trong thư mục gốc", "Chạy tiến trình với quyền file tối thiểu"],
+      "related_scanner_rules": {"bandit": [], "zap": ["6"]},
+      "tags": ["path", "directory", "file", "traversal", "cwe-22"],
+      "references": [
+        "https://owasp.org/www-community/attacks/Path_Traversal",
+        "https://owasp.org/Top10/2025/A01_2025-Broken_Access_Control/"
+      ]
+    },
+    {
+      "id": "idor",
+      "title": "Insecure Direct Object Reference (IDOR)",
+      "aliases": ["IDOR", "Broken Object Level Authorization", "BOLA"],
+      "owasp_top_10": "A01:2025 Broken Access Control",
+      "summary": "Ứng dụng dùng ID do client cung cấp để truy cập object nhưng không kiểm tra người gọi có quyền trên object đó.",
+      "example": "Đổi /api/orders/1001 thành /api/orders/1002 trả về đơn hàng của người dùng khác.",
+      "indicators": ["Object ID tuần tự trong URL", "Chỉ kiểm tra đăng nhập mà không kiểm tra ownership", "Authorization khác nhau giữa list và detail endpoint"],
+      "remediation": ["Kiểm tra quyền trên từng object ở server", "Deny mặc định và kiểm thử truy cập ngang/dọc", "Không dựa vào ID khó đoán như biện pháp kiểm soát duy nhất"],
+      "related_scanner_rules": {"bandit": [], "zap": []},
+      "tags": ["idor", "bola", "authorization", "access-control"],
+      "references": [
+        "https://owasp.org/Top10/2025/A01_2025-Broken_Access_Control/",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html"
+      ]
+    },
+    {
+      "id": "csrf",
+      "title": "Cross-Site Request Forgery (CSRF)",
+      "aliases": ["CSRF", "XSRF", "Session Riding"],
+      "owasp_top_10": "A01:2025 Broken Access Control",
+      "summary": "Trình duyệt của nạn nhân bị ép gửi request thay đổi trạng thái với credential đang có mà ứng dụng không xác minh ý định của người dùng.",
+      "example": "Một form trên site độc hại tự gửi request đổi email tới ứng dụng nơi nạn nhân đang đăng nhập bằng cookie.",
+      "indicators": ["State-changing request chỉ dựa vào cookie", "Thiếu anti-CSRF token", "Cookie không có SameSite phù hợp"],
+      "remediation": ["Dùng anti-CSRF token do server xác minh", "Đặt SameSite cho session cookie", "Kiểm tra Origin hoặc Referer như lớp phòng vệ bổ sung"],
+      "related_scanner_rules": {"bandit": [], "zap": ["10202"]},
+      "tags": ["csrf", "xsrf", "cookie", "session", "access-control"],
+      "references": [
+        "https://owasp.org/www-community/attacks/csrf",
+        "https://owasp.org/Top10/2025/A01_2025-Broken_Access_Control/"
+      ]
+    },
+    {
+      "id": "ssrf",
+      "title": "Server-Side Request Forgery (SSRF)",
+      "aliases": ["SSRF", "CWE-918", "Server Side Request Forgery"],
+      "owasp_top_10": "A01:2025 Broken Access Control",
+      "summary": "Kẻ tấn công điều khiển URL mà server truy cập để chạm tới metadata, file hoặc dịch vụ nội bộ không được public.",
+      "example": "Chức năng tạo preview tải URL do người dùng nhập và bị đổi thành địa chỉ metadata của cloud.",
+      "indicators": ["Server fetch URL từ input", "Cho phép file:// hoặc scheme lạ", "Không kiểm tra redirect và địa chỉ IP sau DNS resolution"],
+      "remediation": ["Allowlist scheme, host và port cần thiết", "Chặn mạng nội bộ và metadata ở lớp network", "Xác minh lại redirect và DNS resolution"],
+      "related_scanner_rules": {"bandit": ["B310"], "zap": []},
+      "tags": ["ssrf", "urlopen", "url", "internal-network", "cwe-918"],
+      "references": [
+        "https://owasp.org/www-community/attacks/Server_Side_Request_Forgery",
+        "https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b310-urllib-urlopen"
+      ]
+    },
+    {
+      "id": "authentication-failures",
+      "title": "Authentication Failures",
+      "aliases": ["Broken Authentication", "Credential Stuffing", "Session Fixation"],
+      "owasp_top_10": "A07:2025 Authentication Failures",
+      "summary": "Thiết kế hoặc triển khai xác thực yếu cho phép chiếm tài khoản, đoán credential hoặc sử dụng session/token không an toàn.",
+      "example": "Ứng dụng không giới hạn thử đăng nhập và vẫn chấp nhận token hết hạn hoặc sai audience.",
+      "indicators": ["Không rate limit đăng nhập", "Token thiếu kiểm tra exp, iss hoặc aud", "Session ID không được rotate sau đăng nhập"],
+      "remediation": ["Dùng framework xác thực chuẩn và MFA khi phù hợp", "Xác minh đầy đủ chữ ký và claim của token", "Rate limit và giám sát hành vi đăng nhập bất thường"],
+      "related_scanner_rules": {"bandit": ["B105", "B106", "B107"], "zap": []},
+      "tags": ["authentication", "password", "token", "session", "jwt"],
+      "references": [
+        "https://owasp.org/Top10/2025/A07_2025-Authentication_Failures/",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html"
+      ]
+    },
+    {
+      "id": "cryptographic-failures",
+      "title": "Cryptographic Failures",
+      "aliases": ["Weak Cryptography", "Sensitive Data Exposure", "Weak Hash"],
+      "owasp_top_10": "A04:2025 Cryptographic Failures",
+      "summary": "Dữ liệu nhạy cảm không được bảo vệ phù hợp khi lưu trữ hoặc truyền tải do thuật toán, key management hoặc cấu hình mã hóa yếu.",
+      "example": "Mật khẩu được lưu bằng hash nhanh không có salt hoặc API truyền token qua HTTP không được bảo vệ.",
+      "indicators": ["MD5 hoặc SHA-1 dùng cho password", "Secret hard-code trong source", "TLS bị tắt hoặc kiểm tra certificate bị bỏ qua"],
+      "remediation": ["Phân loại dữ liệu và mã hóa khi lưu/truyền", "Dùng thuật toán hiện đại và password hashing chuyên dụng", "Quản lý key/secret ngoài source và có rotation"],
+      "related_scanner_rules": {"bandit": ["B303", "B324", "B505", "B506"], "zap": []},
+      "tags": ["crypto", "encryption", "hash", "secret", "tls"],
+      "references": [
+        "https://owasp.org/Top10/2025/A04_2025-Cryptographic_Failures/",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html"
+      ]
+    },
+    {
+      "id": "security-headers-misconfiguration",
+      "title": "Missing or Unsafe Security Headers",
+      "aliases": ["Security Headers", "X-Content-Type-Options Missing", "CORP Header Missing"],
+      "owasp_top_10": "A02:2025 Security Misconfiguration",
+      "summary": "Response thiếu hoặc cấu hình sai security header, làm giảm các lớp bảo vệ do trình duyệt cung cấp.",
+      "example": "Gateway không trả X-Content-Type-Options: nosniff và Cross-Origin-Resource-Policy phù hợp.",
+      "indicators": ["ZAP alert 10021", "ZAP alert 90004-1", "Header hardening không được cấu hình tập trung"],
+      "remediation": ["Thêm X-Content-Type-Options: nosniff", "Chọn chính sách Cross-Origin-Resource-Policy phù hợp", "Đặt header tại gateway và kiểm thử trên cả response lỗi"],
+      "related_scanner_rules": {"bandit": [], "zap": ["10021", "90004-1"]},
+      "tags": ["headers", "nosniff", "corp", "misconfiguration", "zap"],
+      "references": [
+        "https://www.zaproxy.org/docs/alerts/10021/",
+        "https://www.zaproxy.org/docs/alerts/90004-1/",
+        "https://owasp.org/Top10/2025/A02_2025-Security_Misconfiguration/"
+      ]
+    },
+    {
+      "id": "software-supply-chain-failures",
+      "title": "Software Supply Chain Failures",
+      "aliases": ["Vulnerable Dependencies", "Dependency Confusion", "Supply Chain"],
+      "owasp_top_10": "A03:2025 Software Supply Chain Failures",
+      "summary": "Rủi ro phát sinh từ dependency, build system, registry hoặc quy trình phân phối phần mềm không được kiểm soát tính toàn vẹn.",
+      "example": "Pipeline tự động tải package không pin version từ nguồn public và đưa thẳng vào image production.",
+      "indicators": ["Dependency không pin version", "Không quét dependency hoặc image", "Artifact build không có provenance hoặc integrity check"],
+      "remediation": ["Dùng lockfile và nguồn package tin cậy", "Quét dependency/image và cập nhật có kiểm soát", "Bảo vệ CI secret và xác minh artifact trước deploy"],
+      "related_scanner_rules": {"bandit": [], "zap": []},
+      "tags": ["supply-chain", "dependency", "container", "ci-cd", "sbom"],
+      "references": [
+        "https://owasp.org/Top10/2025/A03_2025-Software_Supply_Chain_Failures/",
+        "https://owasp.org/www-project-dependency-check/"
+      ]
+    },
+    {
+      "id": "insecure-deserialization",
+      "title": "Insecure Deserialization",
+      "aliases": ["Unsafe Deserialization", "Object Injection", "Pickle Deserialization"],
+      "owasp_top_10": "A08:2025 Software or Data Integrity Failures",
+      "summary": "Ứng dụng deserialize dữ liệu không tin cậy bằng định dạng có thể tạo object hoặc thực thi code ngoài dự kiến.",
+      "example": "Server gọi pickle.loads trên payload do client gửi và tạo được object thực thi lệnh khi khôi phục.",
+      "indicators": ["pickle hoặc object stream nhận dữ liệu bên ngoài", "Không ký hoặc kiểm tra integrity của serialized data", "Kiểu object được tạo không bị giới hạn"],
+      "remediation": ["Ưu tiên định dạng dữ liệu đơn giản như JSON với schema validation", "Không deserialize object từ nguồn không tin cậy", "Ký dữ liệu và giới hạn kiểu được phép khi bắt buộc"],
+      "related_scanner_rules": {"bandit": ["B301", "B302", "B506"], "zap": []},
+      "tags": ["deserialization", "pickle", "integrity", "object-injection"],
+      "references": [
+        "https://owasp.org/Top10/2025/A08_2025-Software_or_Data_Integrity_Failures/",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Deserialization_Cheat_Sheet.html"
+      ]
+    },
+    {
+      "id": "logging-alerting-failures",
+      "title": "Security Logging and Alerting Failures",
+      "aliases": ["Insufficient Logging", "Monitoring Failures", "Missing Audit Log"],
+      "owasp_top_10": "A09:2025 Security Logging and Alerting Failures",
+      "summary": "Sự kiện bảo mật không được ghi nhận, bảo vệ, liên kết hoặc cảnh báo kịp thời, làm giảm khả năng phát hiện và điều tra sự cố.",
+      "example": "Các lần token bị từ chối không có request ID, agent ID hoặc reason nên không thể truy vết hành vi tấn công.",
+      "indicators": ["Không có audit event cho authentication/authorization", "Log chứa secret hoặc token", "Có log nhưng không có alert"],
+      "remediation": ["Ghi sự kiện bảo mật có cấu trúc và correlation ID", "Không ghi credential hoặc token nhạy cảm", "Thiết lập alert, retention và kiểm soát quyền truy cập log"],
+      "related_scanner_rules": {"bandit": [], "zap": []},
+      "tags": ["logging", "alerting", "monitoring", "audit", "incident"],
+      "references": [
+        "https://owasp.org/Top10/2025/A09_2025-Security_Logging_and_Alerting_Failures/",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html"
+      ]
+    },
+    {
+      "id": "exception-handling-failures",
+      "title": "Mishandling of Exceptional Conditions",
+      "aliases": ["Fail Open", "Improper Error Handling", "Unhandled Exception"],
+      "owasp_top_10": "A10:2025 Mishandling of Exceptional Conditions",
+      "summary": "Ứng dụng xử lý trạng thái lỗi hoặc điều kiện bất thường không an toàn, có thể fail-open, rò rỉ thông tin hoặc để hệ thống ở trạng thái không nhất quán.",
+      "example": "Khi authorization service không phản hồi, gateway vẫn chuyển request tới backend thay vì trả lỗi.",
+      "indicators": ["failure_mode_allow được bật", "Exception bị bỏ qua", "Error response lộ stack trace hoặc secret"],
+      "remediation": ["Fail-closed tại trust boundary", "Xử lý exception cụ thể và trả lỗi nhất quán", "Kiểm thử timeout, dependency failure và input biên"],
+      "related_scanner_rules": {"bandit": ["B110", "B112"], "zap": []},
+      "tags": ["exception", "error-handling", "fail-open", "fail-closed", "availability"],
+      "references": [
+        "https://owasp.org/Top10/2025/A10_2025-Mishandling_of_Exceptional_Conditions/",
+        "https://cwe.mitre.org/data/definitions/703.html"
+      ]
+    },
+    {
+      "id": "insecure-design",
+      "title": "Insecure Design",
+      "aliases": ["Security Design Flaw", "Missing Threat Modeling", "Business Logic Flaw"],
+      "owasp_top_10": "A06:2025 Insecure Design",
+      "summary": "Thiết kế thiếu security control cần thiết hoặc đặt trust boundary sai, nên việc sửa một dòng code không đủ giải quyết rủi ro.",
+      "example": "Backend tin rằng mọi request đều đã được gateway xác thực nhưng lại publish trực tiếp cổng ra host.",
+      "indicators": ["Không xác định trust boundary", "Không có abuse case hoặc threat model", "Security control chỉ tồn tại ở client"],
+      "remediation": ["Threat model cho luồng dữ liệu và trust boundary", "Deny mặc định và defense in depth", "Viết abuse case và security test từ giai đoạn thiết kế"],
+      "related_scanner_rules": {"bandit": [], "zap": ["90004-1"]},
+      "tags": ["design", "threat-model", "trust-boundary", "business-logic"],
+      "references": [
+        "https://owasp.org/Top10/2025/A06_2025-Insecure_Design/",
+        "https://owasp.org/www-community/Threat_Modeling"
+      ]
+    },
+    {
+      "id": "xxe",
+      "title": "XML External Entity (XXE)",
+      "aliases": ["XXE", "XML Entity Injection", "External Entity Processing"],
+      "owasp_top_10": "A02:2025 Security Misconfiguration",
+      "summary": "XML parser xử lý external entity từ dữ liệu không tin cậy, có thể đọc file, thực hiện SSRF hoặc gây từ chối dịch vụ.",
+      "example": "API nhận XML cho phép DOCTYPE trỏ external entity tới file cục bộ và trả nội dung file trong response.",
+      "indicators": ["Parser cho phép DOCTYPE", "External entity hoặc XInclude được bật", "XML input đến từ client không tin cậy"],
+      "remediation": ["Tắt DTD, external entity và XInclude", "Dùng parser an toàn và cập nhật", "Giới hạn kích thước và thời gian xử lý XML"],
+      "related_scanner_rules": {"bandit": [], "zap": ["90023"]},
+      "tags": ["xxe", "xml", "entity", "ssrf", "file-disclosure"],
+      "references": [
+        "https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html",
+        "https://owasp.org/Top10/2025/A02_2025-Security_Misconfiguration/"
+      ]
+    },
+    {
+      "id": "open-redirect",
+      "title": "Open Redirect",
+      "aliases": ["Unvalidated Redirect", "Unvalidated Forward", "URL Redirect Abuse"],
+      "owasp_top_10": "A01:2025 Broken Access Control",
+      "summary": "Ứng dụng chuyển hướng tới URL do người dùng kiểm soát mà không kiểm tra đích, hỗ trợ phishing hoặc chuỗi tấn công OAuth/SSRF.",
+      "example": "Tham số next cho phép redirect từ domain hợp lệ sang trang đăng nhập giả do kẻ tấn công kiểm soát.",
+      "indicators": ["redirect hoặc return_url lấy trực tiếp từ request", "Kiểm tra URL bằng startswith hoặc contains", "OAuth redirect URI không exact-match"],
+      "remediation": ["Chỉ cho phép relative path hoặc allowlist đích cụ thể", "Parse và chuẩn hóa URL trước khi so sánh", "Dùng exact redirect URI matching trong OAuth"],
+      "related_scanner_rules": {"bandit": [], "zap": ["10028"]},
+      "tags": ["redirect", "phishing", "oauth", "ssrf", "access-control"],
+      "references": [
+        "https://owasp.org/www-community/attacks/open_redirect",
+        "https://owasp.org/Top10/2025/A01_2025-Broken_Access_Control/"
+      ]
+    }
+  ]
+}

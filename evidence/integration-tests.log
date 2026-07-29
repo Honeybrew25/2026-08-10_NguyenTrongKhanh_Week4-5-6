@@ -1,0 +1,18 @@
+Integration test evidence
+=========================
+
+Date: 2026-07-29
+Command: python scripts/run_all_tests.py
+Environment: Local Windows workspace with Docker Compose
+Exit code: 0
+
+Observed runtime:
+- staging-api image built successfully
+- authz-service image built successfully
+- api, authz-service, Keycloak and Envoy became healthy
+- pytest completed successfully
+- Compose containers and network were removed after the run
+
+Pytest summary:
+.............................                                            [100%]
+29 passed in 49.27s

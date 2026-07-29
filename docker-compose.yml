@@ -1,0 +1,84 @@
+name: 2026-07-30_nguyentrongkhanh_week2
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.0
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:?Set KEYCLOAK_ADMIN_USERNAME in .env}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in .env}
+      AGENT_READER_CLIENT_SECRET: ${AGENT_READER_CLIENT_SECRET:?Set AGENT_READER_CLIENT_SECRET in .env}
+      AGENT_ADMIN_CLIENT_SECRET: ${AGENT_ADMIN_CLIENT_SECRET:?Set AGENT_ADMIN_CLIENT_SECRET in .env}
+      INTEGRATION_EXPIRED_CLIENT_SECRET: ${INTEGRATION_EXPIRED_CLIENT_SECRET:?Set INTEGRATION_EXPIRED_CLIENT_SECRET in .env}
+      INTEGRATION_WRONG_AUDIENCE_CLIENT_SECRET: ${INTEGRATION_WRONG_AUDIENCE_CLIENT_SECRET:?Set INTEGRATION_WRONG_AUDIENCE_CLIENT_SECRET in .env}
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      KC_HOSTNAME: http://localhost:8081
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+    ports:
+      - "127.0.0.1:8081:8080"
+    volumes:
+      - ./keycloak/staging-realm.json:/opt/keycloak/data/import/staging-realm.json:ro
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -c
+        - "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3; read -r status <&3; [[ $$status == *'200 OK'* ]]"
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    init: true
+
+  api:
+    build:
+      context: .
+    init: true
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  authz-service:
+    build:
+      context: .
+      dockerfile: authz_service/Dockerfile
+    environment:
+      KEYCLOAK_ISSUER: http://localhost:8081/realms/staging
+      KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/staging/protocol/openid-connect/certs
+      JWT_AUDIENCE: staging-api
+      PROTECTED_RESOURCE_URL: http://localhost:8080
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=2)"
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    init: true
+
+  envoy:
+    image: envoyproxy/envoy:v1.38.0
+    depends_on:
+      api:
+        condition: service_healthy
+      authz-service:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
+    init: true

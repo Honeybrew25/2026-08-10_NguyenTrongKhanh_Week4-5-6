@@ -1,0 +1,9 @@
+.pytest_cache/
+.venv/
+.env
+__pycache__/
+*.py[cod]
+.coverage
+htmlcov/
+security-results/bandit-*.json
+!security-results/bandit-baseline.json
