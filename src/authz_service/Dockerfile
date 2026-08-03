@@ -5,12 +5,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY authz_service/requirements.txt .
+COPY src/authz_service/requirements.txt .
 RUN pip install --no-cache-dir --timeout 120 --retries 5 --requirement requirements.txt \
     && addgroup --system authz \
     && adduser --system --ingroup authz authz
 
-COPY --chown=authz:authz authz_service ./authz_service
+COPY --chown=authz:authz src/authz_service ./authz_service
 
 USER authz
 

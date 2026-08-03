@@ -1,7 +1,7 @@
 {
   "schema": "schemas/normalized-findings.schema.json",
   "schema_version": "1.0",
-  "generated_at": "2026-07-29T09:38:18.867385+00:00",
+  "generated_at": "2026-08-03T03:27:45.580898+00:00",
   "sources": [
     {
       "path": "security-results/bandit-baseline.json",

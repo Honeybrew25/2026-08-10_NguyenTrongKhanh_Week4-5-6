@@ -10,7 +10,7 @@ RUN pip install --no-cache-dir --requirement requirements.txt \
     && addgroup --system api \
     && adduser --system --ingroup api api
 
-COPY --chown=api:api app ./app
+COPY --chown=api:api src/app ./app
 
 USER api
 

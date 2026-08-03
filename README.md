@@ -1,48 +1,22 @@
-# 2026-07-30_NguyenTrongKhanh_Week2
+# Agent IAM Security Lab
 
-- Staging API bằng FastAPI.
-- Docker Compose cho FastAPI, Envoy, `authz-service` và Keycloak.
-- Agent IAM với JWT validation và scope authorization.
-- Unit test và integration test.
-- Bandit SAST và OWASP ZAP Baseline DAST.
-- GitHub Actions cho test, security scan và build container image.
-- Báo cáo, runbook và kết quả quét Week 1.
-- Chuẩn hóa JSON Bandit/ZAP thành schema chung cho AI Agent.
-- Kho tri thức OWASP và tìm kiếm lỗ hổng cho Week 2.
-
-## Cấu trúc
-
-```text
-.
-├── .github/workflows/      # CI, SAST, DAST và container delivery
-├── app/                    # FastAPI staging API
-├── authz_service/          # JWT validation và scope authorization
-├── docs/                   # Runbook và hướng dẫn Week 1/Week 2
-├── envoy/                  # API gateway và ext_authz
-├── evidence/               # Bằng chứng integration test
-├── keycloak/               # Realm import cho machine clients
-├── knowledge-base/         # Kho tri thức lỗ hổng web Week 2
-├── reports/                # Báo cáo bàn giao
-├── scripts/                # Test, verification và Bandit runner
-├── schemas/                # JSON Schema cho dữ liệu chuẩn hóa
-├── security/               # Dependency cho security scan
-├── security-results/       # Scanner baseline và dữ liệu đã chuẩn hóa
-├── security_pipeline/      # Adapter, schema, aggregate và search Week 2
-└── tests/                  # Unit và Docker integration tests
-```
-
-## Yêu cầu
-
-- Python 3.11 trở lên.
-- Docker Desktop và Docker Compose v2.
-- Git.
+Repository chung cho các tuần, gồm một staging API, Agent IAM qua
+Envoy/Keycloak, pipeline chuẩn hóa kết quả Bandit/ZAP và Security Analysis
+Agent tạo báo cáo JSONL có grounding.
 
 ## Bắt đầu nhanh
 
-cp .env.example .env
-Thay mọi giá trị `replace-with-...` trong `.env` bằng các secret khác nhau.
+Yêu cầu: Python 3.11+, Docker Desktop với Compose v2 và Git.
 
-Khởi động và kiểm tra staging stack:
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --requirement requirements-dev.txt
+Copy-Item .env.example .env
+```
+
+Thay các placeholder Keycloak/Agent IAM trong `.env`, sau đó chạy stack. Hai
+biến OpenAI là tùy chọn và không cần thiết cho chế độ deterministic:
 
 ```powershell
 docker compose up --build --detach --wait
@@ -51,61 +25,64 @@ Invoke-RestMethod "http://localhost:8080/health"
 python scripts/verify_gateway.py
 ```
 
-Dừng stack:
+Dừng stack bằng `docker compose down --remove-orphans`.
+
+## Test, security scan và Agent
 
 ```powershell
-docker compose down --remove-orphans
-```
-
-## Test và security scan
-
-```powershell
-python -m pip install --requirement requirements-dev.txt
-python -m pip install --requirement security/requirements.txt
 python -m pytest -q -m "not integration"
-
-
 python scripts/run_all_tests.py
+
+python -m pip install --requirement security/requirements.txt
 python scripts/run_security_scan.py `
     --output security-results/bandit-local.json `
     --severity-level low
 ```
 
-Lệnh ZAP Baseline và cách đọc kết quả nằm trong
-[`docs/week1.md`](docs/week1.md). CI/CD được mô tả tại
-[`docs/ci-cd.md`](docs/ci-cd.md).
-
-## Deliverables Week 1
-
-- [Week 1 runbook](docs/week1.md)
-- [Báo cáo kiến trúc, endpoint và security findings](reports/2026-07-28_NguyenTrongKhanh_Week1.md)
-- [Bandit baseline JSON](security-results/bandit-baseline.json)
-- [ZAP baseline JSON](security-results/zap-baseline-local.json)
-- [ZAP baseline HTML](security-results/zap-baseline-local.html)
-
-## Week 2 — Chuẩn hóa và tìm kiếm
-
-Chuẩn hóa hai kết quả Week 1 thành một file JSON chung:
+Chuẩn hóa hai baseline Week 1 và tìm kiếm dataset:
 
 ```powershell
 python -m security_pipeline normalize `
     security-results/bandit-baseline.json `
     security-results/zap-baseline-local.json `
     --output security-results/normalized-findings.json
-```
 
-Tìm kiếm kho tri thức:
-
-```powershell
 python -m security_pipeline search "SQL Injection"
 python -m security_pipeline search "XSS"
-python -m security_pipeline search "security headers"
 ```
 
-## Deliverables Week 2
+Tạo lại báo cáo mẫu Week 3 không cần API key:
 
-- [Báo cáo Week 2](reports/2026-07-30_NguyenTrongKhanh_Week2.md)
-- [Thiết kế và hướng dẫn Week 2](docs/week2.md)
-- [Chương trình chuẩn hóa và tìm kiếm](security_pipeline/)
-- [Dữ liệu cảnh báo đã chuẩn hóa](security-results/normalized-findings.json)
-- [Kho tri thức 17 lỗ hổng/rủi ro web](knowledge-base/vulnerabilities.json)
+```powershell
+python -m security_pipeline analyze `
+    security-results/normalized-findings.json `
+    --knowledge-base data/vulnerabilities.json `
+    --provider deterministic `
+    --output security-results/security-analysis.jsonl
+```
+
+Provider OpenAI là tùy chọn. Điền `OPENAI_API_KEY` và `OPENAI_MODEL` trong
+file `.env` đã được ignore, sau đó ghi kết quả thử nghiệm ngoài repository để
+không ghi đè baseline deterministic:
+
+```powershell
+python -m pip install --editable ".[agent]"
+python -m security_pipeline analyze `
+    security-results/normalized-findings.json `
+    --knowledge-base data/vulnerabilities.json `
+    --provider openai `
+    --output "$env:TEMP\security-analysis-openai.jsonl"
+```
+
+## Báo cáo và tài liệu
+
+- [Báo cáo Week 1](reports/week-1.md)
+- [Báo cáo Week 2](reports/week-2.md)
+- [Báo cáo Week 3](reports/week-3.md)
+- [Runbook Week 1](docs/week1.md)
+- [Thiết kế pipeline Week 2](docs/week2.md)
+- [Thiết kế Security Analysis Agent](docs/security-analysis-agent.md)
+- [System Prompt của Agent](src/security_pipeline/analysis/prompts/security_analysis_system.md)
+- [JSON Schema của một finding](schemas/security-analysis-finding.schema.json)
+- [Báo cáo JSONL mẫu](security-results/security-analysis.jsonl)
+- [CI/CD](docs/ci-cd.md)

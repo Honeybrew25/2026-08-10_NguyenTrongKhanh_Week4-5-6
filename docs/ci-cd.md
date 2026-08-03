@@ -6,10 +6,16 @@ Workflow `.github/workflows/security-scan.yml` thực hiện:
 2. Khởi động Keycloak, Envoy, authz-service và FastAPI bằng Docker Compose để
    chạy integration test thật.
 3. Chạy OWASP ZAP Baseline qua Envoy và upload JSON/HTML report.
-4. Khi push hoặc merge thành công vào `main`, build và publish hai image lên
+4. Chạy Security Analysis Agent deterministic từ normalized findings và kho
+   tri thức, rồi upload artifact `week3-security-analysis-jsonl` trong 14 ngày.
+5. Khi push hoặc merge thành công vào `main`, build và publish hai image lên
    GitHub Container Registry (GHCR):
-   - `ghcr.io/honeybrew25/2026-07-30_nguyentrongkhanh_week2-staging-api`
-   - `ghcr.io/honeybrew25/2026-07-30_nguyentrongkhanh_week2-authz-service`
+   - `ghcr.io/honeybrew25/2026-07-30_nguyentrongkhanh_week3-staging-api`
+   - `ghcr.io/honeybrew25/2026-07-30_nguyentrongkhanh_week3-authz-service`
+
+Job này không cần API key và không gọi model bên ngoài. File sinh tạm
+`security-results/security-analysis-ci.jsonl` được `.gitignore` loại khỏi
+source control.
 
 Đây là continuous delivery: workflow tạo image có thể triển khai nhưng không
 tự ý kết nối hoặc deploy lên máy chủ chưa được chỉ định.
@@ -29,7 +35,7 @@ Nếu repository hoặc tổ chức giới hạn package, quản trị viên c�
 Nên tạo nhánh và pull request:
 
 ```powershell
-Set-Location "D:\AI Vinsoc\2026-07-30_NguyenTrongKhanh_Week2"
+Set-Location "D:\AI Vinsoc\2026-07-30_NguyenTrongKhanh_Week3"
 
 git switch -c add-ci-cd
 git status
@@ -51,14 +57,16 @@ kiện `push` vào `main`.
 - Mở tab **Actions** để theo dõi từng job.
 - Trong run summary, tải artifact `bandit-json` để xem JSON SAST.
 - Tải artifact `zap-baseline-report` để xem JSON/HTML DAST.
+- Tải artifact `week3-security-analysis-jsonl` để xem báo cáo đã nhóm và giải
+  thích tự động của Security Analysis Agent.
 - Mở trang repository **Packages** để xem hai image và các tag.
 - Tag `sha-<commit>` cố định theo commit; `latest` trỏ tới lần publish mới nhất.
 
 Kéo image về máy:
 
 ```powershell
-docker pull ghcr.io/honeybrew25/2026-07-30_nguyentrongkhanh_week2-staging-api:latest
-docker pull ghcr.io/honeybrew25/2026-07-30_nguyentrongkhanh_week2-authz-service:latest
+docker pull ghcr.io/honeybrew25/2026-07-30_nguyentrongkhanh_week3-staging-api:latest
+docker pull ghcr.io/honeybrew25/2026-07-30_nguyentrongkhanh_week3-authz-service:latest
 ```
 
 Nếu package đang để private, đăng nhập GHCR bằng personal access token có quyền
@@ -85,6 +93,11 @@ python -m pytest -q -m "not integration"
 python scripts/run_security_scan.py `
     --output security-results/bandit-local.json `
     --severity-level high
+python -m security_pipeline analyze `
+    security-results/normalized-findings.json `
+    --knowledge-base data/vulnerabilities.json `
+    --provider deterministic `
+    --output security-results/security-analysis-ci.jsonl
 python scripts/run_all_tests.py
 ```
 

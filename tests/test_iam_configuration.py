@@ -6,7 +6,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_realm_defines_placeholder_backed_machine_clients() -> None:
-    realm = json.loads((ROOT / "keycloak/staging-realm.json").read_text())
+    realm = json.loads(
+        (ROOT / "config/keycloak/staging-realm.json").read_text()
+    )
     clients = {client["clientId"]: client for client in realm["clients"]}
 
     assert realm["defaultSignatureAlgorithm"] == "RS256"
@@ -47,7 +49,7 @@ def test_realm_defines_placeholder_backed_machine_clients() -> None:
 
 
 def test_envoy_external_authorization_is_fail_closed() -> None:
-    config = (ROOT / "envoy/envoy.yaml").read_text()
+    config = (ROOT / "config/envoy/envoy.yaml").read_text()
 
     assert "envoy.filters.http.ext_authz" in config
     assert "failure_mode_allow: false" in config

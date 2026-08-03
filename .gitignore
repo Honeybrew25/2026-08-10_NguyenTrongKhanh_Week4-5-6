@@ -3,7 +3,11 @@
 .env
 __pycache__/
 *.py[cod]
+*.egg-info/
 .coverage
 htmlcov/
 security-results/bandit-*.json
 !security-results/bandit-baseline.json
+security-results/*-ci.json
+security-results/*-ci.html
+security-results/*-ci.jsonl

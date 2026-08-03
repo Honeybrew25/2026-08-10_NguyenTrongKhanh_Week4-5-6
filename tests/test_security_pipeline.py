@@ -10,7 +10,7 @@ from security_pipeline.pipeline import normalize_files, write_normalized_report
 ROOT = Path(__file__).resolve().parents[1]
 BANDIT_REPORT = ROOT / "security-results" / "bandit-baseline.json"
 ZAP_REPORT = ROOT / "security-results" / "zap-baseline-local.json"
-KNOWLEDGE_BASE = ROOT / "knowledge-base" / "vulnerabilities.json"
+KNOWLEDGE_BASE = ROOT / "data" / "vulnerabilities.json"
 COMMON_FINDING_FIELDS = {
     "id",
     "tool",

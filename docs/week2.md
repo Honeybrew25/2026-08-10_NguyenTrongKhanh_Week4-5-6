@@ -13,7 +13,7 @@ Bandit JSON ---\
                 +--> scanner adapter --> common schema --> normalized-findings.json
 ZAP JSON ------/
 
-Query --> weighted keyword search --> knowledge-base/vulnerabilities.json
+Query --> weighted keyword search --> data/vulnerabilities.json
 ```
 
 Mỗi scanner có một adapter riêng. Orchestrator tự nhận diện định dạng, gọi
@@ -77,7 +77,7 @@ File bàn giao:
 
 ## Kho tri thức và tìm kiếm
 
-[`knowledge-base/vulnerabilities.json`](../knowledge-base/vulnerabilities.json)
+[`data/vulnerabilities.json`](../data/vulnerabilities.json)
 gồm 17 tài liệu ngắn dựa trên OWASP Top 10:2025, OWASP Web Security Community,
 Bandit và ZAP. Mỗi tài liệu có tên, alias, nhóm OWASP, mô tả, ví dụ, dấu hiệu,
 khuyến nghị, scanner rule liên quan, tag và nguồn tham khảo.
@@ -103,7 +103,7 @@ bằng embedding/vector database mà không thay normalizer.
 ## Mở rộng scanner mới
 
 1. Tạo adapter kế thừa `ReportNormalizer` trong
-   `security_pipeline/normalizers/`.
+   `src/security_pipeline/normalizers/`.
 2. Cài đặt `supports()` để nhận diện JSON và `normalize()` để trả
    `NormalizedFinding`.
 3. Đăng ký adapter trong `DEFAULT_NORMALIZERS`.

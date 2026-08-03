@@ -1,4 +1,4 @@
-name: 2026-07-30_nguyentrongkhanh_week2
+name: agent-security-lab
 
 services:
   keycloak:
@@ -18,7 +18,7 @@ services:
     ports:
       - "127.0.0.1:8081:8080"
     volumes:
-      - ./keycloak/staging-realm.json:/opt/keycloak/data/import/staging-realm.json:ro
+      - ./config/keycloak/staging-realm.json:/opt/keycloak/data/import/staging-realm.json:ro
     healthcheck:
       test:
         - CMD
@@ -34,6 +34,7 @@ services:
   api:
     build:
       context: .
+      dockerfile: src/app/Dockerfile
     init: true
     healthcheck:
       test:
@@ -49,7 +50,7 @@ services:
   authz-service:
     build:
       context: .
-      dockerfile: authz_service/Dockerfile
+      dockerfile: src/authz_service/Dockerfile
     environment:
       KEYCLOAK_ISSUER: http://localhost:8081/realms/staging
       KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/staging/protocol/openid-connect/certs
@@ -80,5 +81,5 @@ services:
     ports:
       - "127.0.0.1:8080:8080"
     volumes:
-      - ./envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
+      - ./config/envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
     init: true

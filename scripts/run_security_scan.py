@@ -7,7 +7,7 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCAN_TARGETS = ("app", "authz_service", "scripts", "security_pipeline")
+SCAN_TARGETS = ("src", "scripts")
 
 
 def main() -> int:

@@ -60,9 +60,9 @@ Token hợp lệ phải có chữ ký RS256 xác minh được qua JWKS, đúng 
 | B105 | 1 | False positive: chuỗi bị báo là password thực tế là token endpoint URL |
 | B404/B603 | 4 | Runner dùng argv cố định và `shell=False`; vẫn cần giữ input không tin cậy khỏi command |
 
-Không có finding trong `app/` hoặc `authz_service/`; toàn bộ 21 cảnh báo thuộc
-script chạy scan/test. Đây là cảnh báo cần review, không đồng nghĩa có 21 lỗ
-hổng khai thác được.
+Không có finding trong `src/app/` hoặc `src/authz_service/`; toàn bộ 21 cảnh
+báo thuộc script chạy scan/test. Đây là cảnh báo cần review, không đồng nghĩa
+có 21 lỗ hổng khai thác được.
 
 ### ZAP Baseline DAST
 
