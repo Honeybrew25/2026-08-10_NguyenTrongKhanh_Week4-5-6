@@ -10,13 +10,28 @@ from security_pipeline.analysis.models import (
     NarrativeRequest,
 )
 
+MAX_GEMINI_OUTPUT_TOKENS = 4096
+_UNSUPPORTED_GEMINI_JSON_SCHEMA_KEYS = frozenset({"minLength", "maxLength"})
+
 
 class ProviderError(RuntimeError):
     """Raised when a narrative provider cannot return a valid grounded draft."""
 
 
+class ProviderRequestError(ProviderError):
+    """Raised when provider configuration or an API request fails."""
+
+
+class ProviderOutputError(ProviderError):
+    """Raised when a provider response is empty, malformed, or ungrounded."""
+
+
 class NarrativeProvider(Protocol):
-    name: str
+    @property
+    def name(self) -> str:
+        """Stable provider or active model identifier for output provenance."""
+
+        ...
 
     def generate(self, requests: Sequence[NarrativeRequest]) -> NarrativeBatch:
         """Return exactly one narrative for every requested group."""
@@ -192,66 +207,145 @@ def load_system_prompt() -> str:
     )
 
 
-class OpenAINarrativeProvider:
-    """OpenAI Responses API provider using Pydantic Structured Outputs."""
+def _gemini_response_json_schema() -> dict[str, Any]:
+    """Return Gemini's JSON Schema subset; local Pydantic stays strict."""
+
+    def clean(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {
+                key: clean(child)
+                for key, child in value.items()
+                if key not in _UNSUPPORTED_GEMINI_JSON_SCHEMA_KEYS
+            }
+        if isinstance(value, list):
+            return [clean(child) for child in value]
+        return value
+
+    return clean(NarrativeBatch.model_json_schema())
+
+
+class GeminiNarrativeProvider:
+    """Native Gemini provider using Pydantic Structured Output."""
+
+    _THINKING_LEVELS = frozenset({"minimal", "low", "medium", "high"})
 
     def __init__(
         self,
         *,
-        model: str = "gpt-5.6-sol",
+        model: str = "gemini-3.5-flash-lite",
+        fallback_model: str = "gemini-3.6-flash",
+        thinking_level: str = "minimal",
+        fallback_thinking_level: str = "low",
         api_key: str | None = None,
         client: Any | None = None,
     ) -> None:
         if not model.strip():
-            raise ProviderError("OpenAI model must not be empty")
+            raise ProviderError("Gemini model must not be empty")
+        if not fallback_model.strip():
+            raise ProviderError("Gemini fallback model must not be empty")
+        if model.strip() == fallback_model.strip():
+            raise ProviderError("Gemini fallback model must differ from primary model")
+        if thinking_level not in self._THINKING_LEVELS:
+            raise ProviderError(f"Invalid Gemini thinking level: {thinking_level}")
+        if fallback_thinking_level not in self._THINKING_LEVELS:
+            raise ProviderError(
+                "Invalid Gemini fallback thinking level: "
+                f"{fallback_thinking_level}"
+            )
         self.model = model.strip()
-        self.name = f"openai:{self.model}"
+        self.fallback_model = fallback_model.strip()
+        self.thinking_level = thinking_level
+        self.fallback_thinking_level = fallback_thinking_level
+        self._active_model = self.model
         if client is not None:
             self._client = client
             return
         if not api_key:
-            raise ProviderError(
-                "OPENAI_API_KEY is required when --provider openai is selected"
+            raise ProviderRequestError(
+                "GEMINI_API_KEY is required when --provider gemini is selected"
             )
         try:
-            from openai import OpenAI
+            from google import genai
         except ImportError as error:
-            raise ProviderError(
+            raise ProviderRequestError(
                 "Install the agent dependency with: pip install -e .[agent]"
             ) from error
-        self._client = OpenAI(api_key=api_key)
+        self._client = genai.Client(api_key=api_key)
+
+    @property
+    def name(self) -> str:
+        """Identify the model that produced the most recent valid batch."""
+
+        return f"gemini:{self._active_model}"
 
     def generate(self, requests: Sequence[NarrativeRequest]) -> NarrativeBatch:
+        return self._generate_with(
+            requests,
+            model=self.model,
+            thinking_level=self.thinking_level,
+        )
+
+    def generate_fallback(
+        self,
+        requests: Sequence[NarrativeRequest],
+    ) -> NarrativeBatch:
+        """Try the higher-quality model once after invalid provider output."""
+
+        return self._generate_with(
+            requests,
+            model=self.fallback_model,
+            thinking_level=self.fallback_thinking_level,
+        )
+
+    def _generate_with(
+        self,
+        requests: Sequence[NarrativeRequest],
+        *,
+        model: str,
+        thinking_level: str,
+    ) -> NarrativeBatch:
         payload = {"groups": [request.model_dump(mode="json") for request in requests]}
         try:
-            response = self._client.responses.parse(
-                model=self.model,
-                input=[
-                    {"role": "system", "content": load_system_prompt()},
-                    {
-                        "role": "user",
-                        "content": json.dumps(
-                            payload,
-                            ensure_ascii=False,
-                            separators=(",", ":"),
-                            sort_keys=True,
-                        ),
-                    },
-                ],
-                text_format=NarrativeBatch,
-                reasoning={"effort": "medium"},
-                store=False,
+            response = self._client.models.generate_content(
+                model=model,
+                contents=json.dumps(
+                    payload,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+                config={
+                    "system_instruction": load_system_prompt(),
+                    "response_mime_type": "application/json",
+                    "response_json_schema": _gemini_response_json_schema(),
+                    "thinking_config": {"thinking_level": thinking_level},
+                    "max_output_tokens": MAX_GEMINI_OUTPUT_TOKENS,
+                },
             )
         except Exception as error:
-            raise ProviderError(
-                f"OpenAI request failed ({type(error).__name__})"
+            status_parts = [type(error).__name__]
+            code = getattr(error, "code", None)
+            status = getattr(error, "status", None)
+            if code is not None:
+                status_parts.append(f"code={code}")
+            if status is not None:
+                status_parts.append(f"status={status}")
+            raise ProviderRequestError(
+                f"Gemini request failed ({', '.join(status_parts)})"
             ) from error
-        parsed = getattr(response, "output_parsed", None)
-        if parsed is None:
-            raise ProviderError("OpenAI returned no parsed analysis output")
-        if isinstance(parsed, NarrativeBatch):
-            return parsed
+
+        parsed = getattr(response, "parsed", None)
         try:
-            return NarrativeBatch.model_validate(parsed)
+            if parsed is not None:
+                batch = NarrativeBatch.model_validate(parsed)
+            else:
+                text = getattr(response, "text", None)
+                if not isinstance(text, str) or not text.strip():
+                    raise ValueError("empty structured response")
+                batch = NarrativeBatch.model_validate_json(text)
         except Exception as error:
-            raise ProviderError("OpenAI returned an invalid analysis schema") from error
+            raise ProviderOutputError(
+                "Gemini returned an invalid analysis schema"
+            ) from error
+        self._active_model = model
+        return batch

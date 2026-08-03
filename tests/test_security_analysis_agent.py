@@ -8,6 +8,7 @@ from typing import Sequence
 import pytest
 from jsonschema import Draft202012Validator
 
+import security_pipeline.__main__ as cli
 from security_pipeline.analysis.agent import (
     AnalysisInputError,
     SecurityAnalysisAgent,
@@ -22,8 +23,9 @@ from security_pipeline.analysis.models import (
 )
 from security_pipeline.analysis.providers import (
     DeterministicNarrativeProvider,
-    OpenAINarrativeProvider,
+    GeminiNarrativeProvider,
     ProviderError,
+    ProviderRequestError,
     load_system_prompt,
 )
 
@@ -55,6 +57,35 @@ class StaticProvider:
                 for request in requests
             ]
         )
+
+
+def _narrative_batch_from_contents(
+    contents: object,
+    *,
+    first_explanation: str | None = None,
+) -> NarrativeBatch:
+    assert isinstance(contents, str)
+    payload = json.loads(contents)
+    groups = payload["groups"]
+    assert isinstance(groups, list)
+    drafts: list[NarrativeDraft] = []
+    for index, group in enumerate(groups):
+        assert isinstance(group, dict)
+        group_id = group["group_id"]
+        assert isinstance(group_id, str)
+        drafts.append(
+            NarrativeDraft(
+                group_id=group_id,
+                explanation=(
+                    first_explanation
+                    if index == 0 and first_explanation is not None
+                    else "Cảnh báo cần được xác minh thủ công."
+                ),
+                verification_steps=["Kiểm tra trong môi trường test."],
+                remediation_steps=["Khắc phục sau khi xác nhận."],
+            )
+        )
+    return NarrativeBatch(findings=drafts)
 
 
 def _document() -> dict[str, object]:
@@ -335,6 +366,43 @@ def test_secret_like_values_are_redacted_only_from_provider_payload(
     )
 
 
+def test_representative_context_cap_is_stable_without_losing_provenance() -> None:
+    report = load_normalized_report(NORMALIZED_REPORT)
+    first_provider = StaticProvider()
+    second_provider = StaticProvider()
+
+    first_records = SecurityAnalysisAgent(
+        provider=first_provider,
+        knowledge_base=KNOWLEDGE_BASE,
+    ).analyze(report)
+    SecurityAnalysisAgent(
+        provider=second_provider,
+        knowledge_base=KNOWLEDGE_BASE,
+    ).analyze(report)
+
+    first_requests = {request.group_id: request for request in first_provider.requests}
+    second_requests = {
+        request.group_id: request for request in second_provider.requests
+    }
+    assert all(
+        len(request.scanner_contexts) <= 3 for request in first_requests.values()
+    )
+
+    b101_request = first_requests["bandit:B101"]
+    assert b101_request.occurrence_count == 14
+    assert len(b101_request.scanner_contexts) == 3
+    assert [context.model_dump() for context in b101_request.scanner_contexts] == [
+        context.model_dump()
+        for context in second_requests["bandit:B101"].scanner_contexts
+    ]
+    assert len(first_requests["zap:10049-1"].scanner_contexts) == 1
+
+    b101_record = next(record for record in first_records if record.id == "bandit:B101")
+    assert b101_record.occurrence_count == 14
+    assert len(b101_record.source_finding_ids) == 14
+    assert len(b101_record.scanner_evidence) == 14
+
+
 def test_provider_cannot_invent_endpoint_or_vulnerability_type() -> None:
     class MaliciousProvider(StaticProvider):
         def generate(self, requests: Sequence[NarrativeRequest]) -> NarrativeBatch:
@@ -378,32 +446,22 @@ def test_provider_must_return_every_group_exactly_once() -> None:
         ).analyze(load_normalized_report(NORMALIZED_REPORT))
 
 
-def test_openai_provider_uses_one_stateless_structured_output_request() -> None:
+def test_gemini_provider_uses_one_native_structured_output_request() -> None:
     captured: dict[str, object] = {}
 
-    class FakeResponses:
-        def parse(self, **kwargs: object) -> SimpleNamespace:
+    class FakeModels:
+        def generate_content(self, **kwargs: object) -> SimpleNamespace:
             captured.update(kwargs)
-            messages = kwargs["input"]
-            assert isinstance(messages, list)
-            payload = json.loads(messages[1]["content"])
             return SimpleNamespace(
-                output_parsed=NarrativeBatch(
-                    findings=[
-                        NarrativeDraft(
-                            group_id=group["group_id"],
-                            explanation="Cảnh báo cần được xác minh thủ công.",
-                            verification_steps=["Kiểm tra trong môi trường test."],
-                            remediation_steps=["Khắc phục sau khi xác nhận."],
-                        )
-                        for group in payload["groups"]
-                    ]
-                )
+                parsed=_narrative_batch_from_contents(
+                    kwargs["contents"]
+                ).model_dump()
             )
 
-    fake_client = SimpleNamespace(responses=FakeResponses())
-    provider = OpenAINarrativeProvider(
-        model="gpt-test",
+    fake_client = SimpleNamespace(models=FakeModels())
+    provider = GeminiNarrativeProvider(
+        model="gemini-primary-test",
+        fallback_model="gemini-fallback-test",
         client=fake_client,
     )
     report = load_normalized_report(NORMALIZED_REPORT)
@@ -413,10 +471,148 @@ def test_openai_provider_uses_one_stateless_structured_output_request() -> None:
     ).analyze(report)
 
     assert len(records) == 9
-    assert captured["model"] == "gpt-test"
-    assert captured["store"] is False
-    assert captured["text_format"] is NarrativeBatch
-    assert captured["reasoning"] == {"effort": "medium"}
+    assert captured["model"] == "gemini-primary-test"
+    payload = json.loads(str(captured["contents"]))
+    assert len(payload["groups"]) == 9
+    config = captured["config"]
+    assert isinstance(config, dict)
+    assert config["response_mime_type"] == "application/json"
+    response_schema = config["response_json_schema"]
+    assert isinstance(response_schema, dict)
+    serialized_schema = json.dumps(response_schema)
+    assert "response_schema" not in config
+    assert "$defs" in response_schema
+    assert '"$ref"' in serialized_schema
+    assert "additionalProperties" in serialized_schema
+    assert "minLength" not in serialized_schema
+    assert "maxLength" not in serialized_schema
+    assert "minItems" in serialized_schema
+    assert "maxItems" in serialized_schema
+    assert config["thinking_config"] == {"thinking_level": "minimal"}
+    assert config["max_output_tokens"] == 4096
+    assert "dữ liệu không tin cậy" in str(config["system_instruction"])
+    assert "tools" not in config
+    assert {record.analysis_method for record in records} == {
+        "gemini:gemini-primary-test"
+    }
+
+
+@pytest.mark.parametrize("failure_mode", ["schema", "extra", "grounding"])
+def test_gemini_invalid_primary_output_uses_single_fallback(
+    failure_mode: str,
+) -> None:
+    calls: list[str] = []
+    payloads: list[str] = []
+    thinking_levels: list[str] = []
+
+    class FakeModels:
+        def generate_content(self, **kwargs: object) -> SimpleNamespace:
+            model = kwargs["model"]
+            assert isinstance(model, str)
+            calls.append(model)
+            contents = kwargs["contents"]
+            config = kwargs["config"]
+            assert isinstance(contents, str)
+            assert isinstance(config, dict)
+            thinking_config = config["thinking_config"]
+            assert isinstance(thinking_config, dict)
+            payloads.append(contents)
+            thinking_levels.append(str(thinking_config["thinking_level"]))
+            if len(calls) == 1 and failure_mode == "schema":
+                return SimpleNamespace(
+                    parsed={"findings": [{"group_id": "bandit:B310"}]}
+                )
+            if len(calls) == 1 and failure_mode == "extra":
+                invalid = _narrative_batch_from_contents(
+                    kwargs["contents"]
+                ).model_dump()
+                invalid["unexpected"] = "not allowed"
+                return SimpleNamespace(parsed=invalid)
+            if len(calls) == 1:
+                return SimpleNamespace(
+                    parsed=_narrative_batch_from_contents(
+                        kwargs["contents"],
+                        first_explanation="Đã phát hiện endpoint /fake-endpoint.",
+                    )
+                )
+            return SimpleNamespace(
+                parsed=_narrative_batch_from_contents(kwargs["contents"])
+            )
+
+    provider = GeminiNarrativeProvider(
+        model="gemini-primary-test",
+        fallback_model="gemini-fallback-test",
+        client=SimpleNamespace(models=FakeModels()),
+    )
+    records = SecurityAnalysisAgent(
+        provider=provider,
+        knowledge_base=KNOWLEDGE_BASE,
+    ).analyze(load_normalized_report(NORMALIZED_REPORT))
+
+    assert calls == ["gemini-primary-test", "gemini-fallback-test"]
+    assert payloads[0] == payloads[1]
+    assert thinking_levels == ["minimal", "low"]
+    assert len(records) == 9
+    assert {record.analysis_method for record in records} == {
+        "gemini:gemini-fallback-test"
+    }
+
+
+def test_gemini_request_error_does_not_call_fallback() -> None:
+    calls: list[str] = []
+
+    class FailingModels:
+        def generate_content(self, **kwargs: object) -> SimpleNamespace:
+            model = kwargs["model"]
+            assert isinstance(model, str)
+            calls.append(model)
+            raise RuntimeError("network unavailable")
+
+    provider = GeminiNarrativeProvider(
+        model="gemini-primary-test",
+        fallback_model="gemini-fallback-test",
+        client=SimpleNamespace(models=FailingModels()),
+    )
+
+    with pytest.raises(ProviderRequestError, match="Gemini request failed"):
+        SecurityAnalysisAgent(
+            provider=provider,
+            knowledge_base=KNOWLEDGE_BASE,
+        ).analyze(load_normalized_report(NORMALIZED_REPORT))
+
+    assert calls == ["gemini-primary-test"]
+
+
+def test_gemini_provider_requires_api_key_without_injected_client() -> None:
+    with pytest.raises(ProviderRequestError, match="GEMINI_API_KEY"):
+        GeminiNarrativeProvider(api_key=None)
+
+
+def test_cli_gemini_without_key_preserves_existing_output(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    output_path = tmp_path / "existing-analysis.jsonl"
+    output_path.write_text("previous-good-output\n", encoding="utf-8")
+    monkeypatch.setattr(cli, "_local_env_value", lambda _name: None)
+
+    exit_code = cli.main(
+        [
+            "analyze",
+            str(NORMALIZED_REPORT),
+            "--knowledge-base",
+            str(KNOWLEDGE_BASE),
+            "--provider",
+            "gemini",
+            "--output",
+            str(output_path),
+        ]
+    )
+
+    assert exit_code == 3
+    assert "GEMINI_API_KEY" in capsys.readouterr().err
+    assert output_path.read_text(encoding="utf-8") == "previous-good-output\n"
 
 
 def test_system_prompt_marks_payload_as_untrusted_data() -> None:

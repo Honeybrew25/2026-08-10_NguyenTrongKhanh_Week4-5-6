@@ -15,6 +15,7 @@ from security_pipeline.analysis.models import (
     Confidence,
     FindingLocation,
     KnowledgeContext,
+    NarrativeBatch,
     NarrativeDraft,
     NarrativeRequest,
     NormalizedFindingInput,
@@ -23,7 +24,11 @@ from security_pipeline.analysis.models import (
     ScannerEvidence,
     Severity,
 )
-from security_pipeline.analysis.providers import NarrativeProvider, ProviderError
+from security_pipeline.analysis.providers import (
+    NarrativeProvider,
+    ProviderError,
+    ProviderOutputError,
+)
 from security_pipeline.knowledge import load_knowledge_base
 
 
@@ -41,6 +46,7 @@ CONFIDENCE_ORDER: dict[str, int] = {
     "medium": 2,
     "high": 3,
 }
+MAX_SCANNER_CONTEXTS_PER_GROUP = 3
 
 _BEARER_TOKEN = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+")
 _JWT = re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b")
@@ -285,7 +291,7 @@ def _make_request(group: FindingGroup) -> NarrativeRequest:
             context_by_value,
             key=lambda item: tuple(value or "" for value in item),
         )
-    ]
+    ][:MAX_SCANNER_CONTEXTS_PER_GROUP]
     knowledge_contexts = [
         KnowledgeContext(
             id=context.id,
@@ -326,15 +332,41 @@ class SecurityAnalysisAgent:
         if not groups:
             return []
         requests = [_make_request(group) for group in groups]
-        batch = self.provider.generate(requests)
+        try:
+            batch = self.provider.generate(requests)
+            return self._validate_and_build(batch, groups, report)
+        except ProviderOutputError as primary_error:
+            fallback = getattr(self.provider, "generate_fallback", None)
+            if not callable(fallback):
+                raise
+            try:
+                batch = fallback(requests)
+                return self._validate_and_build(batch, groups, report)
+            except ProviderError as fallback_error:
+                raise ProviderError(
+                    f"Primary provider output was invalid ({primary_error}); "
+                    "the single fallback attempt failed "
+                    f"({fallback_error})"
+                ) from fallback_error
+
+    def _validate_and_build(
+        self,
+        batch: NarrativeBatch,
+        groups: Sequence[FindingGroup],
+        report: NormalizedReportInput,
+    ) -> list[AnalysisFinding]:
         draft_by_id: dict[str, NarrativeDraft] = {}
         for draft in batch.findings:
             if draft.group_id in draft_by_id:
-                raise ProviderError(f"Duplicate provider group: {draft.group_id}")
+                raise ProviderOutputError(
+                    f"Duplicate provider group: {draft.group_id}"
+                )
             draft_by_id[draft.group_id] = draft
         expected_ids = {group.group_id for group in groups}
         if set(draft_by_id) != expected_ids:
-            raise ProviderError("Provider group ids do not match requested groups")
+            raise ProviderOutputError(
+                "Provider group ids do not match requested groups"
+            )
 
         records: list[AnalysisFinding] = []
         for group in groups:
@@ -359,7 +391,7 @@ def _validate_narrative_grounding(
         [draft.explanation, *draft.verification_steps, *draft.remediation_steps]
     )
     if _URL.search(text) or _WINDOWS_PATH.search(text):
-        raise ProviderError(
+        raise ProviderOutputError(
             f"Provider invented or repeated a URL/path for {group.group_id}"
         )
 
@@ -371,12 +403,12 @@ def _validate_narrative_grounding(
     for endpoint in _ENDPOINT.findall(text):
         endpoint = endpoint.rstrip(".,;:")
         if endpoint not in allowed_endpoints:
-            raise ProviderError(f"Provider invented endpoint {endpoint}")
+            raise ProviderOutputError(f"Provider invented endpoint {endpoint}")
 
     allowed_repo_paths = {finding.file_or_url for finding in group.findings}
     for repo_path in _REPO_PATH.findall(text):
         if repo_path.rstrip(".,;:") not in allowed_repo_paths:
-            raise ProviderError(f"Provider invented source path {repo_path}")
+            raise ProviderOutputError(f"Provider invented source path {repo_path}")
 
     allowed_identifiers = {
         value.casefold()
@@ -386,7 +418,9 @@ def _validate_narrative_grounding(
     }
     for identifier in _SECURITY_IDENTIFIER.findall(text):
         if identifier.casefold() not in allowed_identifiers:
-            raise ProviderError(f"Provider invented security identifier {identifier}")
+            raise ProviderOutputError(
+                f"Provider invented security identifier {identifier}"
+            )
 
     allowed_knowledge_ids = {context.id for context in group.knowledge_contexts}
     for document_id in sorted(knowledge_terms):
@@ -398,7 +432,7 @@ def _validate_narrative_grounding(
                 text,
                 flags=re.IGNORECASE,
             ):
-                raise ProviderError(
+                raise ProviderOutputError(
                     f"Provider invented vulnerability type {term} for {group.group_id}"
                 )
 

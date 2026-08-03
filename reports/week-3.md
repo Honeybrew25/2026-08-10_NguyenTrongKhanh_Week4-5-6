@@ -49,18 +49,6 @@ input sai trả lỗi rõ ràng và không thay thế output tốt trước đó
 - Toàn bộ **53 test** của project pass trên stack Docker thật gồm Keycloak,
   Envoy và hai service; Bandit không có finding mức High.
 
-Lệnh tái lập không cần khóa API:
-
-```powershell
-python -m security_pipeline analyze `
-    security-results/normalized-findings.json `
-    --knowledge-base data/vulnerabilities.json `
-    --provider deterministic `
-    --output security-results/security-analysis.jsonl
-
-python -m pytest -q tests/test_security_analysis_agent.py
-```
-
 ## Kết luận
 
 Phần quan trọng không chỉ là gọi model mà là giữ ranh giới giữa dữ kiện và

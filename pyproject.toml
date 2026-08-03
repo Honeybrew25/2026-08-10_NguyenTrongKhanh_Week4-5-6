@@ -9,7 +9,7 @@ description = "Agent IAM and security-result normalization lab"
 requires-python = ">=3.11"
 
 [project.optional-dependencies]
-agent = ["openai==2.45.0"]
+agent = ["google-genai==2.16.0"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

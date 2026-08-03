@@ -10,7 +10,8 @@ from typing import Sequence
 from security_pipeline.analysis.agent import AnalysisInputError, run_analysis
 from security_pipeline.analysis.providers import (
     DeterministicNarrativeProvider,
-    OpenAINarrativeProvider,
+    GeminiNarrativeProvider,
+    NarrativeProvider,
     ProviderError,
 )
 from security_pipeline.knowledge import SearchResult, search_knowledge
@@ -21,7 +22,11 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_KNOWLEDGE_BASE = ROOT / "data" / "vulnerabilities.json"
 DEFAULT_NORMALIZED_OUTPUT = ROOT / "security-results" / "normalized-findings.json"
 DEFAULT_ANALYSIS_OUTPUT = ROOT / "security-results" / "security-analysis.jsonl"
-DEFAULT_OPENAI_MODEL = "gpt-5.6-sol"
+DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite"
+DEFAULT_GEMINI_FALLBACK_MODEL = "gemini-3.6-flash"
+DEFAULT_GEMINI_THINKING_LEVEL = "minimal"
+DEFAULT_GEMINI_FALLBACK_THINKING_LEVEL = "low"
+GEMINI_THINKING_LEVELS = ("minimal", "low", "medium", "high")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -64,13 +69,37 @@ def _parser() -> argparse.ArgumentParser:
     )
     analyze_parser.add_argument(
         "--provider",
-        choices=("deterministic", "openai"),
+        choices=("deterministic", "gemini"),
         default="deterministic",
-        help="Use deterministic for reproducible local/CI output or openai for LLM analysis.",
+        help="Use deterministic for reproducible local/CI output or gemini for LLM analysis.",
     )
     analyze_parser.add_argument(
         "--model",
-        help=f"OpenAI model (default: OPENAI_MODEL or {DEFAULT_OPENAI_MODEL}).",
+        help=f"Gemini model (default: GEMINI_MODEL or {DEFAULT_GEMINI_MODEL}).",
+    )
+    analyze_parser.add_argument(
+        "--fallback-model",
+        help=(
+            "Gemini fallback model used once for invalid output "
+            f"(default: GEMINI_FALLBACK_MODEL or {DEFAULT_GEMINI_FALLBACK_MODEL})."
+        ),
+    )
+    analyze_parser.add_argument(
+        "--thinking-level",
+        choices=GEMINI_THINKING_LEVELS,
+        help=(
+            "Primary Gemini thinking level "
+            f"(default: GEMINI_THINKING_LEVEL or {DEFAULT_GEMINI_THINKING_LEVEL})."
+        ),
+    )
+    analyze_parser.add_argument(
+        "--fallback-thinking-level",
+        choices=GEMINI_THINKING_LEVELS,
+        help=(
+            "Fallback Gemini thinking level (default: "
+            "GEMINI_FALLBACK_THINKING_LEVEL or "
+            f"{DEFAULT_GEMINI_FALLBACK_THINKING_LEVEL})."
+        ),
     )
 
     search_parser = subparsers.add_parser(
@@ -145,14 +174,30 @@ def main(arguments: Sequence[str] | None = None) -> int:
             return 0
 
         if args.command == "analyze":
-            if args.provider == "openai":
-                provider = OpenAINarrativeProvider(
+            provider: NarrativeProvider
+            if args.provider == "gemini":
+                provider = GeminiNarrativeProvider(
                     model=(
                         args.model
-                        or _local_env_value("OPENAI_MODEL")
-                        or DEFAULT_OPENAI_MODEL
+                        or _local_env_value("GEMINI_MODEL")
+                        or DEFAULT_GEMINI_MODEL
                     ),
-                    api_key=_local_env_value("OPENAI_API_KEY"),
+                    fallback_model=(
+                        args.fallback_model
+                        or _local_env_value("GEMINI_FALLBACK_MODEL")
+                        or DEFAULT_GEMINI_FALLBACK_MODEL
+                    ),
+                    thinking_level=(
+                        args.thinking_level
+                        or _local_env_value("GEMINI_THINKING_LEVEL")
+                        or DEFAULT_GEMINI_THINKING_LEVEL
+                    ),
+                    fallback_thinking_level=(
+                        args.fallback_thinking_level
+                        or _local_env_value("GEMINI_FALLBACK_THINKING_LEVEL")
+                        or DEFAULT_GEMINI_FALLBACK_THINKING_LEVEL
+                    ),
+                    api_key=_local_env_value("GEMINI_API_KEY"),
                 )
             else:
                 provider = DeterministicNarrativeProvider()

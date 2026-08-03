@@ -65,7 +65,7 @@ Các trường chính gồm:
 | `confidence` | Confidence bảo thủ từ các finding nguồn |
 | `occurrence_count` | Số cảnh báo đã được gom vào nhóm |
 | `source_finding_ids`, `knowledge_ids` | Provenance để truy ngược dữ liệu |
-| `analysis_method` | Provider đã tạo phần diễn giải |
+| `analysis_method` | Provider và model thực sự đã tạo phần diễn giải |
 
 JSONL không có code fence hoặc record tổng kết. Thứ tự nhóm, thứ tự field và ID
 ổn định để chế độ deterministic tạo cùng một file khi input không đổi.
@@ -106,11 +106,11 @@ Chạy lại lệnh rồi dùng lệnh sau để kiểm tra output được comm
 git diff --exit-code -- security-results/security-analysis.jsonl
 ```
 
-## Chạy với OpenAI
+## Chạy với Gemini
 
-OpenAI là provider tùy chọn. Cài extra `agent`, copy `.env.example` thành file
-`.env` đã được ignore và chỉ điền `OPENAI_API_KEY`/`OPENAI_MODEL` ở máy local.
-Không commit khóa API hoặc dán khóa vào báo cáo/log.
+Gemini là provider tùy chọn. Cài extra `agent`, copy `.env.example` thành file
+`.env` đã được ignore và chỉ điền `GEMINI_API_KEY` cùng cấu hình `GEMINI_*` ở
+máy local. Không commit khóa API hoặc dán khóa vào báo cáo/log.
 
 ```powershell
 python -m pip install --editable ".[agent]"
@@ -118,18 +118,32 @@ python -m pip install --editable ".[agent]"
 python -m security_pipeline analyze `
     security-results/normalized-findings.json `
     --knowledge-base data/vulnerabilities.json `
-    --provider openai `
-    --output "$env:TEMP\security-analysis-openai.jsonl"
+    --provider gemini `
+    --output "$env:TEMP\security-analysis-gemini.jsonl"
 ```
 
-Provider gửi một request stateless bằng Responses API, yêu cầu Structured
-Output và đặt `store=False`. Scanner data vẫn rời máy khi dùng provider này;
-chỉ sử dụng với dữ liệu đã được phép gửi tới dịch vụ bên ngoài. Có thể truyền
-`--model` để ghi đè `OPENAI_MODEL`.
+Provider dùng Google Gen AI SDK và Pydantic Structured Output. Model chính là
+`gemini-3.5-flash-lite` với thinking `minimal`; có thể truyền `--model` để ghi
+đè `GEMINI_MODEL`. Provider không bật Google Search, URL context, code
+execution hoặc tool bên ngoài vì scanner data và kho tri thức nội bộ là nguồn
+grounding duy nhất. Mỗi nhóm chỉ gửi tối đa ba scanner context đại diện và mỗi
+request bị giới hạn 4.096 output token; JSONL local vẫn giữ đủ bằng chứng nguồn.
 
-Tham khảo tài liệu chính thức: [Structured Outputs với
-Pydantic](https://developers.openai.com/api/docs/guides/structured-outputs) và
-[Responses API](https://developers.openai.com/api/docs/guides/migrate-to-responses).
+Nếu kết quả model chính trống, sai schema hoặc bị Agent từ chối bởi kiểm tra
+grounding, Agent thử lại **đúng một lần** bằng `gemini-3.6-flash` với thinking
+`low`. Fallback không chạy cho lỗi API key, quota hoặc mạng, tránh retry tốn
+chi phí nhưng không thể cải thiện output. `analysis_method` ghi model thực sự
+đã tạo record; nếu cả hai lần đều không hợp lệ, lệnh trả exit code `3` và không
+ghi đè output tốt trước đó.
+
+Scanner data vẫn rời máy khi dùng provider này; chỉ sử dụng với dữ liệu đã
+được phép gửi tới dịch vụ bên ngoài. Với dữ liệu bảo mật thật, nên dùng paid
+tier thay vì free tier theo chính sách sử dụng dữ liệu trên trang giá.
+
+Tham khảo tài liệu chính thức: [model Gemini mới
+nhất](https://ai.google.dev/gemini-api/docs/latest-model), [Structured Outputs
+với Pydantic](https://ai.google.dev/gemini-api/docs/structured-output) và
+[Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing).
 
 ## Dữ liệu lỗi và kiểm thử
 
@@ -148,8 +162,8 @@ python -m pytest -q tests/test_security_analysis_agent.py
 
 Test bao phủ dữ liệu thật Week 1/2, grouping, mapping tri thức chính xác,
 JSONL byte-stable, input rỗng/lỗi, prompt injection, redact secret, provider
-bịa endpoint/loại lỗ hổng, Structured Output và nội dung bắt buộc của System
-Prompt.
+bịa endpoint/loại lỗ hổng, Gemini Structured Output, fallback đúng một lần và
+nội dung bắt buộc của System Prompt.
 
 ## Giới hạn
 

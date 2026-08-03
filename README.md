@@ -15,8 +15,8 @@ python -m pip install --requirement requirements-dev.txt
 Copy-Item .env.example .env
 ```
 
-Thay các placeholder Keycloak/Agent IAM trong `.env`, sau đó chạy stack. Hai
-biến OpenAI là tùy chọn và không cần thiết cho chế độ deterministic:
+Thay các placeholder Keycloak/Agent IAM trong `.env`, sau đó chạy stack. Các
+biến Gemini là tùy chọn và không cần thiết cho chế độ deterministic:
 
 ```powershell
 docker compose up --build --detach --wait
@@ -61,24 +61,31 @@ python -m security_pipeline analyze `
     --output security-results/security-analysis.jsonl
 ```
 
-Provider OpenAI là tùy chọn. Điền `OPENAI_API_KEY` và `OPENAI_MODEL` trong
-file `.env` đã được ignore, sau đó ghi kết quả thử nghiệm ngoài repository để
-không ghi đè baseline deterministic:
+Provider Gemini là tùy chọn. Điền `GEMINI_API_KEY` và các cấu hình `GEMINI_*`
+trong file `.env` đã được ignore, sau đó ghi kết quả thử nghiệm ngoài
+repository để không ghi đè baseline deterministic:
 
 ```powershell
 python -m pip install --editable ".[agent]"
 python -m security_pipeline analyze `
     security-results/normalized-findings.json `
     --knowledge-base data/vulnerabilities.json `
-    --provider openai `
-    --output "$env:TEMP\security-analysis-openai.jsonl"
+    --provider gemini `
+    --output "$env:TEMP\security-analysis-gemini.jsonl"
 ```
+
+Mặc định, Agent dùng `gemini-3.5-flash-lite` với thinking `minimal` để giảm
+chi phí. Nếu output trống, sai schema hoặc không vượt qua kiểm tra grounding,
+Agent thử lại đúng một lần bằng `gemini-3.6-flash` với thinking `low`. Lỗi xác
+thực, quota hoặc mạng không kích hoạt fallback. Provider deterministic vẫn là
+mặc định và là provider duy nhất được gọi trong CI.
 
 ## Báo cáo và tài liệu
 
 - [Báo cáo Week 1](reports/week-1.md)
 - [Báo cáo Week 2](reports/week-2.md)
 - [Báo cáo Week 3](reports/week-3.md)
+- [Báo cáo chạy thật Gemini — Week 3](reports/week-3/gemini-live-run-2026-08-03.md)
 - [Runbook Week 1](docs/week1.md)
 - [Thiết kế pipeline Week 2](docs/week2.md)
 - [Thiết kế Security Analysis Agent](docs/security-analysis-agent.md)
