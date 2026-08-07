@@ -3,13 +3,11 @@
 ## Mục tiêu
 
 Xây dựng Agent đọc kết quả Bandit/ZAP của Week 1 đã được chuẩn hóa ở Week 2,
-kết hợp kho tri thức để tạo báo cáo JSONL dễ hiểu, có bằng chứng và không tự
-thêm endpoint hoặc lỗ hổng.
+kết hợp kho tri thức để tạo báo cáo JSONL, có bằng chứng.
 
 ## Quá trình
 
-Luồng xử lý được đặt trong
-[`security_pipeline.analysis`](../src/security_pipeline/analysis/):
+Luồng xử lý :
 
 ```text
 normalized findings + knowledge base
@@ -22,27 +20,15 @@ mức cao nhất và confidence lấy mức thấp nhất trong nhóm. Kho tri t
 ghép bằng đúng cặp `(tool, rule_id)`. Nếu không có tài liệu phù hợp, Agent giữ
 ngữ cảnh scanner thay vì suy đoán một loại lỗ hổng.
 
-[`System Prompt`](../src/security_pipeline/analysis/prompts/security_analysis_system.md)
-coi scanner evidence và kho tri thức là dữ liệu không tin cậy. Các trường tên,
+System Prompt coi scanner evidence và kho tri thức là dữ liệu không tin cậy. Các trường tên,
 severity, vị trí, bằng chứng và provenance do code tạo; provider chỉ viết giải
 thích, cách kiểm tra và cách khắc phục. Output tiếp tục được kiểm tra grounding
-và model dữ liệu theo hợp đồng
-[`JSON Schema`](../schemas/security-analysis-finding.schema.json) trước khi ghi
-nguyên tử.
-
-Project có provider deterministic để demo/CI không cần API key và provider
-OpenAI tùy chọn dùng Structured Output. Dữ liệu rỗng hợp lệ tạo báo cáo 0 dòng;
-input sai trả lỗi rõ ràng và không thay thế output tốt trước đó.
+và model dữ liệu theo hợp đồng trước khi ghi.
 
 ## Kết quả
 
 - 27 finding chuẩn hóa được tổng hợp thành **9 nhóm cảnh báo**, không mất hoặc
   lặp finding nguồn.
-- Mỗi dòng trong
-  [`security-analysis.jsonl`](../security-results/security-analysis.jsonl) là
-  một finding độc lập gồm tên, severity, vị trí, bằng chứng, giải thích, đề
-  xuất kiểm tra/khắc phục, confidence và provenance.
-- ID, thứ tự và định dạng ổn định khi chạy lại bằng provider deterministic.
 - **15 test case** bao phủ dữ liệu Week 1/2, nhóm trùng, mapping tri thức,
   JSONL, dữ liệu rỗng/lỗi, prompt injection, secret redaction và provider bịa
   endpoint hoặc loại lỗ hổng không có căn cứ.

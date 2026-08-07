@@ -1,7 +1,5 @@
 # Báo cáo Week 2 — Chuẩn hóa kết quả quét và xây dựng kho tri thức
 
-**Project:** `2026-07-30_NguyenTrongKhanh_Week2`
-
 ## Mục tiêu
 
 Trong tuần 2, em tiếp tục sử dụng kết quả quét bảo mật của Week 1. Mục tiêu là chuyển dữ liệu từ Bandit và OWASP ZAP về cùng một cấu trúc để chương trình hoặc AI Agent có thể đọc dễ dàng. Bên cạnh đó, em xây dựng một kho kiến thức nhỏ về các lỗ hổng web và chức năng tìm kiếm theo từ khóa.
