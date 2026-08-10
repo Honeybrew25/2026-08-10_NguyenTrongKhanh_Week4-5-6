@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/safe-api-test-cases.schema.json",
+  "title": "Safe API Test Case Catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "test_cases"],
+  "properties": {
+    "schema": {"const": "schemas/safe-api-test-cases.schema.json"},
+    "schema_version": {"const": "1.0"},
+    "test_cases": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "category", "description", "payload", "expected_status"],
+        "properties": {
+          "id": {"enum": ["long-string", "special-characters", "empty", "wrong-type"]},
+          "category": {"enum": ["long-string", "special-characters", "empty", "wrong-type"]},
+          "description": {"type": "string", "minLength": 1, "maxLength": 300},
+          "payload": {"type": "object", "additionalProperties": true},
+          "expected_status": {"type": "integer", "minimum": 100, "maximum": 599}
+        }
+      }
+    }
+  }
+}

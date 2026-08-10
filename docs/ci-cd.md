@@ -4,16 +4,22 @@ Workflow `.github/workflows/security-scan.yml` thực hiện:
 
 1. Chạy unit test và Bandit trên pull request và nhánh `main`.
 2. Khởi động Keycloak, Envoy, authz-service và FastAPI bằng Docker Compose để
-   chạy integration test thật.
+   chạy integration test thật cho JWT IAM và Safe API Tool.
 3. Chạy OWASP ZAP Baseline qua Envoy và upload JSON/HTML report.
 4. Chạy Security Analysis Agent deterministic từ normalized findings và kho
    tri thức, rồi upload artifact `week3-security-analysis-jsonl` trong 14 ngày.
-5. Khi push hoặc merge thành công vào `main`, build và publish hai image lên
+5. Chạy demo Week 4 qua Envoy bằng API key tạm, kiểm tra negative control và
+   upload receipt đã sanitize dưới artifact `week4-safe-api-demo-receipts`.
+6. Khi push hoặc merge thành công vào `main`, build và publish hai image lên
    GitHub Container Registry (GHCR):
    - `ghcr.io/honeybrew25/2026-08-10_nguyentrongkhanh_week4-5-6-staging-api`
    - `ghcr.io/honeybrew25/2026-08-10_nguyentrongkhanh_week4-5-6-authz-service`
 
-Job này không cần API key và không gọi model bên ngoài. File sinh tạm
+Workflow không cần secret do người dùng cung cấp: Keycloak secret và
+`SAFE_API_TOOL_API_KEY` đều được sinh ngẫu nhiên và chỉ tồn tại trong job.
+DAST đăng ký các giá trị với GitHub masking; integration runner giữ key trong
+environment của subprocess và không in ra log. Workflow không gọi model bên
+ngoài. File sinh tạm
 `security-results/security-analysis-ci.jsonl` được `.gitignore` loại khỏi
 source control.
 
@@ -59,6 +65,8 @@ kiện `push` vào `main`.
 - Tải artifact `zap-baseline-report` để xem JSON/HTML DAST.
 - Tải artifact `week3-security-analysis-jsonl` để xem báo cáo đã nhóm và giải
   thích tự động của Security Analysis Agent.
+- Tải artifact `week4-safe-api-demo-receipts` để xem proposal, policy hash,
+  request ID, status, latency và bounded response excerpt của demo Gateway.
 - Mở trang repository **Packages** để xem hai image và các tag.
 - Tag `sha-<commit>` cố định theo commit; `latest` trỏ tới lần publish mới nhất.
 
@@ -102,4 +110,5 @@ python scripts/run_all_tests.py
 ```
 
 Lệnh cuối tự tạo secret kiểm thử tạm trong bộ nhớ, khởi động stack, lấy token
-thật từ Keycloak, chạy toàn bộ test và dọn container khi kết thúc.
+thật từ Keycloak, chạy toàn bộ test, thực thi demo Safe API Tool, ghi receipt
+đã sanitize và dọn container khi kết thúc.

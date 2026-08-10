@@ -30,6 +30,18 @@ static_resources:
                           route: { cluster: staging_api, timeout: 5s }
                         - match: { path: "/.well-known/oauth-protected-resource" }
                           route: { cluster: staging_api, timeout: 5s }
+                        - match:
+                            path: "/api/test/validate"
+                            headers:
+                              - name: ":method"
+                                string_match: { exact: "POST" }
+                          route: { cluster: staging_api, timeout: 5s }
+                          typed_per_filter_config:
+                            envoy.filters.http.buffer:
+                              "@type": type.googleapis.com/envoy.extensions.filters.http.buffer.v3.BufferPerRoute
+                              buffer:
+                                # Keep this synchronized with policy.json.
+                                max_request_bytes: 4096
                         - match: { prefix: "/api/" }
                           route: { cluster: staging_api, timeout: 5s }
                         - match: { prefix: "/" }
@@ -42,6 +54,14 @@ static_resources:
                                 value: "text/plain; charset=utf-8"
                               append_action: OVERWRITE_IF_EXISTS_OR_ADD
                 http_filters:
+                  # Disabled by default and enabled only for the exact safe POST
+                  # route above. It rejects oversized bodies with HTTP 413 before
+                  # ext_authz or the application receives request data.
+                  - name: envoy.filters.http.buffer
+                    disabled: true
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.buffer.v3.Buffer
+                      max_request_bytes: 4096
                   # Every request receives an explicit allow or deny decision.
                   - name: envoy.filters.http.ext_authz
                     typed_config:
@@ -59,10 +79,16 @@ static_resources:
                             patterns:
                               - exact: content-type
                               - exact: www-authenticate
+                              - exact: retry-after
+                              - exact: x-ratelimit-limit
+                              - exact: x-ratelimit-remaining
                       allowed_headers:
                         patterns:
-                          # Checked by authz-service and left unchanged upstream.
+                          # Credentials are checked by authz-service. Successful
+                          # API-key authorization asks Envoy to consume the key
+                          # before dispatching the original request upstream.
                           - exact: authorization
+                          - exact: x-api-key
                           - exact: x-request-id
                       failure_mode_allow: false
                       status_on_error: { code: ServiceUnavailable }

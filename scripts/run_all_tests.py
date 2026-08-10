@@ -12,12 +12,20 @@ from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPOSE = ["docker", "compose"]
+DEMO_AUDIT = (
+    ROOT
+    / "security-results"
+    / "runs"
+    / "week-4"
+    / "safe-api-demo-ci.jsonl"
+)
 SECRET_NAMES = (
     "KEYCLOAK_ADMIN_PASSWORD",
     "AGENT_READER_CLIENT_SECRET",
     "AGENT_ADMIN_CLIENT_SECRET",
     "INTEGRATION_EXPIRED_CLIENT_SECRET",
     "INTEGRATION_WRONG_AUDIENCE_CLIENT_SECRET",
+    "SAFE_API_TOOL_API_KEY",
 )
 
 
@@ -81,7 +89,29 @@ def main() -> int:
                 environment=environment,
                 check=False,
             )
-        return result.returncode
+            return result.returncode
+
+        DEMO_AUDIT.unlink(missing_ok=True)
+        demo = run(
+            [
+                sys.executable,
+                "-m",
+                "safe_api_tool",
+                "demo",
+                "--execute",
+                "--audit",
+                str(DEMO_AUDIT),
+            ],
+            environment=environment,
+            check=False,
+        )
+        if demo.returncode:
+            run(
+                [*COMPOSE, "logs", "--no-color", "--tail", "200"],
+                environment=environment,
+                check=False,
+            )
+        return demo.returncode
     finally:
         run(
             [*COMPOSE, "down", "--remove-orphans"],

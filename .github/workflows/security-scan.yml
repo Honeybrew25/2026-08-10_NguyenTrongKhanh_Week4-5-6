@@ -104,8 +104,17 @@ jobs:
       - name: Install test dependencies
         run: python -m pip install --requirement requirements-dev.txt
 
-      - name: Run real Keycloak, Envoy and Agent IAM tests
+      - name: Run real Keycloak, Envoy, IAM and Safe API Tool tests
         run: python scripts/run_all_tests.py
+
+      - name: Upload sanitized Week 4 Safe API demo receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: week4-safe-api-demo-receipts
+          path: security-results/runs/week-4/safe-api-demo-ci.jsonl
+          if-no-files-found: warn
+          retention-days: 14
 
   dast:
     name: OWASP ZAP Baseline
@@ -129,7 +138,8 @@ jobs:
             AGENT_READER_CLIENT_SECRET \
             AGENT_ADMIN_CLIENT_SECRET \
             INTEGRATION_EXPIRED_CLIENT_SECRET \
-            INTEGRATION_WRONG_AUDIENCE_CLIENT_SECRET
+            INTEGRATION_WRONG_AUDIENCE_CLIENT_SECRET \
+            SAFE_API_TOOL_API_KEY
           do
             value="$(openssl rand -hex 32)"
             echo "::add-mask::$value"

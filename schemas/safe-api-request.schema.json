@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/safe-api-request.schema.json",
+  "title": "Safe API Request Proposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "endpoint_id",
+    "test_case_id",
+    "rationale",
+    "source_finding_ids",
+    "requested_headers"
+  ],
+  "properties": {
+    "endpoint_id": {"type": "string", "minLength": 1, "maxLength": 64},
+    "test_case_id": {"type": "string", "minLength": 1, "maxLength": 64},
+    "rationale": {"type": "string", "minLength": 1, "maxLength": 500},
+    "source_finding_ids": {
+      "type": "array",
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1, "maxLength": 160}
+    },
+    "requested_headers": {
+      "type": "object",
+      "maxProperties": 16,
+      "propertyNames": {"pattern": "^[a-z0-9-]+$"},
+      "additionalProperties": {
+        "type": "string",
+        "maxLength": 4096,
+        "pattern": "^[ -~]*$"
+      }
+    }
+  }
+}

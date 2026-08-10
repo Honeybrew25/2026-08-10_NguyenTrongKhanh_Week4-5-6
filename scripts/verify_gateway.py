@@ -4,11 +4,18 @@ import base64
 import json
 import os
 from pathlib import Path
+import tempfile
 import time
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+
+from safe_api_tool.audit import AuditLogWriter
+from safe_api_tool.client import SafeApiClient
+from safe_api_tool.models import RequestProposal
+from safe_api_tool.planner import DeterministicSafeRequestPlanner
+from safe_api_tool.policy import PolicyEngine
 
 
 GATEWAY_URL = "http://localhost:8080"
@@ -28,7 +35,11 @@ def load_local_secrets() -> dict[str, str]:
                 continue
             key, value = stripped.split("=", 1)
             values[key.strip()] = value.strip().strip("\"'")
-    for key in ("AGENT_READER_CLIENT_SECRET", "AGENT_ADMIN_CLIENT_SECRET"):
+    for key in (
+        "AGENT_READER_CLIENT_SECRET",
+        "AGENT_ADMIN_CLIENT_SECRET",
+        "SAFE_API_TOOL_API_KEY",
+    ):
         if os.getenv(key):
             values[key] = os.environ[key]
     return values
@@ -140,29 +151,72 @@ def verify_backend_is_private() -> None:
     )
 
 
+def verify_safe_api_tool(api_key: str) -> None:
+    proposal = RequestProposal(
+        endpoint_id="input-validation",
+        test_case_id="special-characters",
+        rationale="Manual Gateway verification with a curated safe profile.",
+        source_finding_ids=["manual-gateway-check"],
+        requested_headers={"x-test-purpose": "manual-verification"},
+    )
+    forbidden = RequestProposal(
+        endpoint_id="admin",
+        test_case_id="empty",
+        rationale="Negative control.",
+        source_finding_ids=[],
+        requested_headers={},
+    )
+    with tempfile.TemporaryDirectory(prefix="safe-api-verification-") as directory:
+        audit_path = Path(directory) / "receipts.jsonl"
+        with SafeApiClient(
+            PolicyEngine.from_files(),
+            api_key=api_key,
+            audit_writer=AuditLogWriter(audit_path),
+        ) as client:
+            status = client.execute(
+                DeterministicSafeRequestPlanner().status_proposal()
+            )
+            validation = client.execute(proposal)
+            denied = client.execute(forbidden)
+
+        assert status.status_code == 200
+        assert validation.status_code == 200
+        assert denied.outcome == "policy_denied"
+        assert api_key not in audit_path.read_text(encoding="utf-8")
+
+
 def main() -> None:
     secrets = load_local_secrets()
     reader_secret = secrets.get("AGENT_READER_CLIENT_SECRET", "")
     admin_secret = secrets.get("AGENT_ADMIN_CLIENT_SECRET", "")
+    safe_api_key = secrets.get("SAFE_API_TOOL_API_KEY", "")
     if (
         not reader_secret
         or not admin_secret
+        or not safe_api_key
         or reader_secret.startswith("replace-with-")
         or admin_secret.startswith("replace-with-")
+        or safe_api_key.startswith("replace-with-")
     ):
-        raise RuntimeError("Set non-placeholder Agent secrets in .env before verifying")
+        raise RuntimeError(
+            "Set non-placeholder Agent and Safe API secrets in .env before verifying"
+        )
 
     wait_for_services()
     reader_token = get_token("agent-reader", reader_secret)
     admin_token = get_token("agent-admin", admin_secret)
     verify_public_routes()
     verify_agent_policies(reader_token, admin_token)
+    verify_safe_api_tool(safe_api_key)
     verify_backend_is_private()
 
     print("PASS: public routes are reachable through Envoy")
     print("PASS: missing tokens return 401")
     print("PASS: reader and admin scope policies are enforced")
     print("PASS: unlisted routes are denied by default")
+    print("PASS: Safe API Tool GET/POST execute through Envoy")
+    print("PASS: forbidden Safe API capability is denied before network")
+    print("PASS: Safe API receipts omit the API key")
     print("PASS: FastAPI is not reachable directly from the host")
 
 

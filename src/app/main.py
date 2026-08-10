@@ -1,7 +1,16 @@
 from typing import Literal
 
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Request
+from pydantic import BaseModel, ConfigDict, Field
+
+
+MAX_TEST_INPUT_CHARACTERS = 4096
+MAX_TEST_PREVIEW_CHARACTERS = 256
+GATEWAY_CREDENTIAL_HEADER = "x-api-key"
+
+
+class StrictModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
 
 
 class HealthResponse(BaseModel):
@@ -26,6 +35,24 @@ class ProtectedResourceMetadata(BaseModel):
     bearer_methods_supported: list[Literal["header"]]
 
 
+class TestStatusResponse(StrictModel):
+    status: Literal["ready"]
+    stateless: Literal[True]
+    max_input_characters: int = Field(ge=1)
+    max_preview_characters: int = Field(ge=1)
+
+
+class TestValidationRequest(StrictModel):
+    value: str = Field(max_length=MAX_TEST_INPUT_CHARACTERS)
+
+
+class TestValidationResponse(StrictModel):
+    accepted: Literal[True]
+    received_length: int = Field(ge=0, le=MAX_TEST_INPUT_CHARACTERS)
+    preview: str = Field(max_length=MAX_TEST_PREVIEW_CHARACTERS)
+    truncated: bool
+
+
 DEMO_USERS: tuple[User, ...] = (
     User(id=1, name="Ada", role="student"),
     User(id=2, name="Grace", role="instructor"),
@@ -35,6 +62,15 @@ app = FastAPI(
     title="Educational Security Staging API",
     version="0.1.0",
 )
+
+
+def ensure_gateway_consumed_api_key(request: Request) -> None:
+    """Fail closed if a Gateway credential ever reaches the application."""
+    if GATEWAY_CREDENTIAL_HEADER in request.headers:
+        raise HTTPException(
+            status_code=500,
+            detail="gateway credential reached the application boundary",
+        )
 
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])
@@ -59,6 +95,40 @@ def protected_resource_metadata() -> ProtectedResourceMetadata:
 @app.get("/api/users", response_model=list[User], tags=["users"])
 def list_users() -> list[User]:
     return list(DEMO_USERS)
+
+
+@app.get(
+    "/api/test/status",
+    response_model=TestStatusResponse,
+    tags=["testing"],
+)
+def test_status(request: Request) -> TestStatusResponse:
+    ensure_gateway_consumed_api_key(request)
+    return TestStatusResponse(
+        status="ready",
+        stateless=True,
+        max_input_characters=MAX_TEST_INPUT_CHARACTERS,
+        max_preview_characters=MAX_TEST_PREVIEW_CHARACTERS,
+    )
+
+
+@app.post(
+    "/api/test/validate",
+    response_model=TestValidationResponse,
+    tags=["testing"],
+)
+def validate_test_payload(
+    payload: TestValidationRequest,
+    request: Request,
+) -> TestValidationResponse:
+    ensure_gateway_consumed_api_key(request)
+    preview = payload.value[:MAX_TEST_PREVIEW_CHARACTERS]
+    return TestValidationResponse(
+        accepted=True,
+        received_length=len(payload.value),
+        preview=preview,
+        truncated=len(payload.value) > len(preview),
+    )
 
 
 @app.get("/api/admin", response_model=AdminResponse, tags=["admin"])

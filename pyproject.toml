@@ -7,6 +7,13 @@ name = "agent-security-lab"
 version = "0.1.0"
 description = "Agent IAM and security-result normalization lab"
 requires-python = ">=3.11"
+dependencies = [
+  "httpx==0.28.1",
+  "pydantic==2.13.4",
+]
+
+[project.scripts]
+safe-api-tool = "safe_api_tool.__main__:main"
 
 [project.optional-dependencies]
 agent = ["google-genai==2.16.0"]

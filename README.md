@@ -2,7 +2,8 @@
 
 Repository chung cho các tuần, gồm một staging API, Agent IAM qua
 Envoy/Keycloak, pipeline chuẩn hóa kết quả Bandit/ZAP và Security Analysis
-Agent tạo báo cáo JSONL có grounding.
+Agent tạo báo cáo JSONL có grounding. Week 4 bổ sung Safe API Testing Tool để
+Agent đề xuất và gửi request GET/POST bị giới hạn qua Gateway.
 
 ## Bắt đầu nhanh
 
@@ -15,7 +16,8 @@ python -m pip install --requirement requirements-dev.txt
 Copy-Item .env.example .env
 ```
 
-Thay các placeholder Keycloak/Agent IAM trong `.env`, sau đó chạy stack. Các
+Thay các placeholder Keycloak/Agent IAM và `SAFE_API_TOOL_API_KEY` trong
+`.env`, sau đó chạy stack. Các
 biến Gemini là tùy chọn và không cần thiết cho chế độ deterministic:
 
 ```powershell
@@ -26,6 +28,29 @@ python scripts/verify_gateway.py
 ```
 
 Dừng stack bằng `docker compose down --remove-orphans`.
+
+## Safe API Testing Tool — Week 4
+
+Dry-run là mặc định, không dùng credential và không mở network:
+
+```powershell
+python -m safe_api_tool demo
+python -m safe_api_tool propose `
+    --output "$env:TEMP\safe-api-proposal.json"
+python -m safe_api_tool run "$env:TEMP\safe-api-proposal.json"
+```
+
+Sau khi stack đã chạy, thực thi demo có kiểm soát bằng:
+
+```powershell
+python -m safe_api_tool demo --execute `
+    --audit "$env:TEMP\safe-api-demo.jsonl"
+```
+
+Tool không nhận URL hay raw payload từ Agent. Code chọn exact route từ
+`config/safe-api-tool/policy.json`, dựng một trong bốn test case an toàn rồi
+ghi receipt JSONL đã khử secret. Chi tiết tại
+[thiết kế Safe API Testing Tool](docs/safe-api-testing-tool.md).
 
 ## Test, security scan và Agent
 
@@ -85,11 +110,15 @@ mặc định và là provider duy nhất được gọi trong CI.
 - [Báo cáo Week 1](reports/week-1.md)
 - [Báo cáo Week 2](reports/week-2.md)
 - [Báo cáo Week 3](reports/week-3.md)
+- [Báo cáo Week 4](reports/week-4.md)
 - [Báo cáo chạy thật Gemini — Week 3](reports/week-3/gemini-live-run-2026-08-03.md)
 - [Runbook Week 1](docs/week1.md)
 - [Thiết kế pipeline Week 2](docs/week2.md)
 - [Thiết kế Security Analysis Agent](docs/security-analysis-agent.md)
+- [Thiết kế Safe API Testing Tool](docs/safe-api-testing-tool.md)
+- [Project handoff và workflow tiếp tục](docs/project-handoff.md)
 - [System Prompt của Agent](src/security_pipeline/analysis/prompts/security_analysis_system.md)
 - [JSON Schema của một finding](schemas/security-analysis-finding.schema.json)
 - [Báo cáo JSONL mẫu](security-results/security-analysis.jsonl)
+- [Receipt demo Week 4](security-results/runs/week-4/safe-api-demo.jsonl)
 - [CI/CD](docs/ci-cd.md)

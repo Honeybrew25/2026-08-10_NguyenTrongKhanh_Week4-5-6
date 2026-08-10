@@ -1,0 +1,46 @@
+Week 4 Safe API Testing verification
+Date: 2026-08-10 (Asia/Bangkok)
+Base commit: 9a8f78c52178cef0acefb52a48f761cff881466b
+
+[PASS] Dependency sync: .venv Python 3.11, requirements-dev.txt installed
+[PASS] pip check: No broken requirements found
+[PASS] Non-integration suite: 120 passed, 20 deselected
+[PASS] Full Docker suite: 140 passed
+[PASS] Docker services: Keycloak, API, authz-service and Envoy healthy during run
+[PASS] Docker cleanup: no Compose services remained after run
+[PASS] Knowledge search: SQL Injection returned first
+[PASS] Deterministic analysis regression: 27 findings -> 9 grounded JSONL records
+[PASS] Safe API dry-run: GET and POST allowed; admin capability denied
+[PASS] Safe API live demo: GET 200; POST 200; admin policy_denied before network
+[PASS] Missing/wrong API key: 401
+[PASS] Exact method/path enforcement and non-canonical target rejection
+[PASS] Gateway request cap: oversized POST rejected with 413 before authz/app
+[PASS] Gateway rate limit: typed 429
+[PASS] Backend credential canary: Envoy removed x-api-key before upstream
+[PASS] Secret sentinel: API key absent from authz logs and Safe API receipts
+[PASS] Truncated API-key prefix and JSON/query/header-style secrets are redacted
+[PASS] Response streaming cap, timeout and connection outcomes covered by tests
+[PASS] Unexpected HTTP status fails CLI/demo instead of producing a false pass
+[PASS] Bandit High gate: no reportable High finding
+[PASS] docker compose config --quiet
+[PASS] git diff --check
+[PASS] JSON Schema validation: 3 Safe API demo receipts
+
+Policy canonical SHA-256 recorded by receipts:
+a969dab49a01609707d4084330284790928bd445e282effea165d2edac1c947d
+
+Policy file SHA-256:
+7674196e229dfccfb45f81c5fdd21e2b3b813b7fc1c3236519d6e07bed2fa030
+
+Durable demo receipt SHA-256:
+e5d16a60404f14b8818103c8ede6174081fedc7f871bb07b2b1fc29c6d452e6d
+
+Commands:
+  .\.venv\Scripts\python.exe -m pytest -q -m "not integration"
+  .\.venv\Scripts\python.exe -m security_pipeline search "SQL Injection" --limit 1
+  .\.venv\Scripts\python.exe -m security_pipeline analyze security-results/normalized-findings.json --knowledge-base data/vulnerabilities.json --provider deterministic --output $env:TEMP\security-analysis-week4-check.jsonl
+  .\.venv\Scripts\python.exe -m safe_api_tool demo
+  .\.venv\Scripts\python.exe scripts/run_security_scan.py --output $env:TEMP\week4-bandit-high-venv.json --severity-level high
+  .\.venv\Scripts\python.exe scripts/run_all_tests.py
+  docker compose config --quiet
+  git diff --check

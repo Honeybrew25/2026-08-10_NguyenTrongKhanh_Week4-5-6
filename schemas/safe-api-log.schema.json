@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/safe-api-log.schema.json",
+  "title": "Safe API Execution Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "timestamp",
+    "proposal_id",
+    "request_id",
+    "policy_sha256",
+    "endpoint_id",
+    "test_case_id",
+    "method",
+    "path",
+    "requested_header_names",
+    "request_bytes",
+    "request_sha256",
+    "expected_status",
+    "expected_status_matched",
+    "outcome",
+    "status_code",
+    "duration_ms",
+    "response_bytes",
+    "response_sha256",
+    "response_truncated",
+    "response_excerpt",
+    "reason"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "proposal_id": {"type": "string", "pattern": "^[a-f0-9]{16}$"},
+    "request_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "policy_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "endpoint_id": {"type": "string", "minLength": 1},
+    "test_case_id": {"type": "string", "minLength": 1},
+    "method": {"type": ["string", "null"], "enum": ["GET", "POST", null]},
+    "path": {
+      "anyOf": [
+        {"type": "string", "pattern": "^/api/test/"},
+        {"type": "null"}
+      ]
+    },
+    "requested_header_names": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+    "request_bytes": {"type": "integer", "minimum": 0},
+    "request_sha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+    "expected_status": {"type": ["integer", "null"], "minimum": 100, "maximum": 599},
+    "expected_status_matched": {"type": ["boolean", "null"]},
+    "outcome": {"enum": ["success", "unexpected_status", "policy_denied", "rate_limited", "timeout", "connection_error", "response_truncated"]},
+    "status_code": {"type": ["integer", "null"], "minimum": 100, "maximum": 599},
+    "duration_ms": {"type": "number", "minimum": 0},
+    "response_bytes": {"type": "integer", "minimum": 0},
+    "response_sha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+    "response_truncated": {"type": "boolean"},
+    "response_excerpt": {"type": ["string", "null"], "maxLength": 1024},
+    "reason": {"type": ["string", "null"], "maxLength": 200}
+  }
+}

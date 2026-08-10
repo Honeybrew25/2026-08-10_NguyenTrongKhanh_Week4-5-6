@@ -11,4 +11,7 @@ security-results/bandit-*.json
 security-results/*-ci.json
 security-results/*-ci.html
 security-results/*-ci.jsonl
+security-results/runs/week-4/*
+!security-results/runs/week-4/safe-api-demo.jsonl
 project-handoff.md
+!docs/project-handoff.md

@@ -1,0 +1,43 @@
+{
+  "schema": "schemas/safe-api-tool-policy.schema.json",
+  "schema_version": "1.0",
+  "gateway_origin": "http://localhost:8080",
+  "api_key": {
+    "header_name": "x-api-key",
+    "environment_variable": "SAFE_API_TOOL_API_KEY",
+    "principal_id": "safe-api-tool"
+  },
+  "allowed_request_headers": [
+    "accept-language",
+    "x-test-purpose"
+  ],
+  "limits": {
+    "requests_per_minute": 12,
+    "timeout_seconds": 3.0,
+    "max_request_bytes": 4096,
+    "max_response_bytes": 65536,
+    "max_requested_headers": 4,
+    "max_header_value_bytes": 256
+  },
+  "endpoints": [
+    {
+      "id": "test-status",
+      "method": "GET",
+      "path": "/api/test/status",
+      "allowed_test_case_ids": [
+        "empty"
+      ]
+    },
+    {
+      "id": "input-validation",
+      "method": "POST",
+      "path": "/api/test/validate",
+      "allowed_test_case_ids": [
+        "long-string",
+        "special-characters",
+        "empty",
+        "wrong-type"
+      ]
+    }
+  ]
+}
