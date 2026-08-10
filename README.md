@@ -139,7 +139,6 @@ mặc định và là provider duy nhất được gọi trong CI.
 - [Thiết kế Security Analysis Agent](docs/security-analysis-agent.md)
 - [Thiết kế Safe API Testing Tool](docs/safe-api-testing-tool.md)
 - [Dashboard UI](docs/ui-dashboard.md)
-- [Chiến lược deploy miễn phí](docs/deployment-strategy.md)
 - [Project handoff và workflow tiếp tục](docs/project-handoff.md)
 - [System Prompt của Agent](src/security_pipeline/analysis/prompts/security_analysis_system.md)
 - [JSON Schema của một finding](schemas/security-analysis-finding.schema.json)
