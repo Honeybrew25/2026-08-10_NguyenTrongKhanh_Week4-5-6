@@ -11,3 +11,4 @@ security-results/bandit-*.json
 security-results/*-ci.json
 security-results/*-ci.html
 security-results/*-ci.jsonl
+project-handoff.md

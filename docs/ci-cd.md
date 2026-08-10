@@ -10,8 +10,8 @@ Workflow `.github/workflows/security-scan.yml` thực hiện:
    tri thức, rồi upload artifact `week3-security-analysis-jsonl` trong 14 ngày.
 5. Khi push hoặc merge thành công vào `main`, build và publish hai image lên
    GitHub Container Registry (GHCR):
-   - `ghcr.io/honeybrew25/2026-07-30_nguyentrongkhanh_week3-staging-api`
-   - `ghcr.io/honeybrew25/2026-07-30_nguyentrongkhanh_week3-authz-service`
+   - `ghcr.io/honeybrew25/2026-08-10_nguyentrongkhanh_week4-5-6-staging-api`
+   - `ghcr.io/honeybrew25/2026-08-10_nguyentrongkhanh_week4-5-6-authz-service`
 
 Job này không cần API key và không gọi model bên ngoài. File sinh tạm
 `security-results/security-analysis-ci.jsonl` được `.gitignore` loại khỏi
@@ -35,7 +35,7 @@ Nếu repository hoặc tổ chức giới hạn package, quản trị viên c�
 Nên tạo nhánh và pull request:
 
 ```powershell
-Set-Location "D:\AI Vinsoc\2026-07-30_NguyenTrongKhanh_Week3"
+Set-Location "D:\AI Vinsoc\2026-08-10_NguyenTrongKhanh_Week4-5-6"
 
 git switch -c add-ci-cd
 git status
@@ -65,8 +65,8 @@ kiện `push` vào `main`.
 Kéo image về máy:
 
 ```powershell
-docker pull ghcr.io/honeybrew25/2026-07-30_nguyentrongkhanh_week3-staging-api:latest
-docker pull ghcr.io/honeybrew25/2026-07-30_nguyentrongkhanh_week3-authz-service:latest
+docker pull ghcr.io/honeybrew25/2026-08-10_nguyentrongkhanh_week4-5-6-staging-api:latest
+docker pull ghcr.io/honeybrew25/2026-08-10_nguyentrongkhanh_week4-5-6-authz-service:latest
 ```
 
 Nếu package đang để private, đăng nhập GHCR bằng personal access token có quyền
