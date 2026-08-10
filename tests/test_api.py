@@ -36,14 +36,14 @@ def test_dashboard_static_index_supports_get_and_head() -> None:
         assert secured_response.headers["x-content-type-options"] == "nosniff"
         assert secured_response.headers["x-frame-options"] == "DENY"
 
-    for path, media_type in (
-        ("/ui/styles.css", "text/css"),
-        ("/ui/app.js", "application/javascript"),
-        ("/ui/dashboard-data.json", "application/json"),
+    for path, media_types in (
+        ("/ui/styles.css", {"text/css"}),
+        ("/ui/app.js", {"application/javascript", "text/javascript"}),
+        ("/ui/dashboard-data.json", {"application/json"}),
     ):
         asset = client.get(path)
         assert asset.status_code == 200
-        assert media_type in asset.headers["content-type"]
+        assert asset.headers["content-type"].split(";", 1)[0] in media_types
         assert asset.content
 
 
