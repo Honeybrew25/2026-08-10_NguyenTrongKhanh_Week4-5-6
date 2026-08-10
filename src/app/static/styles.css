@@ -146,8 +146,26 @@ a { color: inherit; }
 .eyebrow span { display: inline-block; padding: 4px 7px; margin-right: 3px; color: #061216; background: var(--cyan); border-radius: 4px; }
 
 h1, h2, h3, p { margin-top: 0; }
-h1 { margin-bottom: 24px; max-width: 760px; font-size: clamp(2.8rem, 6.2vw, 5.35rem); line-height: .99; letter-spacing: -.055em; }
-h1 em { color: var(--cyan); font-style: normal; font-weight: 500; }
+h1 {
+  max-width: 700px;
+  margin-bottom: 24px;
+  font-size: clamp(1.75rem, 4vw, 3.75rem);
+  line-height: 1.08;
+  letter-spacing: -.04em;
+  text-wrap: balance;
+}
+h1 span, h1 em { display: block; }
+h1 span { white-space: nowrap; }
+h1 em {
+  margin-top: .18em;
+  color: var(--cyan);
+  font-size: clamp(1.15rem, 2.6vw, 2.3rem);
+  font-style: normal;
+  font-weight: 550;
+  line-height: 1.12;
+  letter-spacing: -.015em;
+  white-space: nowrap;
+}
 h2 { margin-bottom: 0; font-size: clamp(2rem, 3.6vw, 3.25rem); line-height: 1.05; letter-spacing: -.045em; }
 h3 { font-size: 1.05rem; }
 .hero-lede { max-width: 650px; color: #b3c6ce; font-size: clamp(1rem, 1.5vw, 1.13rem); }
@@ -330,7 +348,6 @@ fieldset legend { padding-inline: 5px; }
   .health-button { padding-inline: 10px; font-size: 0; }
   .status-dot { width: 10px; height: 10px; }
   .hero { min-height: auto; padding-block: 60px; }
-  h1 { font-size: clamp(2.55rem, 14vw, 4rem); }
   .metrics { padding-bottom: 64px; }
   .metric-card { min-height: 132px; padding: 18px; }
   .metric-card strong { font-size: 2rem; }

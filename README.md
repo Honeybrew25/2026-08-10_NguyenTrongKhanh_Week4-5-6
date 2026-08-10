@@ -73,8 +73,6 @@ python -m http.server 4173 --bind 127.0.0.1 --directory src/app/static
 
 Sau đó mở `http://127.0.0.1:4173/`. Thiết kế và deployment guardrails nằm tại
 [tài liệu UI](docs/ui-dashboard.md) và
-[chiến lược deploy miễn phí](docs/deployment-strategy.md). Workflow Pages đã
-chuẩn bị chỉ có trigger thủ công; chưa được chạy hoặc push.
 
 ## Test, security scan và Agent
 
