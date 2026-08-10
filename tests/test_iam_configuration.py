@@ -61,6 +61,24 @@ def test_envoy_external_authorization_is_fail_closed() -> None:
     assert "validate_mutations: true" in config
 
 
+def test_envoy_routes_dashboard_before_the_fallback() -> None:
+    config = (ROOT / "config/envoy/envoy.yaml").read_text()
+
+    fallback = config.index('match: { prefix: "/" }')
+    for route in (
+        'match: { path: "/" }',
+        'match: { path: "/ui" }',
+        'match: { prefix: "/ui/" }',
+    ):
+        assert config.index(route) < fallback
+
+
+def test_api_image_copy_includes_dashboard_assets() -> None:
+    dockerfile = (ROOT / "src/app/Dockerfile").read_text()
+
+    assert "COPY --chown=api:api src/app ./app" in dockerfile
+
+
 def test_envoy_caps_only_the_exact_safe_post_before_authorization() -> None:
     config = (ROOT / "config/envoy/envoy.yaml").read_text()
     policy = json.loads((ROOT / "config/safe-api-tool/policy.json").read_text())

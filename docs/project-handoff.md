@@ -37,6 +37,8 @@ Trạng thái cần nhớ:
 - Provider `deterministic` là mặc định cho local/CI và không cần API key.
 - Gemini là tùy chọn; chỉ dùng khi dữ liệu được phép gửi ra dịch vụ bên ngoài.
 - Không ghi đè baseline deterministic bằng một lần chạy LLM.
+- Không commit, push hoặc deploy thay đổi mới nếu chưa có đồng ý rõ ràng từ
+  chủ repository.
 - Baseline Week 3 `c8b2eb9` đã có một GitHub Actions run xanh toàn bộ; baseline
   chuẩn bị workspace Week 4 là `9a8f78c`.
 - Các tham chiếu repo cũ trong `docs/ci-cd.md` đã được sửa khi chuẩn bị working
@@ -345,7 +347,8 @@ thư mục phụ `reports/week-N/`; không sửa `reports/week-N.md` đã chốt
 4. Cập nhật durable docs nếu contract/workflow thay đổi.
 5. Nếu sang tuần mới, tạo đúng một `reports/week-(N+1).md` ngắn, tách rõ
    `Quá trình` và `Kết quả`.
-6. Push branch, mở pull request và chờ CI xanh trước khi merge.
+6. Chỉ sau khi chủ repository đồng ý rõ ràng: push branch, mở pull request và
+   chờ CI xanh trước khi merge.
 
 ## 8. Trạng thái xác minh tại thời điểm bàn giao
 
@@ -466,6 +469,27 @@ Một task tiếp theo chỉ nên được coi là hoàn tất khi:
   `week4-safe-api-demo-receipts`.
 - `reports/week-4.md` đã được tạo sau run thật; từ đây coi báo cáo này là lịch
   sử bất biến giống các báo cáo tuần trước.
+
+## 13. Dashboard UI và trạng thái deploy
+
+Đã chuẩn bị local sau khi Week 4 được chốt:
+
+- Dashboard responsive trong `src/app/static/`, chạy chung tại `/ui/` qua
+  Envoy/FastAPI hoặc deploy như static showcase.
+- Simulator chỉ dry-run capability đã curate; không nhận API key và không gửi
+  protected request từ browser.
+- UI public là read-only GET/HEAD, có canonical-path check, security headers và
+  backend credential canary.
+- Số liệu capability/evidence được contract-test với policy, catalog và durable
+  receipt thay vì dùng event minh họa không có nguồn.
+- Quality gates của working copy UI: 141 non-integration test và 166 full
+  Docker test pass; Bandit High = 0, Compose và deterministic analysis đều
+  pass.
+- `docs/ui-dashboard.md` mô tả thiết kế; `docs/deployment-strategy.md` chọn
+  GitHub Pages làm kênh public chính và ghi rõ OCI chỉ là backend best-effort.
+- Workflow Pages chỉ chạy thủ công. Tại thời điểm bàn giao này **chưa commit,
+  chưa push và chưa deploy**; mọi thay đổi remote phải chờ chủ repository đồng
+  ý rõ ràng.
 
 Giới hạn chủ động để chuyển sang công việc tiếp theo:
 

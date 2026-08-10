@@ -26,6 +26,12 @@ static_resources:
                             value: "%REQ(X-REQUEST-ID)%"
                           append_action: OVERWRITE_IF_EXISTS_OR_ADD
                       routes:
+                        - match: { path: "/" }
+                          route: { cluster: staging_api, timeout: 5s }
+                        - match: { path: "/ui" }
+                          route: { cluster: staging_api, timeout: 5s }
+                        - match: { prefix: "/ui/" }
+                          route: { cluster: staging_api, timeout: 5s }
                         - match: { path: "/health" }
                           route: { cluster: staging_api, timeout: 5s }
                         - match: { path: "/.well-known/oauth-protected-resource" }

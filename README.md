@@ -27,6 +27,9 @@ Invoke-RestMethod "http://localhost:8080/health"
 python scripts/verify_gateway.py
 ```
 
+Mở dashboard tại `http://localhost:8080/ui/`. `/` tự chuyển hướng sang trang
+này; UI public chỉ cho phép GET/HEAD và không nhận API key từ trình duyệt.
+
 Dừng stack bằng `docker compose down --remove-orphans`.
 
 ## Safe API Testing Tool — Week 4
@@ -51,6 +54,27 @@ Tool không nhận URL hay raw payload từ Agent. Code chọn exact route từ
 `config/safe-api-tool/policy.json`, dựng một trong bốn test case an toàn rồi
 ghi receipt JSONL đã khử secret. Chi tiết tại
 [thiết kế Safe API Testing Tool](docs/safe-api-testing-tool.md).
+
+## Dashboard trực quan
+
+Dashboard dùng HTML/CSS/JavaScript thuần, không CDN và hoạt động theo hai chế
+độ từ cùng bộ asset trong `src/app/static/`:
+
+- `docker compose`: FastAPI phục vụ `/ui/` qua Envoy; nút health chỉ gọi public
+  `/health` cùng origin.
+- static showcase: architecture, evidence và dry-run simulator vẫn hoạt động,
+  nhưng không gọi protected API hoặc cần credential.
+
+Preview riêng phần static mà không chạy Docker:
+
+```powershell
+python -m http.server 4173 --bind 127.0.0.1 --directory src/app/static
+```
+
+Sau đó mở `http://127.0.0.1:4173/`. Thiết kế và deployment guardrails nằm tại
+[tài liệu UI](docs/ui-dashboard.md) và
+[chiến lược deploy miễn phí](docs/deployment-strategy.md). Workflow Pages đã
+chuẩn bị chỉ có trigger thủ công; chưa được chạy hoặc push.
 
 ## Test, security scan và Agent
 
@@ -116,6 +140,8 @@ mặc định và là provider duy nhất được gọi trong CI.
 - [Thiết kế pipeline Week 2](docs/week2.md)
 - [Thiết kế Security Analysis Agent](docs/security-analysis-agent.md)
 - [Thiết kế Safe API Testing Tool](docs/safe-api-testing-tool.md)
+- [Dashboard UI](docs/ui-dashboard.md)
+- [Chiến lược deploy miễn phí](docs/deployment-strategy.md)
 - [Project handoff và workflow tiếp tục](docs/project-handoff.md)
 - [System Prompt của Agent](src/security_pipeline/analysis/prompts/security_analysis_system.md)
 - [JSON Schema của một finding](schemas/security-analysis-finding.schema.json)

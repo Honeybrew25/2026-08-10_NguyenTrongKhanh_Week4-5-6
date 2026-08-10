@@ -76,6 +76,78 @@ def test_health_is_public() -> None:
     assert response.status_code == 200
 
 
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("GET", "/"),
+        ("HEAD", "/"),
+        ("GET", "/ui"),
+        ("HEAD", "/ui/"),
+        ("GET", "/ui/app.js?v=1"),
+    ],
+)
+def test_dashboard_is_public_read_only(method: str, path: str) -> None:
+    response = client.request(
+        method,
+        path,
+        headers={"x-api-key": "must-be-consumed"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["x-agent-id"] == "anonymous"
+    assert response.headers["x-envoy-auth-headers-to-remove"] == "x-api-key"
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("POST", "/"),
+        ("POST", "/ui/"),
+        ("PUT", "/ui/index.html"),
+        ("PATCH", "/ui/app.js"),
+        ("DELETE", "/ui/app.js"),
+    ],
+)
+def test_dashboard_mutations_are_denied(method: str, path: str) -> None:
+    response = client.request(
+        method,
+        path,
+        headers={"x-api-key": "cannot-grant-mutation"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["reason"] == "route_not_allowed"
+
+
+def test_dashboard_non_canonical_path_is_denied() -> None:
+    response = client.get("/ui/%2e%2e/api/admin")
+
+    assert response.status_code == 403
+    assert response.json()["reason"] == "non_canonical_route"
+
+
+def test_dashboard_audit_omits_api_key(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    secret = "public-ui-key-must-not-be-logged"
+
+    client.get(
+        "/ui/index.html",
+        headers={"x-api-key": secret, "x-request-id": "public-ui-audit"},
+    )
+
+    output = capsys.readouterr().out.strip()
+    assert json.loads(output) == {
+        "request_id": "public-ui-audit",
+        "agent_id": "anonymous",
+        "method": "GET",
+        "path": "/ui/index.html",
+        "decision": "allow",
+        "reason": "public_ui_read_only",
+    }
+    assert secret not in output
+
+
 def test_missing_token_returns_401(monkeypatch: pytest.MonkeyPatch) -> None:
     use_validator(monkeypatch, AuthenticationError("missing_token"))
 

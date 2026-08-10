@@ -59,6 +59,7 @@ PUBLIC_ROUTES = {
     ("GET", "/health"),
     ("GET", "/.well-known/oauth-protected-resource"),
 }
+PUBLIC_UI_METHODS = frozenset({"GET", "HEAD"})
 REQUIRED_SCOPES = {
     ("GET", "/api/users"): "users:read",
     ("GET", "/api/admin"): "admin:read",
@@ -143,6 +144,27 @@ def allow(agent_id: str) -> Response:
 
 def is_safe_api_surface(path: str) -> bool:
     return path.startswith("/api/test/")
+
+
+def is_public_ui_surface(path: str) -> bool:
+    return path in {"/", "/ui"} or path.startswith("/ui/")
+
+
+def has_canonical_public_ui_target(request: Request) -> bool:
+    raw_path = request.scope.get("raw_path")
+    if not isinstance(raw_path, bytes):
+        return False
+    try:
+        decoded_raw_path = raw_path.decode("ascii")
+    except UnicodeDecodeError:
+        return False
+    return (
+        decoded_raw_path == request.url.path
+        and "%" not in decoded_raw_path
+        and "\\" not in decoded_raw_path
+        and "//" not in decoded_raw_path
+        and not any(part in {".", ".."} for part in decoded_raw_path.split("/"))
+    )
 
 
 def has_canonical_safe_api_target(request: Request) -> bool:
@@ -272,6 +294,31 @@ async def authorize(request: Request, path: str) -> Response:
             reason="api_key_valid",
         )
         return allow(principal.agent_id)
+
+    if method in PUBLIC_UI_METHODS and is_public_ui_surface(request_path):
+        if not has_canonical_public_ui_target(request):
+            write_audit_log(
+                request_id=request_id,
+                agent_id="anonymous",
+                method=method,
+                path=request_path,
+                decision="deny",
+                reason="non_canonical_route",
+            )
+            return safe_api_denial(
+                403,
+                error="forbidden",
+                reason="non_canonical_route",
+            )
+        write_audit_log(
+            request_id=request_id,
+            agent_id="anonymous",
+            method=method,
+            path=request_path,
+            decision="allow",
+            reason="public_ui_read_only",
+        )
+        return allow("anonymous")
 
     if (method, request_path) in PUBLIC_ROUTES:
         write_audit_log(

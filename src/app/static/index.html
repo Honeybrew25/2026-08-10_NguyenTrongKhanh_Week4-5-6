@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Bảng điều khiển Project Sentinel Week 4: API Gateway và kiểm thử request an toàn.">
+  <meta name="theme-color" content="#071019">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; connect-src 'self'; font-src 'self'; form-action 'none'; frame-src 'none'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self'">
+  <title>Project Sentinel · Week 4</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Bỏ qua đến nội dung chính</a>
+
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="Project Sentinel, về đầu trang">
+      <span class="brand-mark" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </span>
+      <span>
+        <strong>PROJECT SENTINEL</strong>
+        <small>SAFE API CONTROL PLANE</small>
+      </span>
+    </a>
+
+    <nav class="main-nav" aria-label="Điều hướng chính">
+      <a href="#architecture">Kiến trúc</a>
+      <a href="#simulator">Dry-run</a>
+      <a href="#controls">Kiểm soát</a>
+      <a href="#evidence">Bằng chứng</a>
+    </nav>
+
+    <button class="health-button" id="health-button" type="button" aria-describedby="health-status">
+      <span class="status-dot" aria-hidden="true"></span>
+      <span id="health-label">Kiểm tra /health</span>
+    </button>
+  </header>
+
+  <main id="main-content">
+    <section class="hero section-shell" id="top" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span>WEEK 04</span> · API GATEWAY + SAFE REQUESTS</p>
+        <h1 id="hero-title">Kiểm thử API an toàn,<br><em>có ranh giới. có bằng chứng.</em></h1>
+        <p class="hero-lede">
+          Agent chỉ đề xuất capability đã được định danh. Policy materialize request từ catalog an toàn,
+          gateway cưỡng chế lần hai, và evidence receipt chỉ giữ metadata đã làm sạch.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#simulator">Mở dry-run simulator</a>
+          <a class="button button-secondary" href="#architecture">Xem luồng bảo vệ</a>
+        </div>
+        <div class="trust-strip" aria-label="Cam kết an toàn">
+          <span><i aria-hidden="true"></i> Fixed origin</span>
+          <span><i aria-hidden="true"></i> Exact allowlist</span>
+          <span><i aria-hidden="true"></i> No redirects</span>
+          <span><i aria-hidden="true"></i> Sanitized logs</span>
+        </div>
+      </div>
+
+      <aside class="hero-console" aria-label="Tóm tắt policy runtime">
+        <div class="console-topbar">
+          <span>policy.runtime</span>
+          <span class="console-state">ENFORCED</span>
+        </div>
+        <div class="radar" aria-hidden="true">
+          <div class="radar-ring ring-one"></div>
+          <div class="radar-ring ring-two"></div>
+          <div class="radar-ring ring-three"></div>
+          <div class="radar-axis axis-x"></div>
+          <div class="radar-axis axis-y"></div>
+          <div class="radar-core">S</div>
+          <span class="radar-node node-one"></span>
+          <span class="radar-node node-two"></span>
+          <span class="radar-node node-three"></span>
+        </div>
+        <dl class="runtime-list">
+          <div><dt>Gateway</dt><dd>localhost:8080</dd></div>
+          <div><dt>Methods</dt><dd>GET · POST</dd></div>
+          <div><dt>Policy</dt><dd>FAIL CLOSED</dd></div>
+          <div><dt>Secret surface</dt><dd>RUNTIME ONLY</dd></div>
+        </dl>
+        <p class="console-caption" id="health-status" role="status" aria-live="polite">
+          Chưa thực hiện kiểm tra cùng origin.
+        </p>
+      </aside>
+    </section>
+
+    <section class="metrics section-shell" aria-label="Chỉ số dự án">
+      <div class="metric-grid" id="metric-grid">
+        <article class="metric-card tone-cyan"><span>Findings</span><strong>27</strong><small>Bandit + OWASP ZAP</small></article>
+        <article class="metric-card tone-violet"><span>Grounded groups</span><strong>9</strong><small>Provenance đầy đủ</small></article>
+        <article class="metric-card tone-lime"><span>Unit tests</span><strong>141</strong><small>Không cần Docker</small></article>
+        <article class="metric-card tone-amber"><span>Full stack</span><strong>166</strong><small>Docker integration</small></article>
+      </div>
+    </section>
+
+    <section class="content-section section-shell" id="architecture" aria-labelledby="architecture-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">01 · SYSTEM FLOW</p>
+          <h2 id="architecture-title">Một đường đi, nhiều lớp kiểm soát</h2>
+        </div>
+        <p>Không URL tùy ý. Không raw payload từ Agent. Không đường tắt đến backend.</p>
+      </div>
+      <ol class="architecture-flow" id="architecture-flow">
+        <li><span>01</span><strong>Scan</strong><small>Bandit + ZAP</small></li>
+        <li><span>02</span><strong>Normalize</strong><small>Schema 1.0</small></li>
+        <li><span>03</span><strong>Analyze</strong><small>27 → 9 groups</small></li>
+        <li><span>04</span><strong>Propose</strong><small>Capability IDs</small></li>
+        <li><span>05</span><strong>Enforce</strong><small>Gateway policy</small></li>
+        <li><span>06</span><strong>Evidence</strong><small>Sanitized receipt</small></li>
+      </ol>
+    </section>
+
+    <section class="content-section section-shell simulator-section" id="simulator" aria-labelledby="simulator-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">02 · INTERACTIVE DRY-RUN</p>
+          <h2 id="simulator-title">Agent đề xuất. Policy quyết định.</h2>
+        </div>
+        <div class="offline-pill"><span aria-hidden="true"></span> MÔ PHỎNG CỤC BỘ · KHÔNG GỬI REQUEST</div>
+      </div>
+
+      <div class="simulator-grid">
+        <form class="proposal-form panel" id="proposal-form">
+          <div class="panel-header">
+            <div><span class="step-index">A</span><strong>Request proposal</strong></div>
+            <span class="panel-label">UNTRUSTED INPUT</span>
+          </div>
+
+          <label for="endpoint-select">Capability endpoint</label>
+          <select id="endpoint-select" name="endpoint" required></select>
+
+          <label for="test-case-select">Safe test case</label>
+          <select id="test-case-select" name="testCase" required></select>
+          <p class="field-help" id="test-case-help">Payload được materialize từ catalog, không nhập trực tiếp.</p>
+
+          <label for="rationale-input">Mục đích kiểm tra</label>
+          <textarea id="rationale-input" name="rationale" maxlength="180" rows="3" required>Kiểm tra validation bằng dữ liệu thử nghiệm không phá hoại.</textarea>
+
+          <label for="finding-input">Finding nguồn</label>
+          <input id="finding-input" name="finding" maxlength="80" value="zap:10038" autocomplete="off" spellcheck="false">
+
+          <fieldset>
+            <legend>Header an toàn tùy chọn</legend>
+            <div class="header-fields">
+              <label><span>Ngôn ngữ</span>
+                <select id="language-select" name="language">
+                  <option value="">Không gửi</option>
+                  <option value="vi-VN" selected>vi-VN</option>
+                  <option value="en-US">en-US</option>
+                </select>
+              </label>
+              <label><span>Mục đích</span>
+                <input id="purpose-input" name="purpose" maxlength="64" pattern="[ -~]*" title="Chỉ dùng ký tự ASCII hiển thị được" value="week-4-demo" autocomplete="off">
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="form-note">
+            <strong>Credential boundary</strong>
+            <span>Thông tin xác thực chỉ được runtime nội bộ chèn vào; UI không nhận, lưu hoặc hiển thị giá trị đó.</span>
+          </div>
+
+          <div class="form-actions">
+            <button class="button button-primary" type="submit">Chạy policy dry-run</button>
+            <button class="button button-ghost" id="reset-button" type="reset">Đặt lại</button>
+          </div>
+        </form>
+
+        <div class="decision-panel panel" aria-live="polite">
+          <div class="panel-header">
+            <div><span class="step-index">B</span><strong>Policy decision</strong></div>
+            <span class="decision-badge is-idle" id="decision-badge">READY</span>
+          </div>
+
+          <div class="decision-summary" id="decision-summary">
+            <span class="decision-icon" aria-hidden="true">◇</span>
+            <div>
+              <strong>Chờ proposal</strong>
+              <p>Chọn capability và safe test case để xem request đã materialize.</p>
+            </div>
+          </div>
+
+          <div class="code-tabs" role="tablist" aria-label="Dữ liệu dry-run">
+            <button class="code-tab is-active" id="proposal-tab" type="button" role="tab" aria-controls="proposal-output" aria-selected="true" tabindex="0" data-panel="proposal-output">PROPOSAL</button>
+            <button class="code-tab" id="request-tab" type="button" role="tab" aria-controls="request-output" aria-selected="false" tabindex="-1" data-panel="request-output">MATERIALIZED</button>
+            <button class="code-tab" id="receipt-tab" type="button" role="tab" aria-controls="receipt-output" aria-selected="false" tabindex="-1" data-panel="receipt-output">RECEIPT</button>
+          </div>
+          <pre class="code-output is-active" id="proposal-output" role="tabpanel" aria-labelledby="proposal-tab" tabindex="0"><code>{
+  "state": "waiting_for_input"
+}</code></pre>
+          <pre class="code-output" id="request-output" role="tabpanel" aria-labelledby="request-tab" tabindex="0" hidden><code>{
+  "network_call": false
+}</code></pre>
+          <pre class="code-output" id="receipt-output" role="tabpanel" aria-labelledby="receipt-tab" tabindex="0" hidden><code>{
+  "audit": "sanitized_metadata_only"
+}</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section section-shell" id="controls" aria-labelledby="controls-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">03 · DEFENSE CONTROLS</p>
+          <h2 id="controls-title">An toàn nằm trong code, không nằm trong lời hứa</h2>
+        </div>
+        <p>Policy từ chối trước transport; gateway tiếp tục kiểm tra nếu client bị giả mạo.</p>
+      </div>
+      <div class="control-grid" id="control-grid">
+        <article class="control-card"><span>01</span><h3>Fixed origin</h3><p>Chỉ gateway nội bộ được phép nhận request.</p><small>EGRESS BOUNDARY</small></article>
+        <article class="control-card"><span>02</span><h3>Exact allowlist</h3><p>Method, path và test case đều phải khớp policy.</p><small>CAPABILITY MODEL</small></article>
+        <article class="control-card"><span>03</span><h3>Bounded I/O</h3><p>Request, response, timeout và RPM có giới hạn cứng.</p><small>RESOURCE CONTROL</small></article>
+        <article class="control-card"><span>04</span><h3>Sanitized evidence</h3><p>Chỉ tên header và hash; không lưu giá trị nhạy cảm.</p><small>DATA MINIMIZATION</small></article>
+      </div>
+    </section>
+
+    <section class="content-section section-shell evidence-section" id="evidence" aria-labelledby="evidence-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">04 · EVIDENCE LEDGER</p>
+          <h2 id="evidence-title">Mọi quyết định đều truy vết được</h2>
+        </div>
+        <p>Ví dụ đã làm sạch; không chứa body đầy đủ, token hoặc giá trị header.</p>
+      </div>
+
+      <div class="evidence-layout">
+        <div class="evidence-list panel" id="evidence-list" aria-label="Sự kiện bằng chứng đã làm sạch">
+          <div class="event-row"><span class="event-state allow">ALLOW</span><code>ecbe7e3e-d8e5-4ed8-b53f-0f654de78e17</code><strong>GET /api/test/status</strong><small>200 · 2,047 ms</small></div>
+          <div class="event-row"><span class="event-state allow">ALLOW</span><code>81cb0be9-6347-40a0-bf34-533fc1e934e3</code><strong>POST /api/test/validate</strong><small>200 · &lt;1 ms</small></div>
+          <div class="event-row"><span class="event-state deny">DENY</span><code>b1b76abf-4d1e-4537-a899-f4f774b22c25</code><strong>endpoint_not_allowed</strong><small>pre-transport</small></div>
+        </div>
+
+        <aside class="roadmap panel" aria-labelledby="roadmap-title">
+          <div class="panel-header"><strong id="roadmap-title">Đường đến Week 6</strong><span class="panel-label">ROADMAP</span></div>
+          <ol id="roadmap-list">
+            <li class="is-current"><span>W4</span><div><strong>Safe request boundary</strong><small>Gateway · policy · audit</small></div></li>
+            <li><span>W5</span><div><strong>AI guardrails</strong><small>Prompt injection · approval · redaction</small></div></li>
+            <li><span>W6</span><div><strong>End-to-end evidence</strong><small>Evaluation · metrics · final demo</small></div></li>
+          </ol>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer section-shell">
+    <div><strong>PROJECT SENTINEL</strong><span>VinUni × VinSOC · 6-week capstone</span></div>
+    <p>Dự án giáo dục độc lập; dashboard chỉ trình bày dữ liệu curated và dry-run cục bộ.</p>
+  </footer>
+
+  <noscript>
+    <div class="noscript">JavaScript đang tắt. Nội dung tổng quan vẫn khả dụng; simulator cần JavaScript cục bộ để hoạt động.</div>
+  </noscript>
+</body>
+</html>

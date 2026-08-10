@@ -1,0 +1,62 @@
+name: Deploy dashboard to GitHub Pages (manual)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: github-pages-manual
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    name: Validate and deploy static dashboard
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Check out approved revision
+        uses: actions/checkout@v7
+
+      - name: Validate static-only release content
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f src/app/static/index.html
+          test -f src/app/static/styles.css
+          test -f src/app/static/app.js
+          test -f src/app/static/dashboard-data.json
+          python -m json.tool src/app/static/dashboard-data.json > /dev/null
+
+          test -z "$(find src/app/static -type l -print -quit)"
+          expected_files="$(printf '%s\n' app.js dashboard-data.json index.html styles.css)"
+          actual_files="$(find src/app/static -type f -printf '%P\n' | sort)"
+          test "$actual_files" = "$expected_files"
+
+          if grep -R -n -E \
+            'SAFE_API_TOOL_API_KEY|replace-with-|Authorization:[[:space:]]*Bearer' \
+            src/app/static
+          then
+            echo "Static dashboard contains credential-like release content."
+            exit 1
+          fi
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
+
+      - name: Package static dashboard
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: src/app/static
+
+      - name: Deploy approved dashboard
+        id: deployment
+        uses: actions/deploy-pages@v5

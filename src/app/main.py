@@ -1,12 +1,22 @@
+from pathlib import Path
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
 
 MAX_TEST_INPUT_CHARACTERS = 4096
 MAX_TEST_PREVIEW_CHARACTERS = 256
 GATEWAY_CREDENTIAL_HEADER = "x-api-key"
+UI_STATIC_DIRECTORY = Path(__file__).resolve().parent / "static"
+UI_CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; base-uri 'none'; connect-src 'self'; "
+    "font-src 'self'; form-action 'none'; frame-ancestors 'none'; "
+    "frame-src 'none'; img-src 'self' data:; object-src 'none'; "
+    "script-src 'self'; style-src 'self'"
+)
 
 
 class StrictModel(BaseModel):
@@ -71,6 +81,49 @@ def ensure_gateway_consumed_api_key(request: Request) -> None:
             status_code=500,
             detail="gateway credential reached the application boundary",
         )
+
+
+def is_ui_request_path(path: str) -> bool:
+    return path in {"/", "/ui"} or path.startswith("/ui/")
+
+
+@app.middleware("http")
+async def reject_gateway_credential_on_ui(request: Request, call_next):
+    """Enforce the credential boundary and harden the public static surface."""
+    if (
+        is_ui_request_path(request.url.path)
+        and GATEWAY_CREDENTIAL_HEADER in request.headers
+    ):
+        response: Response = JSONResponse(
+            status_code=500,
+            content={"detail": "gateway credential reached the application boundary"},
+        )
+    else:
+        response = await call_next(request)
+
+    if is_ui_request_path(request.url.path):
+        response.headers["content-security-policy"] = UI_CONTENT_SECURITY_POLICY
+        response.headers["cross-origin-opener-policy"] = "same-origin"
+        response.headers["cross-origin-resource-policy"] = "same-origin"
+        response.headers["permissions-policy"] = (
+            "camera=(), geolocation=(), microphone=(), payment=(), usb=()"
+        )
+        response.headers["referrer-policy"] = "no-referrer"
+        response.headers["x-content-type-options"] = "nosniff"
+        response.headers["x-frame-options"] = "DENY"
+    return response
+
+
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
+def dashboard_redirect() -> RedirectResponse:
+    return RedirectResponse(url="/ui/", status_code=307)
+
+
+app.mount(
+    "/ui",
+    StaticFiles(directory=UI_STATIC_DIRECTORY, html=True),
+    name="ui",
+)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["system"])

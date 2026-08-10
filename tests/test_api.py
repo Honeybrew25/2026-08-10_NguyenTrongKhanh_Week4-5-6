@@ -10,6 +10,62 @@ from app.main import (
 client = TestClient(app)
 
 
+def test_root_redirects_get_and_head_to_dashboard() -> None:
+    for method in (client.get, client.head):
+        response = method("/", follow_redirects=False)
+
+        assert response.status_code == 307
+        assert response.headers["location"] == "/ui/"
+
+
+def test_dashboard_static_index_supports_get_and_head() -> None:
+    response = client.get("/ui/")
+    head = client.head("/ui/")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert response.content
+    assert head.status_code == 200
+    assert head.content == b""
+    for secured_response in (response, head):
+        assert "default-src 'self'" in secured_response.headers[
+            "content-security-policy"
+        ]
+        assert secured_response.headers["cross-origin-opener-policy"] == "same-origin"
+        assert secured_response.headers["referrer-policy"] == "no-referrer"
+        assert secured_response.headers["x-content-type-options"] == "nosniff"
+        assert secured_response.headers["x-frame-options"] == "DENY"
+
+    for path, media_type in (
+        ("/ui/styles.css", "text/css"),
+        ("/ui/app.js", "application/javascript"),
+        ("/ui/dashboard-data.json", "application/json"),
+    ):
+        asset = client.get(path)
+        assert asset.status_code == 200
+        assert media_type in asset.headers["content-type"]
+        assert asset.content
+
+
+def test_dashboard_rejects_mutating_methods_at_application_boundary() -> None:
+    for path in ("/", "/ui/", "/ui/index.html"):
+        response = client.post(path, content=b"not-allowed")
+
+        assert response.status_code == 405
+
+
+def test_dashboard_fails_closed_if_gateway_key_reaches_backend() -> None:
+    secret = "ui-key-must-not-be-reflected"
+
+    response = client.get("/ui/", headers={"x-api-key": secret})
+
+    assert response.status_code == 500
+    assert response.json() == {
+        "detail": "gateway credential reached the application boundary"
+    }
+    assert secret not in response.text
+
+
 def test_health() -> None:
     response = client.get("/health")
 

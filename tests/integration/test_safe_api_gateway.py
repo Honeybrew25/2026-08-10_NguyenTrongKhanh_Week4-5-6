@@ -60,6 +60,66 @@ def audit_event(request_id: str) -> tuple[dict[str, Any], str]:
     pytest.fail(f"No authorization audit event found for {request_id}")
 
 
+def test_public_dashboard_is_read_only_and_gateway_consumes_api_key(
+    http: httpx.Client,
+) -> None:
+    root = http.get(f"{GATEWAY_URL}/")
+    assert root.status_code == 307
+    assert root.headers["location"] == "/ui/"
+
+    request_id = "public-ui-integration-get"
+    key = safe_api_key()
+    response = http.get(
+        f"{GATEWAY_URL}/ui/",
+        headers={"x-api-key": key, "x-request-id": request_id},
+    )
+    head = http.head(f"{GATEWAY_URL}/ui/")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert response.headers["x-request-id"] == request_id
+    assert "x-envoy-auth-headers-to-remove" not in response.headers
+    assert key not in response.text
+    assert head.status_code == 200
+    assert head.content == b""
+
+    record, logs = audit_event(request_id)
+    assert record == {
+        "request_id": request_id,
+        "agent_id": "anonymous",
+        "method": "GET",
+        "path": "/ui/",
+        "decision": "allow",
+        "reason": "public_ui_read_only",
+    }
+    assert key not in logs
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("POST", "/"),
+        ("POST", "/ui/"),
+        ("PUT", "/ui/index.html"),
+        ("DELETE", "/ui/app.js"),
+    ],
+)
+def test_gateway_denies_dashboard_mutations(
+    http: httpx.Client,
+    method: str,
+    path: str,
+) -> None:
+    response = http.request(
+        method,
+        f"{GATEWAY_URL}{path}",
+        headers={"x-api-key": safe_api_key()},
+        content=b"mutation-must-not-reach-static-app",
+    )
+
+    assert response.status_code == 403
+    assert response.json()["reason"] == "route_not_allowed"
+
+
 def test_valid_api_key_calls_exact_get_route_through_gateway(
     http: httpx.Client,
 ) -> None:
