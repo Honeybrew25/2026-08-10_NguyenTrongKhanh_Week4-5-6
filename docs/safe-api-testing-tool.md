@@ -1,5 +1,9 @@
 # Safe API Testing Tool — Week 4
 
+> Week 4 · Xem [documentation hub](README.md),
+> [báo cáo tuần](../reports/week-4.md) và
+> [receipt demo](../security-results/runs/week-4/safe-api-demo.jsonl).
+
 ## Mục tiêu và ranh giới
 
 Safe API Testing Tool cho phép Agent đề xuất rồi thực thi một số request GET
@@ -40,6 +44,40 @@ thuộc contract. Payload thật được code dựng từ catalog đã curate.
 Policy hiện tại cho phép tối đa 12 request/phút trên mỗi API key, method và
 route; timeout 3 giây; request body 4 KiB; response 64 KiB; tối đa bốn custom
 header và 256 byte cho mỗi header value.
+
+## Kế thừa và truy vết từ Week 3
+
+Planner đọc `security-results/security-analysis.jsonl`, giữ
+`source_finding_ids` của nhóm đã grounded rồi tạo `RequestProposal`. Tool tính
+fingerprint 16 ký tự từ canonical proposal; receipt ghi fingerprint đó cùng
+policy SHA-256, endpoint/test-case ID và `x-request-id` để nối quyết định của
+Tool với audit của authz-service.
+
+Tên finding, explanation và verification steps của Week 3 có thể ảnh hưởng
+việc chọn một `test_case_id` đã curate cùng rationale. Chúng không được chuyển
+thành URL, raw body, API key hoặc header capability. Nếu finding chứa prompt
+injection hoặc yêu cầu endpoint ngoài allowlist, deterministic planner vẫn chỉ
+có thể chọn capability/test case đã định nghĩa; policy tiếp tục có quyền từ
+chối trước transport.
+
+## Contract matrix
+
+| `endpoint_id` | Method/path | Test case hợp lệ | Expected status |
+|---|---|---|---|
+| `test-status` | `GET /api/test/status` | `empty` | 200 |
+| `input-validation` | `POST /api/test/validate` | `long-string`, `special-characters`, `empty` | 200 |
+| `input-validation` | `POST /api/test/validate` | `wrong-type` | 422 |
+
+| Identity | Surface được phép | Credential |
+|---|---|---|
+| Anonymous | GET `/health`, GET metadata; GET/HEAD `/` và `/ui/*` | Không có |
+| `safe-api-tool` | Đúng hai route trong policy ở bảng trên | API key riêng, bị Envoy consume |
+| `agent-reader` | GET `/api/users` | JWT có `users:read` |
+| `agent-admin` | GET `/api/users`, GET `/api/admin` | JWT có `users:read`, `admin:read` |
+| Mọi trường hợp khác | Không có | Deny-by-default |
+
+API key không thay thế JWT và không cấp quyền tới `/api/users` hoặc
+`/api/admin`. JWT cũng không tự cấp quyền cho safe test surface.
 
 ## Defense in depth
 
@@ -156,6 +194,26 @@ CLI và CI chỉ trả success khi outcome là `success` và
 `expected_status_matched=true`. Receipt bị truncate vẫn được lưu để điều tra
 nhưng không làm demo đậu.
 
+Exit code của CLI:
+
+| Code | Ý nghĩa |
+|---:|---|
+| `0` | Proposal/dry-run hợp lệ, hoặc execution/demo khớp toàn bộ contract |
+| `2` | Input, policy, catalog, credential hoặc cấu hình không hợp lệ |
+| `3` | Một lệnh `run` bị policy từ chối trước transport |
+| `4` | Execution/demo không khớp contract: HTTP status sai, timeout, 429, connection error hoặc response truncated |
+
+Troubleshooting nhanh:
+
+| Triệu chứng | Kiểm tra |
+|---|---|
+| Exit `2`, thiếu key | Chỉ với `--execute`: kiểm tra `SAFE_API_TOOL_API_KEY` trong `.env`; không truyền key qua CLI |
+| HTTP 401 / exit `4` | Key của Tool và authz-service không khớp hoặc placeholder chưa được thay |
+| HTTP 413 | Request vượt body cap 4 KiB; không tăng cap nếu chưa review policy và Envoy cùng lúc |
+| Outcome `rate_limited` / HTTP 429 | Chờ cửa sổ một phút; không retry dồn dập |
+| `connection_error` | Kiểm tra `docker compose ps` và public `/health`; không đổi origin sang backend trực tiếp |
+| `policy_denied` / exit `3` | Đối chiếu exact endpoint/test-case/header với `policy.json`; không bypass bằng URL tùy ý |
+
 ## Kiểm thử và evidence
 
 ```powershell
@@ -168,6 +226,37 @@ docker compose config --quiet
 `run_all_tests.py` tạo secret tạm trong process, chạy toàn bộ Docker integration,
 chạy `safe_api_tool demo --execute`, ghi receipt CI đã sanitize rồi dọn stack.
 GitHub Actions upload receipt dưới artifact `week4-safe-api-demo-receipts`.
+
+Evidence bền vững trong repository:
+
+| Artifact | Nội dung cần kiểm tra |
+|---|---|
+| `config/safe-api-tool/policy.json` | Exact origin, hai capability và resource budget |
+| `data/safe-api-test-cases.json` | Bốn profile long/special/empty/wrong-type |
+| `security-results/runs/week-4/safe-api-demo.jsonl` | GET 200, POST 200 và negative control bị deny trước transport |
+| `evidence/week-4/verification.log` | Lệnh, môi trường và kết quả quality gates của run bàn giao |
+| `.github/workflows/security-scan.yml` | Secret tạm, live demo và artifact upload trong CI |
+
+`policy_sha256` trong receipt là hash của model policy đã canonicalize, hiện là
+`a969dab49a01609707d4084330284790928bd445e282effea165d2edac1c947d`.
+Nó khác SHA-256 của byte file JSON trong verification snapshot Windows
+(`7674196e229dfccfb45f81c5fdd21e2b3b813b7fc1c3236519d6e07bed2fa030`)
+vì whitespace/key serialization không thuộc canonical form. Không dùng hai
+loại hash này để so sánh trực tiếp; raw-file hash còn có thể đổi theo LF/CRLF.
+Receipt demo trong cùng snapshot có SHA-256
+`e5d16a60404f14b8818103c8ede6174081fedc7f871bb07b2b1fc29c6d452e6d`.
+
+Checklist review Week 4:
+
+- Proposal chỉ chứa năm field theo schema; không có URL, raw body hoặc secret.
+- Dry-run là mặc định; network chỉ mở khi người vận hành truyền `--execute`.
+- Tool và authz cùng đọc một policy, chỉ cho exact method/path/test case.
+- Backend không publish host port; request hợp lệ phải đi qua Envoy.
+- API key được inject nội bộ, so sánh constant-time, consume trước upstream và
+  không xuất hiện trong receipt/audit.
+- Request/response/timeout/RPM đều có cap và lỗi được ánh xạ thành typed
+  outcome.
+- CLI/CI chỉ báo đậu khi status khớp contract; negative control phải bị chặn.
 
 ## Giới hạn đã biết
 

@@ -8,16 +8,11 @@ secret.
 
 ## Quá trình
 
-- Giữ Envoy và `ext_authz` fail-closed làm Gateway; bổ sung API-key identity
-  `safe-api-tool` mà không thay đổi quyền JWT reader/admin hiện có.
-- Tạo policy versioned, JSON Schema và catalog bốn payload an toàn. Proposal
-  chỉ chọn `endpoint_id`/`test_case_id`; code sở hữu URL, body và credential.
-- Thêm hai API test stateless, local + Gateway rate limit, timeout, request cap
-  ở cả Tool/Envoy, streaming response cap, redirect-off và typed outcomes.
-- Nối finding grounded Week 3 vào deterministic planner, CLI dry-run mặc định,
-  explicit `--execute` và one-command demo.
-- Thêm secret sentinel, negative/adversarial tests, backend canary kiểm tra
-  Envoy đã consume API key và CI artifact cho receipt demo.
+- Giữ Envoy + ext_authz làm cổng bảo vệ chính, đồng thời thêm API key riêng cho safe-api-tool mà không làm thay đổi quyền JWT hiện có.
+- Tạo bộ policy và schema rõ ràng để tool chỉ được chọn các bài test an toàn có sẵn; URL, dữ liệu gửi đi và thông tin đăng nhập đều do code kiểm soát.
+- Bổ sung 2 API test an toàn, kèm các giới hạn như rate limit, timeout, kích thước request/response và tắt redirect để tránh hành vi ngoài dự kiến.
+- Dùng các finding đã được xác minh để tự động lập kế hoạch test, nhưng CLI mặc định chỉ chạy thử; muốn chạy thật phải dùng --execute.
+- Thêm các lớp kiểm tra an toàn như phát hiện secret, test tình huống xấu, canary kiểm tra API key và lưu kết quả demo trong CI để dễ kiểm chứng.
 
 ## Kết quả
 
@@ -27,14 +22,7 @@ secret.
 - Key sai/thiếu bị 401; route/method lạ bị deny; body vượt 4 KiB bị Gateway trả
   413 trước authz/app; burst trả typed 429; status sai, timeout, connection
   error và oversized response đều có outcome kiểm soát.
-- API key không xuất hiện trong tool receipt hoặc authz audit; backend canary
-  chứng minh credential đã bị Envoy loại bỏ trước upstream.
-- Receipt mẫu nằm tại
-  `security-results/runs/week-4/safe-api-demo.jsonl`; policy hash của run là
-  `a969dab49a01609707d4084330284790928bd445e282effea165d2edac1c947d`.
 
-## Việc tiếp theo
+## Kết luận
 
-Khi scale nhiều authz replica, thay limiter process-local bằng distributed
-rate limiter. ZAP authenticated/allowlisted coverage và chọn proposal bằng LLM
-có thể mở rộng sau, nhưng LLM vẫn không được sở hữu URL hoặc raw payload.
+Qua 4 tuần, hệ thống đi từ thu thập dữ liệu quét → chuẩn hóa → phân tích → kiểm thử an toàn. Agent chỉ hỗ trợ chọn và thực hiện các bước xác minh đã được giới hạn sẵn, còn URL, dữ liệu kiểm thử và thông tin đăng nhập vẫn do hệ thống kiểm soát, giúp quá trình an toàn và dễ kiểm chứng hơn.

@@ -1,5 +1,8 @@
 # Project Sentinel dashboard
 
+> Dashboard trình bày chuỗi Week 3 → Week 4. Bắt đầu tại
+> [documentation hub](README.md) để xem source, artifact và kịch bản demo.
+
 ## Mục tiêu
 
 Dashboard biến flow Week 1–4 thành một trang có thể trình bày trong buổi demo
@@ -70,4 +73,4 @@ Kết thúc bằng `docker compose down --remove-orphans` nếu đã chạy Comp
 `.github/workflows/deploy-ui-pages.yml` chỉ có `workflow_dispatch`, chỉ deploy
 từ `main` và nên đặt required reviewer cho environment `github-pages`. Không
 commit, push hoặc chạy workflow này nếu chưa được chủ repository đồng ý rõ
-ràng. Chi tiết và phương án fallback nằm tại `docs/deployment-strategy.md`.
+ràng. Pipeline kiểm thử và artifact Week 3–4 được mô tả tại [CI/CD](ci-cd.md).

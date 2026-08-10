@@ -26,6 +26,28 @@ source control.
 Đây là continuous delivery: workflow tạo image có thể triển khai nhưng không
 tự ý kết nối hoặc deploy lên máy chủ chưa được chỉ định.
 
+## Dashboard Pages chạy thủ công
+
+Workflow `.github/workflows/deploy-ui-pages.yml` publish đúng bốn static asset
+trong `src/app/static/` lên GitHub Pages. Nó chỉ có trigger
+`workflow_dispatch`, chỉ nhận revision `main` và không tự deploy khi push.
+
+Trước khi đóng gói, job kiểm tra JSON, từ chối symlink/file ngoài allowlist và
+quét các chuỗi giống credential. Dashboard chỉ chứa dữ liệu curate cùng dry-run
+simulator; API key và protected API không thuộc static artifact.
+
+Sau khi chủ repository đồng ý rõ ràng, có thể chạy từ giao diện Actions hoặc:
+
+```powershell
+gh workflow run deploy-ui-pages.yml --ref main
+gh run list --workflow deploy-ui-pages.yml --limit 1
+```
+
+URL hiện tại:
+`https://honeybrew25.github.io/2026-08-10_NguyenTrongKhanh_Week4-5-6/`.
+Đẩy commit mới lên `main` không làm site đổi ngay; phải chạy lại workflow thủ
+công để phát hành revision đã review.
+
 ## Thiết lập GitHub
 
 Trong repository GitHub, mở **Settings → Actions → General → Workflow

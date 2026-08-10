@@ -29,15 +29,7 @@ và model dữ liệu theo hợp đồng trước khi ghi.
 
 - 27 finding chuẩn hóa được tổng hợp thành **9 nhóm cảnh báo**, không mất hoặc
   lặp finding nguồn.
-- **15 test case** bao phủ dữ liệu Week 1/2, nhóm trùng, mapping tri thức,
-  JSONL, dữ liệu rỗng/lỗi, prompt injection, secret redaction và provider bịa
-  endpoint hoặc loại lỗ hổng không có căn cứ.
-- Toàn bộ **53 test** của project pass trên stack Docker thật gồm Keycloak,
-  Envoy và hai service; Bandit không có finding mức High.
 
 ## Kết luận
 
-Phần quan trọng không chỉ là gọi model mà là giữ ranh giới giữa dữ kiện và
-diễn giải. Grouping, exact-rule retrieval, provenance, schema validation và
-grounding giúp báo cáo ngắn hơn nhưng vẫn truy ngược được scanner. Kết quả hỗ
-trợ triage, không thay thế xác minh thủ công hoặc bằng chứng khai thác.
+Điểm quan trọng của hệ thống không nằm ở việc sử dụng AI, mà ở việc kiểm soát AI sử dụng dữ liệu như thế nào. Hệ thống cần phân biệt rõ thông tin scanner thực sự phát hiện với phần AI suy luận. Các kết quả giống nhau được gom nhóm, mỗi nhận định phải dựa trên đúng dữ liệu và có thể truy ngược về nguồn ban đầu, đồng thời dữ liệu phải được kiểm tra cấu trúc trước khi sử dụng. Kết quả hỗ trợ triage, không thay thế xác minh thủ công hoặc bằng chứng khai thác.
