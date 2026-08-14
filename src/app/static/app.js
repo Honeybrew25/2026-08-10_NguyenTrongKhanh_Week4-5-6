@@ -3,6 +3,8 @@
 const state = {
   data: null,
   lastDecision: null,
+  runtime: {},
+  selectedRuntimeLayer: "policy",
 };
 
 const byId = (id) => document.getElementById(id);
@@ -16,6 +18,113 @@ function createElement(tag, className, text) {
 
 function replaceChildren(target, children) {
   target.replaceChildren(...children);
+}
+
+const RUNTIME_LAYER_TITLES = {
+  gateway: "Gateway",
+  policy: "Policy",
+  evidence: "Evidence",
+};
+
+function refreshOverallRuntimeState() {
+  const values = Object.values(state.runtime);
+  let status = "INITIALIZING";
+  let tone = "snapshot";
+
+  if (values.some((item) => ["failed", "unavailable"].includes(item.state))) {
+    status = "DEGRADED";
+    tone = "failed";
+  } else if (state.runtime.policy?.state === "deny") {
+    status = "CONTROLLED DENY";
+    tone = "deny";
+  } else if (state.runtime.evidence?.state === "dry-run") {
+    status = state.runtime.policy?.state === "allow" ? "DRY-RUN ALLOW" : "DRY-RUN";
+    tone = "dry-run";
+  } else if (state.runtime.gateway?.state === "live") {
+    status = "LIVE · VERIFIED";
+    tone = "live";
+  } else if (state.runtime.gateway?.state === "static") {
+    status = "STATIC SNAPSHOT";
+    tone = "static";
+  } else if (state.runtime.policy?.state === "verified" && state.runtime.evidence?.state === "snapshot") {
+    status = "VERIFIED SNAPSHOT";
+    tone = "snapshot";
+  }
+
+  const overall = byId("runtime-overall-state");
+  overall.textContent = status;
+  overall.dataset.state = tone;
+  byId("runtime-radar-summary").textContent = Object.entries(state.runtime)
+    .map(([layer, item]) => `${RUNTIME_LAYER_TITLES[layer]}: ${item.label}, ${item.detail}.`)
+    .join(" ");
+}
+
+function setRuntimeLayer(layer, runtimeState, label, detail) {
+  state.runtime[layer] = { state: runtimeState, label, detail };
+
+  const ring = byId(`radar-${layer}-layer`);
+  ring.dataset.state = runtimeState;
+  ring.setAttribute("aria-label", `${RUNTIME_LAYER_TITLES[layer]}: ${label}. ${detail}`);
+
+  const signal = byId(`${layer}-signal`);
+  signal.dataset.state = runtimeState;
+  const hotspot = document.querySelector(`[data-runtime-layer="${layer}"]`);
+  hotspot.dataset.state = runtimeState;
+  byId(`${layer}-runtime-state`).textContent = label;
+  byId(`${layer}-runtime-detail`).textContent = detail;
+  refreshOverallRuntimeState();
+  if (state.selectedRuntimeLayer === layer) renderRuntimeInspector(layer);
+}
+
+function renderRuntimeInspector(layer) {
+  const runtime = state.runtime[layer];
+  if (!runtime) return;
+  const definition = state.data?.runtimeRadar?.[layer];
+  const position = definition?.layer?.toUpperCase() || "RUNTIME";
+  byId("runtime-inspector-layer").textContent = `${position} RING · ${RUNTIME_LAYER_TITLES[layer].toUpperCase()}`;
+  const inspectorState = byId("runtime-inspector-state");
+  inspectorState.textContent = runtime.label;
+  inspectorState.dataset.state = runtime.state;
+  byId("runtime-inspector-title").textContent = definition?.title || RUNTIME_LAYER_TITLES[layer];
+  byId("runtime-inspector-description").textContent = definition?.description || "Runtime metadata không khả dụng.";
+  byId("runtime-inspector-detail").textContent = runtime.detail;
+}
+
+function selectRuntimeLayer(layer) {
+  if (!RUNTIME_LAYER_TITLES[layer]) return;
+  state.selectedRuntimeLayer = layer;
+  document.querySelectorAll(".radar-hotspot").forEach((button) => {
+    const active = button.dataset.runtimeLayer === layer;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  renderRuntimeInspector(layer);
+}
+
+function restorePolicyAndEvidenceRadar() {
+  const radar = state.data.runtimeRadar;
+  const policy = radar.policy;
+  const evidence = radar.evidence;
+  setRuntimeLayer(
+    "policy",
+    policy.initialState,
+    `VERIFIED · v${policy.version}`,
+    `${policy.capabilityCount} capabilities · ${policy.testCaseCount} test cases · SHA ${policy.sha256.slice(0, 12)}…`,
+  );
+  setRuntimeLayer(
+    "evidence",
+    evidence.initialState,
+    "VERIFIED SNAPSHOT",
+    `${evidence.successCount} success · ${evidence.deniedCount} policy denied · ${evidence.verifiedAt}`,
+  );
+}
+
+function initializeRuntimeRadar() {
+  const gateway = state.data.runtimeRadar.gateway;
+  const gatewayHost = new URL(gateway.origin).host;
+  setRuntimeLayer("gateway", gateway.initialState, "UNCHECKED", `${gatewayHost}${gateway.healthPath}`);
+  restorePolicyAndEvidenceRadar();
+  selectRuntimeLayer("policy");
 }
 
 function renderMetrics(metrics) {
@@ -261,6 +370,19 @@ async function runDryRun(event) {
   );
   replaceChildren(summary, [icon, copy]);
   state.lastDecision = receipt;
+  setRuntimeLayer(
+    "policy",
+    allowed ? "allow" : "deny",
+    allowed ? "ALLOW" : "DENY",
+    allowed ? `${endpoint.id} · expected ${testCase.expectedStatus}` : receipt.reason,
+  );
+  setRuntimeLayer(
+    "evidence",
+    "dry-run",
+    "DRY-RUN RECEIPT",
+    `${receipt.decision.toUpperCase()} · proposal ${receipt.proposal_id}`,
+  );
+  selectRuntimeLayer("policy");
   activateTab("proposal-output");
 }
 
@@ -283,6 +405,8 @@ function resetSimulator() {
     renderJson("request-output", { network_call: false });
     renderJson("receipt-output", { audit: "sanitized_metadata_only" });
     state.lastDecision = null;
+    restorePolicyAndEvidenceRadar();
+    selectRuntimeLayer("policy");
     activateTab("proposal-output");
   }, 0);
 }
@@ -291,12 +415,15 @@ async function checkHealth() {
   const button = byId("health-button");
   const status = byId("health-status");
   button.disabled = true;
+  selectRuntimeLayer("gateway");
   button.classList.remove("is-ok", "is-error", "is-static");
   status.textContent = "Đang kiểm tra endpoint public cùng origin…";
+  setRuntimeLayer("gateway", "checking", "CHECKING", "GET /health · credentials omitted");
 
   if (!isFullStackUiPath()) {
     button.classList.add("is-static");
     status.textContent = "Kênh static showcase; full stack được xác minh riêng trong CI.";
+    setRuntimeLayer("gateway", "static", "STATIC", "Không có live backend trên kênh showcase");
     button.disabled = false;
     return;
   }
@@ -304,6 +431,7 @@ async function checkHealth() {
   if (!['http:', 'https:'].includes(window.location.protocol)) {
     button.classList.add("is-error");
     status.textContent = "Health check chỉ khả dụng khi dashboard được phục vụ qua HTTP(S).";
+    setRuntimeLayer("gateway", "failed", "UNAVAILABLE", "Dashboard không được phục vụ qua HTTP(S)");
     button.disabled = false;
     return;
   }
@@ -321,9 +449,11 @@ async function checkHealth() {
     if (!response.ok || body.status !== "ok") throw new Error("health_unavailable");
     button.classList.add("is-ok");
     status.textContent = "Public /health phản hồi OK; không gọi endpoint được bảo vệ.";
+    setRuntimeLayer("gateway", "live", "LIVE", `${healthUrl.host}/health · HTTP ${response.status}`);
   } catch (_error) {
     button.classList.add("is-error");
     status.textContent = "Không kết nối được /health. Dashboard và dry-run vẫn hoạt động offline.";
+    setRuntimeLayer("gateway", "failed", "FAILED", "Không xác minh được public /health");
   } finally {
     button.disabled = false;
   }
@@ -335,6 +465,7 @@ function configureHostingMode() {
   button.classList.add("is-static");
   byId("health-label").textContent = "Static showcase";
   byId("health-status").textContent = "Dashboard tĩnh không chứa credential hoặc gọi protected API.";
+  setRuntimeLayer("gateway", "static", "STATIC", "Không có live backend trên kênh showcase");
 }
 
 function isFullStackUiPath() {
@@ -362,6 +493,9 @@ function wireInteractions() {
   byId("proposal-form").addEventListener("submit", runDryRun);
   byId("reset-button").addEventListener("click", resetSimulator);
   byId("health-button").addEventListener("click", checkHealth);
+  document.querySelectorAll(".radar-hotspot").forEach((button) => {
+    button.addEventListener("click", () => selectRuntimeLayer(button.dataset.runtimeLayer));
+  });
   document.querySelectorAll(".code-tab").forEach((tab) => {
     tab.addEventListener("click", () => activateTab(tab.dataset.panel));
     tab.addEventListener("keydown", handleTabKeydown);
@@ -370,7 +504,7 @@ function wireInteractions() {
 
 async function initialize() {
   try {
-    const response = await fetch("./dashboard-data.json", { cache: "no-store", credentials: "same-origin" });
+    const response = await fetch("./dashboard-data.json?v=runtime-radar-2", { cache: "no-store", credentials: "same-origin" });
     if (!response.ok) throw new Error(`dashboard_data_${response.status}`);
     state.data = await response.json();
     renderMetrics(state.data.metrics);
@@ -378,6 +512,7 @@ async function initialize() {
     renderControls(state.data.controls);
     renderEvidence(state.data.evidence);
     renderRoadmap(state.data.roadmap);
+    initializeRuntimeRadar();
     populateEndpoints();
     wireInteractions();
     configureHostingMode();
@@ -387,6 +522,9 @@ async function initialize() {
     byId("decision-badge").textContent = "OFFLINE";
     byId("decision-badge").className = "decision-badge is-deny";
     byId("proposal-form").querySelectorAll("input, select, textarea, button").forEach((control) => { control.disabled = true; });
+    setRuntimeLayer("policy", "unavailable", "UNAVAILABLE", "Không tải được curated policy metadata");
+    setRuntimeLayer("evidence", "unavailable", "UNAVAILABLE", "Không tải được evidence snapshot");
+    setRuntimeLayer("gateway", "unchecked", "UNCHECKED", "Chưa thực hiện health check");
     byId("health-button").addEventListener("click", checkHealth);
     configureHostingMode();
   }

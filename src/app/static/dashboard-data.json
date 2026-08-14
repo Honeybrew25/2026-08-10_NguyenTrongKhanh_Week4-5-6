@@ -7,6 +7,36 @@
     "policySha256": "a969dab49a01609707d4084330284790928bd445e282effea165d2edac1c947d",
     "gatewayOrigin": "http://localhost:8080"
   },
+  "runtimeRadar": {
+    "gateway": {
+      "layer": "outer",
+      "initialState": "unchecked",
+      "origin": "http://localhost:8080",
+      "healthPath": "/health",
+      "title": "Gateway connectivity",
+      "description": "Kiểm tra same-origin GET /health mà không gửi credential hoặc gọi protected endpoint."
+    },
+    "policy": {
+      "layer": "middle",
+      "initialState": "verified",
+      "version": "1.0",
+      "sha256": "a969dab49a01609707d4084330284790928bd445e282effea165d2edac1c947d",
+      "capabilityCount": 2,
+      "testCaseCount": 4,
+      "title": "Policy integrity",
+      "description": "Policy SHA, capability và test-case contract được đối chiếu với source; dry-run cập nhật ALLOW hoặc DENY."
+    },
+    "evidence": {
+      "layer": "inner",
+      "initialState": "snapshot",
+      "source": "security-results/runs/week-4/safe-api-demo.jsonl",
+      "verifiedAt": "2026-08-10",
+      "successCount": 2,
+      "deniedCount": 1,
+      "title": "Execution evidence",
+      "description": "Snapshot lấy từ durable receipt; receipt mới trên giao diện vẫn là dry-run và không mở network."
+    }
+  },
   "metrics": [
     {"label": "Findings", "value": 27, "detail": "Bandit + OWASP ZAP", "tone": "cyan"},
     {"label": "Grounded groups", "value": 9, "detail": "Provenance đầy đủ", "tone": "violet"},

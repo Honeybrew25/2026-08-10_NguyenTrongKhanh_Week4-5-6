@@ -41,6 +41,18 @@ def test_dashboard_capabilities_are_grounded_in_policy_and_catalog() -> None:
             displayed_value = displayed["value"]
         assert displayed_value == test_case.payload["value"]
 
+    radar = data["runtimeRadar"]
+    assert {item["layer"] for item in radar.values()} == {"outer", "middle", "inner"}
+    assert radar["gateway"]["origin"] == data["project"]["gatewayOrigin"]
+    assert radar["gateway"]["healthPath"] == "/health"
+    assert radar["policy"]["version"] == data["project"]["policyVersion"]
+    assert radar["policy"]["sha256"] == data["project"]["policySha256"]
+    assert radar["policy"]["capabilityCount"] == len(data["endpoints"])
+    assert radar["policy"]["testCaseCount"] == len(data["testCases"])
+    for item in radar.values():
+        assert item["title"]
+        assert item["description"]
+
 
 def test_dashboard_evidence_is_derived_from_durable_receipts() -> None:
     data = load_dashboard_data()
@@ -65,6 +77,14 @@ def test_dashboard_evidence_is_derived_from_durable_receipts() -> None:
         )
         assert event["state"] == expected_state
         assert event["summary"] == expected_summary
+    radar = data["runtimeRadar"]
+    assert radar["evidence"]["successCount"] == sum(
+        item["state"] == "ALLOW" for item in data["evidence"]
+    )
+    assert radar["evidence"]["deniedCount"] == sum(
+        item["state"] == "DENY" for item in data["evidence"]
+    )
+    assert (ROOT / radar["evidence"]["source"]).is_file()
 
 
 def test_dashboard_is_self_contained_and_manual_deploy_is_gated() -> None:
@@ -76,11 +96,18 @@ def test_dashboard_is_self_contained_and_manual_deploy_is_gated() -> None:
         ROOT / ".github" / "workflows" / "deploy-ui-pages.yml"
     ).read_text(encoding="utf-8")
 
-    assert 'href="./styles.css"' in index
-    assert 'src="./app.js"' in index
+    assert 'href="./styles.css?v=runtime-radar-2"' in index
+    assert 'src="./app.js?v=runtime-radar-2"' in index
     assert "Content-Security-Policy" in index
     assert 'role="tabpanel"' in index
     assert 'aria-controls="proposal-output"' in index
+    assert 'id="runtime-radar" role="group"' in index
+    assert 'id="runtime-radar-summary" aria-live="polite"' in index
+    assert 'id="runtime-layer-detail" aria-live="polite"' in index
+    for layer in ("gateway", "policy", "evidence"):
+        assert f'id="radar-{layer}-layer"' in index
+        assert f'id="{layer}-runtime-state"' in index
+        assert f'data-runtime-layer="{layer}"' in index
     assert not re.search(r'(?:src|href)="https?://', index)
     for metric in data["metrics"]:
         assert f"<strong>{metric['value']}</strong>" in index
@@ -98,6 +125,14 @@ def test_dashboard_is_self_contained_and_manual_deploy_is_gated() -> None:
     assert "containsOnlyPrintableAscii" in script
     assert 'crypto.subtle.digest("SHA-256"' in script
     assert "handleTabKeydown" in script
+    assert "initializeRuntimeRadar" in script
+    assert "selectRuntimeLayer" in script
+    assert 'document.querySelectorAll(".radar-hotspot")' in script
+    assert 'dashboard-data.json?v=runtime-radar-2' in script
+    assert 'setRuntimeLayer("gateway", "live"' in script
+    assert 'setRuntimeLayer("gateway", "static"' in script
+    assert '"CONTROLLED DENY"' in script
+    assert '"DRY-RUN ALLOW"' in script
     assert "SAFE_API_TOOL_API_KEY" not in (
         index + styles + script + json.dumps(data)
     )

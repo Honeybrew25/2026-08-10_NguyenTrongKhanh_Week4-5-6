@@ -8,8 +8,8 @@
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; connect-src 'self'; font-src 'self'; form-action 'none'; frame-src 'none'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self'">
   <title>Project Sentinel · Week 4</title>
-  <link rel="stylesheet" href="./styles.css">
-  <script src="./app.js" defer></script>
+  <link rel="stylesheet" href="./styles.css?v=runtime-radar-2">
+  <script src="./app.js?v=runtime-radar-2" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main-content">Bỏ qua đến nội dung chính</a>
@@ -68,24 +68,48 @@
       <aside class="hero-console" aria-label="Tóm tắt policy runtime">
         <div class="console-topbar">
           <span>policy.runtime</span>
-          <span class="console-state">ENFORCED</span>
+          <span class="console-state" id="runtime-overall-state" data-state="snapshot">VERIFIED SNAPSHOT</span>
         </div>
-        <div class="radar" aria-hidden="true">
-          <div class="radar-ring ring-one"></div>
-          <div class="radar-ring ring-two"></div>
-          <div class="radar-ring ring-three"></div>
+        <div class="radar" id="runtime-radar" role="group" aria-label="Chọn một vòng để xem trạng thái runtime" aria-describedby="runtime-radar-summary">
+          <div class="radar-ring ring-one" id="radar-gateway-layer" data-label="GATEWAY" data-state="unchecked"></div>
+          <div class="radar-ring ring-two" id="radar-policy-layer" data-label="POLICY" data-state="verified"></div>
+          <div class="radar-ring ring-three" id="radar-evidence-layer" data-label="EVIDENCE" data-state="snapshot"></div>
           <div class="radar-axis axis-x"></div>
           <div class="radar-axis axis-y"></div>
-          <div class="radar-core">S</div>
-          <span class="radar-node node-one"></span>
-          <span class="radar-node node-two"></span>
-          <span class="radar-node node-three"></span>
+          <div class="radar-core" aria-hidden="true">S</div>
+          <button class="radar-hotspot hotspot-gateway" type="button" data-runtime-layer="gateway" data-state="unchecked" aria-controls="runtime-layer-detail" aria-pressed="false"><span aria-hidden="true"></span>Gateway</button>
+          <button class="radar-hotspot hotspot-policy is-active" type="button" data-runtime-layer="policy" data-state="verified" aria-controls="runtime-layer-detail" aria-pressed="true"><span aria-hidden="true"></span>Policy</button>
+          <button class="radar-hotspot hotspot-evidence" type="button" data-runtime-layer="evidence" data-state="snapshot" aria-controls="runtime-layer-detail" aria-pressed="false"><span aria-hidden="true"></span>Evidence</button>
+        </div>
+        <p class="visually-hidden" id="runtime-radar-summary" aria-live="polite">
+          Gateway chưa kiểm tra. Policy đã xác minh từ snapshot. Evidence đã xác minh từ receipt bền vững.
+        </p>
+        <div class="runtime-inspector" id="runtime-layer-detail" aria-live="polite">
+          <div class="runtime-inspector-topline">
+            <span id="runtime-inspector-layer">MIDDLE RING · POLICY</span>
+            <span id="runtime-inspector-state" data-state="verified">VERIFIED · v1.0</span>
+          </div>
+          <strong id="runtime-inspector-title">Policy integrity</strong>
+          <p id="runtime-inspector-description">Policy SHA, capability và test-case contract đã được đối chiếu với source.</p>
+          <small id="runtime-inspector-detail">2 capabilities · 4 test cases</small>
         </div>
         <dl class="runtime-list">
-          <div><dt>Gateway</dt><dd>localhost:8080</dd></div>
-          <div><dt>Methods</dt><dd>GET · POST</dd></div>
-          <div><dt>Policy</dt><dd>FAIL CLOSED</dd></div>
-          <div><dt>Secret surface</dt><dd>RUNTIME ONLY</dd></div>
+          <div class="runtime-row">
+            <dt><span class="runtime-signal" id="gateway-signal" data-state="unchecked" aria-hidden="true"></span>Gateway</dt>
+            <dd><strong id="gateway-runtime-state">UNCHECKED</strong><small id="gateway-runtime-detail">localhost:8080</small></dd>
+          </div>
+          <div class="runtime-row">
+            <dt><span class="runtime-signal" id="policy-signal" data-state="verified" aria-hidden="true"></span>Policy</dt>
+            <dd><strong id="policy-runtime-state">VERIFIED · v1.0</strong><small id="policy-runtime-detail">2 capabilities · 4 test cases</small></dd>
+          </div>
+          <div class="runtime-row">
+            <dt><span class="runtime-signal" id="evidence-signal" data-state="snapshot" aria-hidden="true"></span>Evidence</dt>
+            <dd><strong id="evidence-runtime-state">VERIFIED SNAPSHOT</strong><small id="evidence-runtime-detail">2 success · 1 policy denied</small></dd>
+          </div>
+          <div class="runtime-row">
+            <dt><span class="runtime-signal" data-state="protected" aria-hidden="true"></span>Secret surface</dt>
+            <dd><strong>RUNTIME ONLY</strong><small>Không vào browser</small></dd>
+          </div>
         </dl>
         <p class="console-caption" id="health-status" role="status" aria-live="polite">
           Chưa thực hiện kiểm tra cùng origin.

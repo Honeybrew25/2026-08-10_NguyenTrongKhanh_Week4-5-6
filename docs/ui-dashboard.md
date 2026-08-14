@@ -51,6 +51,36 @@ Source nằm trong `src/app/static/`:
 - Snapshot hiện tại là 141 non-integration test và 166 full-stack test; phải
   cập nhật lại dashboard sau full verification nếu suite thay đổi.
 
+## Radar `policy.runtime`
+
+Radar là trạng thái ba lớp có nguồn dữ liệu riêng, không phải security score
+hay scanner thời gian thực:
+
+| Vòng | Trạng thái được biểu diễn | Nguồn dữ liệu |
+|---|---|---|
+| Ngoài — Gateway | `UNCHECKED`, `LIVE`, `STATIC`, `FAILED` | Same-origin `GET /health`; static host không tuyên bố live |
+| Giữa — Policy | `VERIFIED`, `ALLOW`, `DENY`, `UNAVAILABLE` | Policy version/SHA, capability và test-case contract trong `dashboard-data.json` |
+| Trong — Evidence | `VERIFIED SNAPSHOT`, `DRY-RUN RECEIPT`, `UNAVAILABLE` | Durable Week 4 receipts và receipt tạo bởi simulator |
+
+Màu xanh lá biểu thị live/verified/allow, cyan biểu thị snapshot hoặc dry-run,
+vàng biểu thị controlled deny/checking, đỏ biểu thị lỗi hoặc metadata không
+khả dụng, và xám là chưa kiểm tra. `DENY` là policy hoạt động đúng nên được
+hiển thị vàng thay vì coi là lỗi hệ thống.
+
+`dashboard-data.json.runtimeRadar` liên kết ba vòng với origin, policy
+SHA/version, số capability/test case và tổng hợp evidence. Contract test buộc
+metadata này khớp policy, catalog và receipt hiện có. JavaScript chỉ chuyển
+Gateway sang `LIVE` sau response `/health` hợp lệ; GitHub Pages luôn dùng
+`STATIC SNAPSHOT`. Policy dry-run cập nhật vòng Policy cùng Evidence nhưng
+không đổi trạng thái Gateway và không mở network.
+
+Ba nhãn `Gateway`, `Policy` và `Evidence` trên radar là button có thể click,
+focus bằng phím Tab và kích hoạt bằng Enter/Space. Mỗi button mở inspector hiển
+thị nguồn, trạng thái và chi tiết của đúng vòng; `aria-pressed` cùng vùng
+`aria-live` giúp screen reader nhận biết layer đang chọn. Asset URL có version
+query để browser không giữ JavaScript/CSS cũ sau khi dashboard được rebuild
+hoặc deploy lại.
+
 ## Chạy local
 
 Qua full stack:

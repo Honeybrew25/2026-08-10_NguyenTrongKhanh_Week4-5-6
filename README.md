@@ -32,7 +32,7 @@ Copy-Item .env.example .env
 ```
 
 Thay các placeholder Keycloak/Agent IAM và `SAFE_API_TOOL_API_KEY` trong
-`.env`. Cấu hình Gemini là tùy chọn và không cần cho chế độ deterministic.
+`.env`.
 
 ```powershell
 docker compose up --build --detach --wait
@@ -41,6 +41,48 @@ Start-Process "http://localhost:8080/ui/"
 ```
 
 Kết thúc bằng `docker compose down --remove-orphans`.
+
+## Chạy lại toàn bộ trên Linux (Bash)
+
+Yêu cầu: Python 3.11+, gói `python3-venv`, Docker Engine và Docker Compose v2.
+Docker daemon phải đang chạy và tài khoản hiện tại phải gọi được `docker` mà
+không cần `sudo`. Nếu dùng WSL2 với Docker Desktop, cần bật WSL integration cho
+distro Linux trước khi chạy.
+
+Từ thư mục gốc của repository, tạo môi trường Python sạch và cài dependency:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install --requirement requirements-dev.txt
+
+if [[ ! -f .env ]]; then
+  cp .env.example .env
+fi
+```
+
+Kiểm tra cấu hình và các chức năng không cần Docker stack:
+
+```bash
+docker version
+docker compose version
+docker compose config --quiet
+python -m pytest -q -m "not integration"
+python -m security_pipeline search "SQL Injection" --limit 1
+python -m security_pipeline analyze \
+  security-results/normalized-findings.json \
+  --knowledge-base data/vulnerabilities.json \
+  --provider deterministic \
+  --output "${TMPDIR:-/tmp}/security-analysis-check.jsonl"
+python -m safe_api_tool demo
+```
+
+Chạy full verification.
+
+```bash
+python scripts/run_all_tests.py
+```
 
 ## Demo và kiểm thử
 
@@ -65,9 +107,6 @@ Chạy toàn bộ unit và Docker integration tests:
 ```powershell
 python scripts/run_all_tests.py
 ```
-
-Các lệnh scan, Gemini, proposal/execute và cách đọc evidence được trình bày
-trong tài liệu chuyên đề bên dưới.
 
 ## Dashboard
 

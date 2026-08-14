@@ -58,6 +58,18 @@ a { color: inherit; }
 }
 .skip-link:focus { transform: translateY(0); }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 :focus-visible {
   outline: 3px solid var(--cyan);
   outline-offset: 3px;
@@ -215,11 +227,38 @@ h3 { font-size: 1.05rem; }
   font: .72rem/1.4 var(--mono);
 }
 .console-topbar > span:first-child { color: var(--muted); }
-.console-state { color: var(--lime); }
+.console-state { color: var(--muted); transition: color .2s ease; }
+.console-state[data-state="live"],
+.console-state[data-state="allow"] { color: var(--lime); }
+.console-state[data-state="snapshot"],
+.console-state[data-state="static"],
+.console-state[data-state="dry-run"] { color: var(--cyan); }
+.console-state[data-state="deny"] { color: var(--amber); }
+.console-state[data-state="failed"] { color: var(--red); }
 
 .radar { position: relative; width: 240px; height: 240px; margin: 28px auto 18px; }
-.radar::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 15deg, transparent 0 75%, rgba(86,220,234,.2) 93%, transparent 100%); animation: sweep 5s linear infinite; }
-.radar-ring { position: absolute; left: 50%; top: 50%; border: 1px solid rgba(86,220,234,.17); border-radius: 50%; transform: translate(-50%, -50%); }
+.radar::after { content: ""; position: absolute; z-index: 4; inset: 0; border-radius: 50%; background: conic-gradient(from 15deg, transparent 0 75%, rgba(86,220,234,.2) 93%, transparent 100%); animation: sweep 5s linear infinite; pointer-events: none; }
+.radar-ring {
+  --ring-color: rgba(147,170,181,.34);
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border: 2px solid var(--ring-color);
+  border-radius: 50%;
+  box-shadow: 0 0 17px color-mix(in srgb, var(--ring-color) 26%, transparent);
+  transform: translate(-50%, -50%);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.radar-ring[data-state="live"],
+.radar-ring[data-state="verified"],
+.radar-ring[data-state="allow"] { --ring-color: var(--lime); }
+.radar-ring[data-state="static"],
+.radar-ring[data-state="snapshot"],
+.radar-ring[data-state="dry-run"] { --ring-color: var(--cyan); }
+.radar-ring[data-state="checking"],
+.radar-ring[data-state="deny"] { --ring-color: var(--amber); }
+.radar-ring[data-state="failed"],
+.radar-ring[data-state="unavailable"] { --ring-color: var(--red); }
 .ring-one { width: 100%; height: 100%; }
 .ring-two { width: 66%; height: 66%; }
 .ring-three { width: 33%; height: 33%; }
@@ -227,14 +266,78 @@ h3 { font-size: 1.05rem; }
 .axis-x { left: 0; top: 50%; width: 100%; height: 1px; }
 .axis-y { top: 0; left: 50%; width: 1px; height: 100%; }
 .radar-core { position: absolute; z-index: 2; left: 50%; top: 50%; width: 38px; height: 38px; display: grid; place-items: center; transform: translate(-50%,-50%); border: 1px solid var(--cyan); border-radius: 50%; color: var(--cyan); background: #0a1822; font: 700 .9rem var(--mono); box-shadow: 0 0 30px rgba(86,220,234,.23); }
-.radar-node { position: absolute; z-index: 3; width: 7px; height: 7px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 12px var(--lime); }
-.node-one { left: 22%; top: 30%; }.node-two { right: 18%; top: 50%; }.node-three { left: 48%; bottom: 13%; }
+.radar-hotspot {
+  --hotspot-color: var(--muted);
+  position: absolute;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 25px;
+  padding: 3px 7px;
+  color: var(--hotspot-color);
+  background: #091722;
+  border: 1px solid color-mix(in srgb, var(--hotspot-color) 65%, transparent);
+  border-radius: 999px;
+  font: 650 .54rem/1.2 var(--mono);
+  letter-spacing: .04em;
+  cursor: pointer;
+  transition: color .2s ease, background .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+.radar-hotspot span { width: 6px; height: 6px; background: currentColor; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+.radar-hotspot:hover, .radar-hotspot.is-active { color: #061216; background: var(--hotspot-color); box-shadow: 0 0 16px color-mix(in srgb, var(--hotspot-color) 36%, transparent); }
+.radar-hotspot[data-state="live"],
+.radar-hotspot[data-state="verified"],
+.radar-hotspot[data-state="allow"] { --hotspot-color: var(--lime); }
+.radar-hotspot[data-state="static"],
+.radar-hotspot[data-state="snapshot"],
+.radar-hotspot[data-state="dry-run"] { --hotspot-color: var(--cyan); }
+.radar-hotspot[data-state="checking"],
+.radar-hotspot[data-state="deny"] { --hotspot-color: var(--amber); }
+.radar-hotspot[data-state="failed"],
+.radar-hotspot[data-state="unavailable"] { --hotspot-color: var(--red); }
+.hotspot-gateway { left: 50%; top: 0; transform: translate(-50%, -50%); }
+.hotspot-gateway:hover, .hotspot-gateway.is-active { transform: translate(-50%, -50%) scale(1.04); }
+.hotspot-policy { left: 83%; top: 50%; transform: translate(-50%, -50%); }
+.hotspot-policy:hover, .hotspot-policy.is-active { transform: translate(-50%, -50%) scale(1.04); }
+.hotspot-evidence { left: 50%; top: 67%; transform: translate(-50%, -50%); }
+.hotspot-evidence:hover, .hotspot-evidence.is-active { transform: translate(-50%, -50%) scale(1.04); }
 @keyframes sweep { to { transform: rotate(360deg); } }
 
+.runtime-inspector { margin: 0 24px 14px; padding: 13px 14px; border: 1px solid var(--border); border-radius: 11px; background: rgba(4,12,18,.48); }
+.runtime-inspector-topline { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 7px; font: .56rem/1.4 var(--mono); letter-spacing: .06em; }
+.runtime-inspector-topline > span:first-child { color: var(--muted); }
+#runtime-inspector-state { color: var(--cyan); text-align: right; }
+#runtime-inspector-state[data-state="live"],
+#runtime-inspector-state[data-state="verified"],
+#runtime-inspector-state[data-state="allow"] { color: var(--lime); }
+#runtime-inspector-state[data-state="checking"],
+#runtime-inspector-state[data-state="deny"] { color: var(--amber); }
+#runtime-inspector-state[data-state="failed"],
+#runtime-inspector-state[data-state="unavailable"] { color: var(--red); }
+.runtime-inspector > strong { display: block; font-size: .8rem; }
+.runtime-inspector > p { margin: 4px 0 7px; color: #aec2ca; font-size: .68rem; }
+.runtime-inspector > small { display: block; color: var(--muted); font: .58rem/1.45 var(--mono); overflow-wrap: anywhere; }
+
 .runtime-list { margin: 0; padding: 0 24px 18px; }
-.runtime-list div { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px dashed rgba(147,170,181,.13); }
-.runtime-list dt { color: var(--muted); font-size: .75rem; }
-.runtime-list dd { margin: 0; color: var(--text); font: .72rem var(--mono); }
+.runtime-list .runtime-row { display: grid; grid-template-columns: minmax(105px,.72fr) minmax(0,1.28fr); gap: 16px; padding: 9px 0; border-bottom: 1px dashed rgba(147,170,181,.13); }
+.runtime-list dt { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: .75rem; }
+.runtime-list dd { min-width: 0; margin: 0; color: var(--text); text-align: right; }
+.runtime-list dd strong, .runtime-list dd small { display: block; overflow-wrap: anywhere; }
+.runtime-list dd strong { font: .68rem/1.35 var(--mono); }
+.runtime-list dd small { margin-top: 2px; color: var(--muted); font: .58rem/1.35 var(--mono); }
+.runtime-signal { width: 7px; height: 7px; flex: 0 0 7px; background: var(--muted); border-radius: 50%; }
+.runtime-signal[data-state="live"],
+.runtime-signal[data-state="verified"],
+.runtime-signal[data-state="allow"],
+.runtime-signal[data-state="protected"] { background: var(--lime); box-shadow: 0 0 9px rgba(184,235,114,.48); }
+.runtime-signal[data-state="static"],
+.runtime-signal[data-state="snapshot"],
+.runtime-signal[data-state="dry-run"] { background: var(--cyan); box-shadow: 0 0 9px rgba(86,220,234,.44); }
+.runtime-signal[data-state="checking"],
+.runtime-signal[data-state="deny"] { background: var(--amber); box-shadow: 0 0 9px rgba(255,189,102,.42); }
+.runtime-signal[data-state="failed"],
+.runtime-signal[data-state="unavailable"] { background: var(--red); box-shadow: 0 0 9px rgba(255,114,127,.45); }
 .console-caption { min-height: 44px; margin: 0; padding: 13px 24px; color: var(--muted); background: rgba(0,0,0,.18); font-size: .72rem; }
 
 .metrics { padding-bottom: 96px; }
