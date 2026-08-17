@@ -504,7 +504,7 @@ function wireInteractions() {
 
 async function initialize() {
   try {
-    const response = await fetch("./dashboard-data.json?v=runtime-radar-2", { cache: "no-store", credentials: "same-origin" });
+    const response = await fetch("./dashboard-data.json?v=verification-snapshot-3", { cache: "no-store", credentials: "same-origin" });
     if (!response.ok) throw new Error(`dashboard_data_${response.status}`);
     state.data = await response.json();
     renderMetrics(state.data.metrics);

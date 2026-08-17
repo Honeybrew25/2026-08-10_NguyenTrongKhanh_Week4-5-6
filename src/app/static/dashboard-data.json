@@ -1,11 +1,18 @@
 {
   "project": {
     "name": "Project Sentinel",
-    "week": 4,
-    "updated": "2026-08-10",
+    "week": 6,
+    "updated": "2026-08-15",
     "policyVersion": "1.0",
     "policySha256": "0181e74d35ced610750e1ced2e42f0e1733439d3ce830b6cb62cf2cfee7562a8",
     "gatewayOrigin": "http://localhost:8080"
+  },
+  "verification": {
+    "snapshot": "week-6-release",
+    "sourceRevision": "b32cd0d35f405d6bed216be1a6534caf24c5860e",
+    "verifiedAt": "2026-08-15",
+    "evidence": "evidence/week-6/verification.log",
+    "scannerEvidence": "evidence/week-6/verification.log"
   },
   "runtimeRadar": {
     "gateway": {
@@ -31,25 +38,29 @@
       "initialState": "snapshot",
       "source": "security-results/runs/week-4/safe-api-demo.jsonl",
       "verifiedAt": "2026-08-10",
+      "reverifiedAt": "2026-08-15",
+      "sourceWeek": 4,
       "successCount": 2,
       "deniedCount": 1,
       "title": "Execution evidence",
-      "description": "Snapshot lấy từ durable receipt; receipt mới trên giao diện vẫn là dry-run và không mở network."
+      "description": "Durable receipt Week 4 được tái xác minh trong baseline Week 5; receipt mới trên giao diện vẫn là dry-run và không mở network."
     }
   },
   "metrics": [
-    {"label": "Findings", "value": 27, "detail": "Bandit + OWASP ZAP", "tone": "cyan"},
-    {"label": "Grounded groups", "value": 9, "detail": "Provenance đầy đủ", "tone": "violet"},
-    {"label": "Unit tests", "value": 141, "detail": "Không cần Docker", "tone": "lime"},
-    {"label": "Full stack", "value": 166, "detail": "Docker integration", "tone": "amber"}
+    {"label": "Findings", "value": 41, "detail": "Fresh Week 6 · Bandit Low", "tone": "cyan"},
+    {"label": "Grounded groups", "value": 6, "detail": "Deterministic · grounded", "tone": "violet"},
+    {"label": "Unit tests", "value": 200, "detail": "Week 6 release · no warnings", "tone": "lime"},
+    {"label": "Full stack", "value": 228, "detail": "Week 6 · Docker verified", "tone": "amber"}
   ],
   "architecture": [
     {"step": "01", "title": "Scan", "detail": "Bandit + ZAP"},
     {"step": "02", "title": "Normalize", "detail": "Schema 1.0"},
-    {"step": "03", "title": "Analyze", "detail": "27 → 9 groups"},
+    {"step": "03", "title": "Analyze", "detail": "41 → 6 groups"},
     {"step": "04", "title": "Propose", "detail": "Capability IDs"},
-    {"step": "05", "title": "Enforce", "detail": "Gateway policy"},
-    {"step": "06", "title": "Evidence", "detail": "Sanitized receipt"}
+    {"step": "05", "title": "Approve", "detail": "HITL for POST"},
+    {"step": "06", "title": "Enforce", "detail": "Gateway policy"},
+    {"step": "07", "title": "Guard", "detail": "Injection + redaction"},
+    {"step": "08", "title": "Evidence", "detail": "Separate contracts"}
   ],
   "endpoints": [
     {
@@ -113,7 +124,9 @@
     {"index": "01", "title": "Fixed origin", "description": "Chỉ gateway nội bộ được phép nhận request.", "tag": "EGRESS BOUNDARY"},
     {"index": "02", "title": "Exact allowlist", "description": "Method, path và test case đều phải khớp policy.", "tag": "CAPABILITY MODEL"},
     {"index": "03", "title": "Bounded I/O", "description": "Request, response, timeout và RPM có giới hạn cứng.", "tag": "RESOURCE CONTROL"},
-    {"index": "04", "title": "Sanitized evidence", "description": "Chỉ tên header và hash; không lưu giá trị nhạy cảm.", "tag": "DATA MINIMIZATION"}
+    {"index": "04", "title": "Human approval", "description": "POST cần approval còn hạn, đúng fingerprint và chỉ dùng một lần.", "tag": "HITL BOUNDARY"},
+    {"index": "05", "title": "Untrusted response", "description": "Response bị cap, quarantine và redact trước khi persist.", "tag": "PROMPT GUARD"},
+    {"index": "06", "title": "Sanitized evidence", "description": "Chỉ tên header, hash, safe reason và marker; không lưu giá trị nhạy cảm.", "tag": "DATA MINIMIZATION"}
   ],
   "evidence": [
     {"state": "ALLOW", "tone": "allow", "requestId": "ecbe7e3e-d8e5-4ed8-b53f-0f654de78e17", "summary": "GET /api/test/status", "result": "200 · 2,047 ms"},
@@ -121,8 +134,8 @@
     {"state": "DENY", "tone": "deny", "requestId": "b1b76abf-4d1e-4537-a899-f4f774b22c25", "summary": "endpoint_not_allowed", "result": "pre-transport"}
   ],
   "roadmap": [
-    {"week": "W4", "title": "Safe request boundary", "detail": "Gateway · policy · audit", "current": true},
-    {"week": "W5", "title": "AI guardrails", "detail": "Prompt injection · approval · redaction", "current": false},
-    {"week": "W6", "title": "End-to-end evidence", "detail": "Evaluation · metrics · final demo", "current": false}
+    {"week": "W4", "title": "Safe request boundary", "detail": "Gateway · policy · audit", "current": false},
+    {"week": "W5", "title": "AI guardrails", "detail": "Hoàn tất · HITL · redaction · response guard", "current": false},
+    {"week": "W6", "title": "End-to-end evidence", "detail": "Hoàn tất · 10/10 evaluation · final report", "current": true}
   ]
 }

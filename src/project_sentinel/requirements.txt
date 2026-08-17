@@ -1,0 +1,5 @@
+bandit==1.9.4
+google-genai==2.16.0
+httpx==0.28.1
+jsonschema==4.25.1
+pydantic==2.13.4

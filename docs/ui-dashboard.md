@@ -1,13 +1,14 @@
 # Project Sentinel dashboard
 
-> Dashboard trình bày chuỗi Week 3 → Week 4. Bắt đầu tại
-> [documentation hub](README.md) để xem source, artifact và kịch bản demo.
+> Dashboard trình bày chuỗi Week 1 → Week 6 từ snapshot evidence đã xác minh. Bắt đầu tại
+> [documentation hub](../README.md) để xem source, artifact và kịch bản demo.
 
 ## Mục tiêu
 
-Dashboard biến flow Week 1–4 thành một trang có thể trình bày trong buổi demo
-mà không làm rộng trust boundary. Nó không phải API client có credential và
-không thay thế `safe_api_tool` CLI.
+Dashboard biến flow Week 1–6 thành một trang có thể trình bày trong buổi demo
+mà không làm rộng trust boundary. Nó không phải API client có credential,
+không phải observability backend và không thay thế
+`project_sentinel`/`safe_api_tool` CLI approval.
 
 ## Hai chế độ từ cùng một source
 
@@ -33,8 +34,10 @@ Source nằm trong `src/app/static/`:
   `/health` cùng origin với `credentials: omit` và redirect bị cấm.
 - Dữ liệu do người dùng nhập được đưa vào DOM bằng `textContent`, không dùng
   `innerHTML`, `eval`, cookie hoặc browser storage.
-- FastAPI thêm CSP, `nosniff`, `DENY` framing, no-referrer, COOP/CORP và
+- FastAPI thêm CSP, `nosniff`, `DENY` framing, no-referrer, COOP/COEP/CORP và
   Permissions Policy trên `/` cùng `/ui/*`.
+- HTML/JSON/health dùng `Cache-Control: no-store`; hai static asset JS/CSS công
+  khai chỉ cache 5 phút và có version query.
 - Authz chỉ public GET/HEAD cho exact UI surface; method ghi dữ liệu và path
   không canonical vẫn deny-by-default.
 - Backend canary trả lỗi nếu `x-api-key` lọt qua Envoy; integration test chứng
@@ -42,14 +45,19 @@ Source nằm trong `src/app/static/`:
 
 ## Grounding của số liệu
 
-- `27 findings` lấy từ normalized baseline.
-- `9 groups` lấy từ deterministic Week 3 JSONL.
+- `46 findings` lấy từ fresh Bandit/ZAP run ngày 15/08/2026.
+- `12 groups` lấy từ deterministic analysis của chính 46 findings đó.
+- Findings/groups dùng fresh scanner snapshot trong
+  `evidence/week-5/baseline.log`; số test hiện hành dùng snapshot
+  `week-5-guardrails` trong `evidence/week-5/verification.log`. Cả hai ghi rõ
+  base HEAD `b32cd0d` và trạng thái working tree, không giả là clean commit.
 - Capability/test case/policy hash được contract-test với
   `config/safe-api-tool/policy.json` và `data/safe-api-test-cases.json`.
 - Ba event evidence dùng request ID/outcome thật từ
   `security-results/runs/week-4/safe-api-demo.jsonl`, không phải event giả lập.
-- Snapshot hiện tại là 141 non-integration test và 166 full-stack test; phải
-  cập nhật lại dashboard sau full verification nếu suite thay đổi.
+- Snapshot Week 6 chỉ được cập nhật sau full release gate. Nguồn chuẩn là
+  `evidence/week-6/verification.log`, evaluation summary và final report cùng
+  revision; dashboard không tự lấy số từ chat hoặc generated run chưa verify.
 
 ## Radar `policy.runtime`
 
@@ -103,4 +111,4 @@ Kết thúc bằng `docker compose down --remove-orphans` nếu đã chạy Comp
 `.github/workflows/deploy-ui-pages.yml` chỉ có `workflow_dispatch`, chỉ deploy
 từ `main` và nên đặt required reviewer cho environment `github-pages`. Không
 commit, push hoặc chạy workflow này nếu chưa được chủ repository đồng ý rõ
-ràng. Pipeline kiểm thử và artifact Week 3–4 được mô tả tại [CI/CD](ci-cd.md).
+ràng. Pipeline kiểm thử và artifact Week 3–6 được mô tả tại [CI/CD](ci-cd.md).

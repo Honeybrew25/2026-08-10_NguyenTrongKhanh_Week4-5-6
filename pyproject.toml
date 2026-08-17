@@ -14,6 +14,7 @@ dependencies = [
 
 [project.scripts]
 safe-api-tool = "safe_api_tool.__main__:main"
+project-sentinel = "project_sentinel.__main__:main"
 
 [project.optional-dependencies]
 agent = ["google-genai==2.16.0"]

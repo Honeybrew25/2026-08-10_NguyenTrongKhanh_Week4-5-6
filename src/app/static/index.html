@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Bảng điều khiển Project Sentinel Week 4: API Gateway và kiểm thử request an toàn.">
+  <meta name="description" content="Bảng điều khiển Project Sentinel Week 5: baseline bảo mật đã xác minh và kiểm thử request an toàn.">
   <meta name="theme-color" content="#071019">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; connect-src 'self'; font-src 'self'; form-action 'none'; frame-src 'none'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self'">
-  <title>Project Sentinel · Week 4</title>
+  <title>Project Sentinel · Week 5</title>
   <link rel="stylesheet" href="./styles.css?v=runtime-radar-2">
-  <script src="./app.js?v=runtime-radar-2" defer></script>
+  <script src="./app.js?v=verification-snapshot-3" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main-content">Bỏ qua đến nội dung chính</a>
@@ -44,7 +44,7 @@
   <main id="main-content">
     <section class="hero section-shell" id="top" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <p class="eyebrow"><span>WEEK 04</span> · API GATEWAY + SAFE REQUESTS</p>
+        <p class="eyebrow"><span>WEEK 05</span> · VERIFIED BASELINE + SAFE REQUESTS</p>
         <h1 id="hero-title">
           <span>Kiểm thử API an toàn</span>
           <em>Có ranh giới. Có bằng chứng.</em>
@@ -91,7 +91,7 @@
           </div>
           <strong id="runtime-inspector-title">Policy integrity</strong>
           <p id="runtime-inspector-description">Policy SHA, capability và test-case contract đã được đối chiếu với source.</p>
-          <small id="runtime-inspector-detail">2 capabilities · 4 test cases</small>
+          <small id="runtime-inspector-detail">3 capabilities · 4 test cases</small>
         </div>
         <dl class="runtime-list">
           <div class="runtime-row">
@@ -100,7 +100,7 @@
           </div>
           <div class="runtime-row">
             <dt><span class="runtime-signal" id="policy-signal" data-state="verified" aria-hidden="true"></span>Policy</dt>
-            <dd><strong id="policy-runtime-state">VERIFIED · v1.0</strong><small id="policy-runtime-detail">2 capabilities · 4 test cases</small></dd>
+            <dd><strong id="policy-runtime-state">VERIFIED · v1.0</strong><small id="policy-runtime-detail">3 capabilities · 4 test cases</small></dd>
           </div>
           <div class="runtime-row">
             <dt><span class="runtime-signal" id="evidence-signal" data-state="snapshot" aria-hidden="true"></span>Evidence</dt>
@@ -119,10 +119,10 @@
 
     <section class="metrics section-shell" aria-label="Chỉ số dự án">
       <div class="metric-grid" id="metric-grid">
-        <article class="metric-card tone-cyan"><span>Findings</span><strong>27</strong><small>Bandit + OWASP ZAP</small></article>
-        <article class="metric-card tone-violet"><span>Grounded groups</span><strong>9</strong><small>Provenance đầy đủ</small></article>
-        <article class="metric-card tone-lime"><span>Unit tests</span><strong>141</strong><small>Không cần Docker</small></article>
-        <article class="metric-card tone-amber"><span>Full stack</span><strong>166</strong><small>Docker integration</small></article>
+        <article class="metric-card tone-cyan"><span>Findings</span><strong>41</strong><small>Fresh Week 6 · Bandit Low</small></article>
+        <article class="metric-card tone-violet"><span>Grounded groups</span><strong>6</strong><small>Deterministic · grounded</small></article>
+        <article class="metric-card tone-lime"><span>Unit tests</span><strong>200</strong><small>Week 6 release · no warnings</small></article>
+        <article class="metric-card tone-amber"><span>Full stack</span><strong>228</strong><small>Week 6 · Docker verified</small></article>
       </div>
     </section>
 
@@ -137,7 +137,7 @@
       <ol class="architecture-flow" id="architecture-flow">
         <li><span>01</span><strong>Scan</strong><small>Bandit + ZAP</small></li>
         <li><span>02</span><strong>Normalize</strong><small>Schema 1.0</small></li>
-        <li><span>03</span><strong>Analyze</strong><small>27 → 9 groups</small></li>
+        <li><span>03</span><strong>Analyze</strong><small>41 → 6 groups</small></li>
         <li><span>04</span><strong>Propose</strong><small>Capability IDs</small></li>
         <li><span>05</span><strong>Enforce</strong><small>Gateway policy</small></li>
         <li><span>06</span><strong>Evidence</strong><small>Sanitized receipt</small></li>
@@ -265,7 +265,7 @@
         </div>
 
         <aside class="roadmap panel" aria-labelledby="roadmap-title">
-          <div class="panel-header"><strong id="roadmap-title">Đường đến Week 6</strong><span class="panel-label">ROADMAP</span></div>
+          <div class="panel-header"><strong id="roadmap-title">Project Sentinel Week 6</strong><span class="panel-label">ROADMAP</span></div>
           <ol id="roadmap-list">
             <li class="is-current"><span>W4</span><div><strong>Safe request boundary</strong><small>Gateway · policy · audit</small></div></li>
             <li><span>W5</span><div><strong>AI guardrails</strong><small>Prompt injection · approval · redaction</small></div></li>

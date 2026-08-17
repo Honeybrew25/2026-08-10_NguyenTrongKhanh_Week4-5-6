@@ -1,32 +1,30 @@
-# Project Sentinel — Week 5
-
-Branch `week-5` tập trung làm cho việc kiểm thử API an toàn hơn trước khi ghép
-thành sản phẩm hoàn chỉnh ở Week 6.
+# Project Sentinel
 
 Hệ thống có thể:
 
-- che email, số điện thoại, mật khẩu và mã truy cập khỏi AI và file log;
-- xem nội dung trả về từ website là dữ liệu không đáng tin cậy;
-- cách ly nội dung cố hướng dẫn AI làm sai;
-- yêu cầu người dùng chọn `Approve` hoặc `Reject` trước khi gửi POST;
-- chỉ cho phép đúng đường dẫn và dữ liệu kiểm thử đã định nghĩa sẵn;
-- chặn yêu cầu quản trị hoặc yêu cầu nằm ngoài phạm vi.
+- nhận kết quả từ Bandit và ZAP;
+- gộp các cảnh báo giống nhau;
+- dùng AI để giải thích và đề xuất cách kiểm tra;
+- hỏi người dùng trước khi gửi yêu cầu có rủi ro;
+- chặn đường dẫn ngoài phạm vi và che thông tin nhạy cảm;
+- lưu báo cáo để kiểm tra lại sau này.
 
-Giao diện web chỉ dùng để trình bày. Việc phê duyệt và gửi yêu cầu được thực
-hiện bằng dòng lệnh.
+Giao diện web chỉ dùng để trình bày. Việc phê duyệt và gửi yêu cầu kiểm thử
+được thực hiện bằng dòng lệnh.
 
-## Chọn đúng branch
+## Kết quả hiện tại
 
-```bash
-git switch week-5
-```
+- 41 cảnh báo được gộp thành 6 nhóm.
+- Bộ đánh giá đạt 10/10 trường hợp.
+- 200 bài kiểm thử thông thường và 228 bài kiểm thử đầy đủ đã đạt.
 
-Branch này không có lệnh `project_sentinel` hoặc bộ đánh giá Week 6. Các phần
-đó nằm trong branch `week-6`.
+Xem số liệu chi tiết tại
+[`evidence/week-6/verification.log`](evidence/week-6/verification.log).
 
 ## Cài đặt lần đầu
 
-Cần có Python 3.11+, Git và Docker Compose.
+Cần có Python 3.11+, Git và Docker Compose. Trên Windows có thể dùng Docker
+Desktop; trên Linux dùng Docker Engine cùng Compose plugin.
 
 Trên PowerShell/Windows:
 
@@ -48,10 +46,7 @@ python -m pip install --requirement security/requirements.txt
 cp .env.example .env
 ```
 
-Mở `.env` và thay các giá trị bắt đầu bằng `replace-with-`.
-`SAFE_API_TOOL_API_KEY` cần dài ít nhất 32 ký tự. Không đưa `.env` lên Git.
-
-Kiểm tra cấu hình:
+Xác nhận Docker đã sẵn sàng:
 
 ```bash
 docker version
@@ -59,64 +54,97 @@ docker compose version
 docker compose config --quiet
 ```
 
-## Chạy demo Week 5
+Docker daemon phải đang chạy và tài khoản hiện tại phải gọi được `docker`.
+Nếu dùng WSL2 với Docker Desktop, cần bật WSL integration cho bản Linux đang
+dùng.
 
-Demo khô chỉ kiểm tra policy, không gửi yêu cầu mạng:
+Mở `.env` và thay các giá trị bắt đầu bằng `replace-with-`. Giá trị
+`SAFE_API_TOOL_API_KEY` cần dài ít nhất 32 ký tự. Không đưa `.env` lên Git.
+
+Kiểm tra môi trường:
 
 ```bash
-python -m safe_api_tool demo
+python -m project_sentinel preflight
 ```
 
-Demo đầy đủ:
+## Chạy demo
+
+### Demo nhanh, không gửi yêu cầu mạng
+
+```bash
+python -m project_sentinel demo --provider deterministic
+```
+
+Lệnh này quét, phân tích và tạo báo cáo trong
+`security-results/runs/week-6/`. Chế độ `deterministic` cho kết quả ổn định và
+không cần dịch vụ AI bên ngoài.
+
+### Demo đầy đủ có phê duyệt
 
 ```bash
 docker compose down --remove-orphans
 docker compose up --build --detach --wait --wait-timeout 180
-python -m safe_api_tool demo --execute
+python -m project_sentinel preflight --execute
+python -m project_sentinel demo --provider deterministic --execute
 ```
 
-Khi chương trình hỏi, nhập theo thứ tự:
+Khi được hỏi:
 
-1. `Reject` để xác nhận không có POST nào được gửi.
-2. `Approve` để gửi đúng một POST an toàn qua Gateway.
+1. Nhập `Reject` ở lần đầu để chứng minh không có yêu cầu nào được gửi.
+2. Nhập `Approve` ở lần sau để gửi đúng một yêu cầu kiểm thử an toàn.
 
-Kết quả được ghi trong `security-results/runs/week-5/`. File log chỉ giữ dữ
-liệu đã che và không lưu API key.
+### Chạy bộ đánh giá
 
-## Kiểm thử
+```bash
+python -m project_sentinel evaluate --provider deterministic
+```
 
-Kiểm thử nhanh của riêng snapshot branch này:
+Kết quả đúng sẽ có `passed: 10`, `failed: 0` và `thresholds_met: true`.
+
+### Mở giao diện
+
+Khi Docker đang chạy, mở <http://localhost:8080/ui/>.
+
+Giao diện không lưu API key và không tự gửi yêu cầu kiểm thử.
+
+## Kiểm thử và dọn hệ thống
+
+Kiểm thử nhanh:
 
 ```bash
 python -m pytest -q -m "not integration"
 ```
 
-Kết quả kiểm tra khi tách branch: `177 passed, 28 deselected`.
-
-Kiểm thử đầy đủ với Docker:
+Kiểm thử đầy đủ:
 
 ```bash
 python scripts/run_all_tests.py
 ```
 
-Dừng và dọn hệ thống:
+Dừng và dọn Docker:
 
 ```bash
 docker compose down --remove-orphans
 docker compose ps --all
 ```
 
-## Tài liệu
+## Lỗi thường gặp
 
-- [Tóm tắt Week 5](docs/week5-summary.md)
-- [Thiết kế bảo vệ Week 5](docs/week5.md)
-- [Kết quả kiểm tra nền](docs/security-baseline-triage.md)
-- [Công cụ kiểm thử API](docs/safe-api-testing-tool.md)
-- [Báo cáo Week 5](reports/week-5.md)
-- [Bằng chứng kiểm thử](evidence/week-5/verification.log)
+- `gateway_preflight_timeout`: chạy `docker compose ps`, sau đó xem log bằng
+  `docker compose logs --no-color --tail 200`.
+- Báo lỗi API key: kiểm tra lại `SAFE_API_TOOL_API_KEY` trong `.env`.
+- `FileExistsError`: lần chạy đó đã tồn tại; hãy dùng tên mới hoặc bỏ
+  `--run-id`.
+- Bandit trả mã `1`: thường là đã tìm thấy cảnh báo nhưng file kết quả vẫn được
+  tạo bình thường.
 
-Muốn chạy sản phẩm hoàn chỉnh, chuyển sang branch `week-6`:
+## Tài liệu thêm
 
-```bash
-git switch week-6
-```
+- [Cách hệ thống hoạt động](docs/project-sentinel-architecture.md)
+- [Bộ đánh giá 10 trường hợp](docs/evaluation.md)
+- [Kịch bản demo 10–15 phút](docs/demo-script.md)
+- [Checklist tiến độ](docs/todo-checklist.md)
+- [Các bước còn cần xác nhận](docs/release-acceptance.md)
+
+Dashboard công khai:
+<https://honeybrew25.github.io/2026-08-10_NguyenTrongKhanh_Week4-5-6/>.

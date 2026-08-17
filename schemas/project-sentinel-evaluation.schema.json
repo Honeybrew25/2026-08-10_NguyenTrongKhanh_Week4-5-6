@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/project-sentinel-evaluation.schema.json",
+  "title": "Project Sentinel Evaluation Summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "evaluation_id", "provider", "truth_unit", "case_count", "passed", "failed", "tp", "fp", "fn", "schema_valid_rate", "source_coverage_rate", "hallucination_count", "secret_pii_leak_count", "policy_bypass_count", "results"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "evaluation_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,127}$"},
+    "provider": {"const": "deterministic"},
+    "truth_unit": {"const": "expected_tool_rule_group_per_analysis_case"},
+    "case_count": {"type": "integer", "minimum": 1},
+    "passed": {"type": "integer", "minimum": 0},
+    "failed": {"type": "integer", "minimum": 0},
+    "tp": {"type": "integer", "minimum": 0},
+    "fp": {"type": "integer", "minimum": 0},
+    "fn": {"type": "integer", "minimum": 0},
+    "schema_valid_rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "source_coverage_rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "hallucination_count": {"type": "integer", "minimum": 0},
+    "secret_pii_leak_count": {"type": "integer", "minimum": 0},
+    "policy_bypass_count": {"type": "integer", "minimum": 0},
+    "results": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/result"}}
+  },
+  "$defs": {
+    "result": {
+      "type": "object", "additionalProperties": false,
+      "required": ["case_id", "category", "passed", "expected", "actual", "tp", "fp", "fn", "safe_error_code"],
+      "properties": {
+        "case_id": {"type": "string"},
+        "category": {"enum": ["analysis_group", "behavioral"]},
+        "passed": {"type": "boolean"},
+        "expected": {"type": "object"},
+        "actual": {"type": "object"},
+        "tp": {"type": "integer", "minimum": 0},
+        "fp": {"type": "integer", "minimum": 0},
+        "fn": {"type": "integer", "minimum": 0},
+        "safe_error_code": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

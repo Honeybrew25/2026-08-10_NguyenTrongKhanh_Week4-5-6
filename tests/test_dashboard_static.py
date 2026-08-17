@@ -87,6 +87,53 @@ def test_dashboard_evidence_is_derived_from_durable_receipts() -> None:
     assert (ROOT / radar["evidence"]["source"]).is_file()
 
 
+def test_dashboard_metrics_match_one_durable_verification_snapshot() -> None:
+    data = load_dashboard_data()
+    verification = data["verification"]
+    evidence_path = ROOT / verification["evidence"]
+    evidence = evidence_path.read_text(encoding="utf-8")
+    scanner_evidence = (ROOT / verification["scannerEvidence"]).read_text(
+        encoding="utf-8"
+    )
+    metrics = {item["label"]: item["value"] for item in data["metrics"]}
+
+    revision = re.search(r"^Base HEAD: ([0-9a-f]{40})$", evidence, re.MULTILINE)
+    verified_at = re.search(
+        r"^Date: (\d{4}-\d{2}-\d{2}) .+ \(Asia/Bangkok\)$",
+        evidence,
+        re.MULTILINE,
+    )
+    unit_tests = re.search(
+        r"^  (\d+) passed, \d+ deselected .+; no warnings\.$",
+        evidence,
+        re.MULTILINE,
+    )
+    full_stack = re.search(
+        r"^\[PASS\] Full suite: (\d+) passed ", evidence, re.MULTILINE
+    )
+
+    assert revision is not None
+    assert verified_at is not None
+    assert unit_tests is not None
+    assert full_stack is not None
+    assert verification["snapshot"] == "week-6-release"
+    assert verification["sourceRevision"] == revision.group(1)
+    assert verification["verifiedAt"] == verified_at.group(1)
+    assert data["project"]["week"] == 6
+    assert data["project"]["updated"] == verified_at.group(1)
+    assert [item["week"] for item in data["roadmap"] if item["current"]] == ["W6"]
+    assert metrics == {
+        "Findings": 41,
+        "Grounded groups": 6,
+        "Unit tests": int(unit_tests.group(1)),
+        "Full stack": int(full_stack.group(1)),
+    }
+    assert "Fresh Bandit Low JSON normalized: 41 findings" in scanner_evidence
+    assert "Deterministic analysis: 41 findings -> 6 grounded records" in scanner_evidence
+    assert data["runtimeRadar"]["evidence"]["sourceWeek"] == 4
+    assert data["runtimeRadar"]["evidence"]["reverifiedAt"] == verified_at.group(1)
+
+
 def test_dashboard_is_self_contained_and_manual_deploy_is_gated() -> None:
     data = load_dashboard_data()
     index = (STATIC / "index.html").read_text(encoding="utf-8")
@@ -97,7 +144,7 @@ def test_dashboard_is_self_contained_and_manual_deploy_is_gated() -> None:
     ).read_text(encoding="utf-8")
 
     assert 'href="./styles.css?v=runtime-radar-2"' in index
-    assert 'src="./app.js?v=runtime-radar-2"' in index
+    assert 'src="./app.js?v=verification-snapshot-3"' in index
     assert "Content-Security-Policy" in index
     assert 'role="tabpanel"' in index
     assert 'aria-controls="proposal-output"' in index
@@ -128,7 +175,7 @@ def test_dashboard_is_self_contained_and_manual_deploy_is_gated() -> None:
     assert "initializeRuntimeRadar" in script
     assert "selectRuntimeLayer" in script
     assert 'document.querySelectorAll(".radar-hotspot")' in script
-    assert 'dashboard-data.json?v=runtime-radar-2' in script
+    assert 'dashboard-data.json?v=verification-snapshot-3' in script
     assert 'setRuntimeLayer("gateway", "live"' in script
     assert 'setRuntimeLayer("gateway", "static"' in script
     assert '"CONTROLLED DENY"' in script

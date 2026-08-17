@@ -27,6 +27,7 @@ DEMO_AUDIT = (
 DEMO_APPROVALS = DEMO_DIRECTORY / "approval-decisions-ci.jsonl"
 DEMO_GUARDED_RESPONSES = DEMO_DIRECTORY / "guarded-responses-ci.jsonl"
 DEMO_EVENTS = DEMO_DIRECTORY / "run-events-ci.jsonl"
+WEEK6_DIRECTORY = ROOT / "security-results" / "runs" / "week-6"
 DEMO_CONTRACTS = (
     (DEMO_AUDIT, ROOT / "schemas" / "safe-api-log.schema.json"),
     (DEMO_APPROVALS, ROOT / "schemas" / "safe-api-approval.schema.json"),
@@ -211,7 +212,32 @@ def main() -> int:
             verify_demo_artifacts()
         if demo.returncode:
             return demo.returncode
-        return demo.returncode
+
+        week6_demo = run(
+            [
+                sys.executable,
+                "-m",
+                "project_sentinel",
+                "demo",
+                "--scanner",
+                str(ROOT / "security-results" / "bandit-baseline.json"),
+                "--provider",
+                "deterministic",
+                "--execute",
+                "--output-root",
+                str(WEEK6_DIRECTORY),
+            ],
+            environment=environment,
+            check=False,
+            input_text="Reject\nApprove\n",
+        )
+        if week6_demo.returncode:
+            run(
+                [*COMPOSE, "logs", "--no-color", "--tail", "200"],
+                environment=environment,
+                check=False,
+            )
+        return week6_demo.returncode
     finally:
         run(
             [*COMPOSE, "down", "--remove-orphans"],

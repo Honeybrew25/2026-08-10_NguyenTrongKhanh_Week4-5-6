@@ -1,0 +1,72 @@
+Project Sentinel - Week 6 release verification
+Date: 2026-08-15 17:06 +07:00 (Asia/Bangkok)
+Base HEAD: b32cd0d35f405d6bed216be1a6534caf24c5860e
+Working tree: DIRTY with the understood Week 5-6 implementation and documentation changes; this evidence does not claim a clean or committed release revision.
+
+Environment
+  Windows / PowerShell 7
+  Python release environment: .venv
+  Docker Desktop with Docker Compose v2
+  Policy SHA-256: 0181e74d35ced610750e1ced2e42f0e1733439d3ce830b6cb62cf2cfee7562a8
+
+[PASS] Non-integration suite
+Command: python -m pytest -q -m "not integration"
+  200 passed, 28 deselected in 1.39s; no warnings.
+
+[PASS] Full Docker suite and live Week 5-6 controls
+Command: python scripts/run_all_tests.py
+[PASS] Full suite: 228 passed in 125.76s; no warnings.
+  Keycloak, API, authz-service and Envoy reached healthy/running state.
+  Week 5 receipt/approval/guard/event schemas and secret/PII sentinel: PASS.
+  Week 6 Reject run: rejected; requests_sent=0; rejections=1.
+  Week 6 Approve run: completed; requests_sent=1; approvals=1.
+  Week 6 prompt-injection run: completed; requests_sent=1; injection_flags=1; raw hostile instruction was not persisted.
+  Week 6 admin negative run: blocked; requests_sent=0.
+  Demo summary: expectations_met=true; one proposal per run.
+  docker compose down --remove-orphans completed in finally.
+  docker compose ps --all returned no project containers.
+
+[PASS] Fresh Bandit release input and High gate
+Command: python scripts/run_security_scan.py --output security-results/runs/week-6/release-inputs/bandit-full.json --severity-level low
+  Data-scan exit=1 is expected because reportable findings exist; JSON is valid.
+Fresh Bandit Low JSON normalized: 41 findings
+  Input SHA-256: 142d80ecae44d775e4c0c70bbab27f1e9126fd5c0ad0b4b484f9fd1dc5b9fc44
+Command: python scripts/run_security_scan.py --output security-results/runs/week-6/release-inputs/bandit-high.json --severity-level high
+  High release-gate exit=0; 0 High findings.
+  Scope remains src/ and scripts/; this is not dependency/container/config scanning.
+
+[PASS] Deterministic end-to-end dry run
+Command: python -m project_sentinel run <fresh-bandit-low-json> --provider deterministic --run-id release-20260815 --output-root security-results/runs/week-6
+  status=dry_run; raw=41; normalized=41; analysis_groups=6; requests_sent=0; errors=0.
+Deterministic analysis: 41 findings -> 6 grounded records
+  Final report SHA-256: c137b893ebc812224c230f3a118dbb94cddfc2bb3c56b628b282e974b7aecbc1
+  Scanner input retained with provenance/hash; workspace and manifest were not overwritten.
+
+[PASS] Curated evaluation
+Command: python -m project_sentinel evaluate --provider deterministic --evaluation-id eval-release-20260815 --output-root security-results/runs/week-6
+  10/10 passed; TP=5; FP=0; FN=0.
+  schema-valid=100%; source coverage=100%.
+  persisted hallucination=0; secret/PII leak=0; policy bypass=0.
+  Evaluation summary SHA-256: aa7863e2e45c37359e748b4bb9552a180027091029480200575a35a309f92f38
+  Truth unit: expected (tool, rule_id) group per analysis case; behavioral cases are not included in the FP/FN denominator.
+
+[PASS] Artifact verifier
+Command: python scripts/verify_week6_artifacts.py --run-directory <release-run> --evaluation-directory <evaluation-run> --verification-log evidence/week-6/artifact-verification.json
+  Final report schema, pipeline event schema/run ID, manifest hashes, CI dry-run network count, evaluation thresholds, secret/PII sentinel and git diff --check: PASS.
+  Durable machine-readable result: evidence/week-6/artifact-verification.json
+
+[PASS] Existing functional gates
+  SQL Injection search returned SQL Injection at rank 1.
+  XSS search returned Cross-Site Scripting (XSS) at rank 1.
+  Existing normalized baseline: 27 findings -> 9 deterministic grounded JSONL records.
+  safe_api_tool dry-run: status GET allowed, bounded POST allowed, admin denied.
+  project_sentinel preflight: policy/fixture, environment contract, Docker daemon and Compose config PASS.
+  docker compose config --quiet: PASS.
+  sentinel-runner image build: PASS; non-root container dry-run: PASS.
+  git diff --check: PASS (line-ending notices only, no whitespace error).
+
+Known limitations / honest release notes
+  ZAP is passive and unauthenticated from /health; Safe API receipts are not called DAST.
+  Keycloak start-dev, local HTTP and process-local rate limiters are lab controls, not production deployment.
+  PII and injection regexes are bounded to documented fixture classes and may have false positives/negatives outside the dataset.
+  Base HEAD predates the current working-tree implementation. REL-11 and the final clean-release condition remain open until the owner reviews, stages and commits all delivery files, then reruns/records git rev-parse HEAD and git status --porcelain.

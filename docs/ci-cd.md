@@ -2,26 +2,38 @@
 
 Workflow `.github/workflows/security-scan.yml` thực hiện:
 
-1. Chạy unit test và Bandit trên pull request và nhánh `main`.
+1. Chạy unit test, Bandit full-severity/Low làm dữ liệu và Bandit High làm
+   release gate trên pull request và nhánh `main`.
 2. Khởi động Keycloak, Envoy, authz-service và FastAPI bằng Docker Compose để
    chạy integration test thật cho JWT IAM và Safe API Tool.
-3. Chạy OWASP ZAP Baseline qua Envoy và upload JSON/HTML report.
-4. Chạy Security Analysis Agent deterministic từ normalized findings và kho
-   tri thức, rồi upload artifact `week3-security-analysis-jsonl` trong 14 ngày.
-5. Chạy demo Week 4 qua Envoy bằng API key tạm, kiểm tra negative control và
-   upload receipt đã sanitize dưới artifact `week4-safe-api-demo-receipts`.
-6. Khi push hoặc merge thành công vào `main`, build và publish hai image lên
-   GitHub Container Registry (GHCR):
+3. Chạy OWASP ZAP passive baseline qua Envoy, seed từ public `/health`, rồi
+   upload JSON/HTML report. Job không dùng Agent token và không phải
+   authenticated DAST cho protected API. Quyết định từng alert nằm tại
+   [fresh ZAP baseline triage](security-baseline-triage.md).
+4. Job `fresh-analysis` tải chính Bandit/ZAP artifact của cùng workflow run,
+   normalize chung rồi chạy Security Analysis Agent deterministic. Kết quả
+   normalized, JSONL và SHA-256 manifest được upload trong artifact
+   `fresh-security-analysis` với retention 14 ngày.
+5. Chạy demo Week 5 qua Envoy bằng API key tạm, cấp hai quyết định HITL kiểm
+   soát (`Reject`, rồi `Approve`), kiểm tra negative control và upload bốn JSONL
+   đã sanitize dưới artifact `week5-safe-api-guardrail-artifacts`.
+6. Job `week6-e2e` tải lại chính Bandit/ZAP của workflow, chạy
+   `project_sentinel` deterministic dry-run và evaluation 10 case. Script gate
+   kiểm final/event schema, manifest hash, run ID, network count, release
+   threshold và secret/PII sentinel; artifact `week6-release-artifacts` giữ
+   final report, evaluation summary và verification log trong 14 ngày.
+7. Khi push hoặc merge thành công vào `main`, build và publish ba image lên
+   GitHub Container Registry (GHCR), nhưng chỉ sau khi Week 6 E2E Pass:
    - `ghcr.io/honeybrew25/2026-08-10_nguyentrongkhanh_week4-5-6-staging-api`
    - `ghcr.io/honeybrew25/2026-08-10_nguyentrongkhanh_week4-5-6-authz-service`
+   - `ghcr.io/honeybrew25/2026-08-10_nguyentrongkhanh_week4-5-6-sentinel-runner`
 
 Workflow không cần secret do người dùng cung cấp: Keycloak secret và
 `SAFE_API_TOOL_API_KEY` đều được sinh ngẫu nhiên và chỉ tồn tại trong job.
 DAST đăng ký các giá trị với GitHub masking; integration runner giữ key trong
 environment của subprocess và không in ra log. Workflow không gọi model bên
-ngoài. File sinh tạm
-`security-results/security-analysis-ci.jsonl` được `.gitignore` loại khỏi
-source control.
+ngoài. Artefact CI nằm trên runner/GitHub artifact, không được dùng để ghi đè
+baseline lịch sử đã commit.
 
 Đây là continuous delivery: workflow tạo image có thể triển khai nhưng không
 tự ý kết nối hoặc deploy lên máy chủ chưa được chỉ định.
@@ -83,13 +95,17 @@ kiện `push` vào `main`.
 ## Theo dõi và tải kết quả
 
 - Mở tab **Actions** để theo dõi từng job.
-- Trong run summary, tải artifact `bandit-json` để xem JSON SAST.
+- Trong run summary, tải artifact `bandit-json` để xem bản full-severity, bản
+  High gate và hash của hai JSON SAST.
 - Tải artifact `zap-baseline-report` để xem JSON/HTML DAST.
-- Tải artifact `week3-security-analysis-jsonl` để xem báo cáo đã nhóm và giải
-  thích tự động của Security Analysis Agent.
-- Tải artifact `week4-safe-api-demo-receipts` để xem proposal, policy hash,
-  request ID, status, latency và bounded response excerpt của demo Gateway.
-- Mở trang repository **Packages** để xem hai image và các tag.
+- Tải artifact `fresh-security-analysis` để xem normalized JSON, báo cáo JSONL
+  đã nhóm/giải thích từ chính scanner output của run đó và SHA-256 manifest.
+- Tải artifact `week5-safe-api-guardrail-artifacts` để xem receipt v1,
+  approval decision, guarded response và run event của demo Gateway. Không có
+  raw HTTP response, credential hoặc PII trong artifact này.
+- Tải `week6-release-artifacts` để xem final report/manifest/event, evaluation
+  summary/manifest và verification log của cùng workflow run.
+- Mở trang repository **Packages** để xem ba image và các tag.
 - Tag `sha-<commit>` cố định theo commit; `latest` trỏ tới lần publish mới nhất.
 
 Kéo image về máy:
@@ -97,6 +113,7 @@ Kéo image về máy:
 ```powershell
 docker pull ghcr.io/honeybrew25/2026-08-10_nguyentrongkhanh_week4-5-6-staging-api:latest
 docker pull ghcr.io/honeybrew25/2026-08-10_nguyentrongkhanh_week4-5-6-authz-service:latest
+docker pull ghcr.io/honeybrew25/2026-08-10_nguyentrongkhanh_week4-5-6-sentinel-runner:latest
 ```
 
 Nếu package đang để private, đăng nhập GHCR bằng personal access token có quyền
@@ -121,16 +138,31 @@ python -m pip install --requirement requirements-dev.txt
 python -m pip install --requirement security/requirements.txt
 python -m pytest -q -m "not integration"
 python scripts/run_security_scan.py `
-    --output security-results/bandit-local.json `
+    --output "$env:TEMP\bandit-full.json" `
+    --severity-level low
+# Exit 1 ở lệnh trên là bình thường khi JSON có finding.
+python scripts/run_security_scan.py `
+    --output "$env:TEMP\bandit-high.json" `
     --severity-level high
+python -m security_pipeline normalize `
+    "$env:TEMP\bandit-full.json" `
+    security-results/zap-baseline-local.json `
+    --output "$env:TEMP\normalized-ci-check.json"
 python -m security_pipeline analyze `
-    security-results/normalized-findings.json `
+    "$env:TEMP\normalized-ci-check.json" `
     --knowledge-base data/vulnerabilities.json `
     --provider deterministic `
-    --output security-results/security-analysis-ci.jsonl
+    --output "$env:TEMP\security-analysis-ci-check.jsonl"
+python -m project_sentinel run `
+    "$env:TEMP\bandit-full.json" `
+    security-results/zap-baseline-local.json `
+    --provider deterministic
+python -m project_sentinel evaluate --provider deterministic
+docker compose config --quiet
 python scripts/run_all_tests.py
 ```
 
 Lệnh cuối tự tạo secret kiểm thử tạm trong bộ nhớ, khởi động stack, lấy token
-thật từ Keycloak, chạy toàn bộ test, thực thi demo Safe API Tool, ghi receipt
+thật từ Keycloak, chạy toàn bộ test, thực thi demo Safe API Tool, ghi receipt,
+approval, guarded response và event
 đã sanitize và dọn container khi kết thúc.
