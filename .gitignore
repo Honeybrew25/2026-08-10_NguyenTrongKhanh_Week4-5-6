@@ -13,4 +13,12 @@ security-results/*-ci.html
 security-results/*-ci.jsonl
 security-results/runs/week-4/*
 !security-results/runs/week-4/safe-api-demo.jsonl
+/security-results/runs/week-5/*
+!/security-results/runs/week-5/golden/
+!/security-results/runs/week-5/golden/**
+/security-results/runs/week-6/*
+!/security-results/runs/week-6/golden/
+!/security-results/runs/week-6/golden/**
 /docs/project-handoff.md
+/docs/todo
+/docs/todo-checklist.md

@@ -1,0 +1,142 @@
+Project Sentinel - Week 5 guardrail verification
+================================================
+
+Date: 2026-08-15 14:15:51 +07:00 (Asia/Bangkok)
+Base HEAD: b32cd0d35f405d6bed216be1a6534caf24c5860e
+Worktree: Week 5 implementation under review; not claimed as a clean commit.
+Project interpreter: .venv Python 3.11.9
+Docker server: 29.6.2
+Canonical Safe API policy SHA-256:
+  0181e74d35ced610750e1ced2e42f0e1733439d3ce830b6cb62cf2cfee7562a8
+
+Contract, redaction and guardrail checks
+----------------------------------------
+
+[PASS] Shared sanitizer handles text and nested mappings/lists without
+mutating the input. A second pass produces the same value and zero new
+redactions.
+
+[PASS] Stable marker and counter coverage:
+  [REDACTED_EMAIL], [REDACTED_PHONE], [REDACTED_TOKEN],
+  [REDACTED_API_KEY], [REDACTED_PASSWORD], [REDACTED_PII].
+
+[PASS] Provider captures and final analysis records contain markers rather
+than the email, phone, Bearer token, API key, password or known PII fixtures.
+CLI success/error paths, receipts and contract writers apply the same
+sanitizer.
+
+[PASS] Two hostile HTTP response cases are detected by observable behavior:
+  1. instruction override plus secret exfiltration;
+  2. /api/admin plus an out-of-scope system command.
+Both are replaced by [QUARANTINED_UNTRUSTED_HTTP_RESPONSE], produce no
+follow-up request, and persist only safe reasons/hash/counters. A benign
+control is not flagged and is still sanitized.
+
+[PASS] Strict JSON Schema contracts validate RiskDecision,
+ApprovalDecision, GuardedResponse and RunEvent. Historical Week 4
+ExecutionReceipt v1 records remain valid against the unchanged receipt
+schema.
+
+[PASS] State and approval controls:
+  - GET without a body reaches ready_to_execute without approval.
+  - Every POST or materialized curated payload requires approval.
+  - Missing, Reject, invalid input, EOF and timeout fail closed.
+  - Reject POST makes 0 transport calls.
+  - Approve POST makes exactly 1 call to the trusted Gateway origin.
+  - Expired, replayed, used, run/proposal/policy/origin/fingerprint mismatch,
+    reused run ID, payload TOCTOU and policy TOCTOU are blocked before network.
+  - Approval cannot open admin or an unlisted capability.
+  - Runtime origin accepts host=http://localhost:8080 or
+    compose=http://envoy:8080 only; direct backend/arbitrary origins fail.
+
+[PASS] Guard configuration that is not callable fails at client preflight.
+A runtime response-guard failure after the first response produces no raw
+excerpt or GuardedResponse artifact, creates a safe failed event, does not
+make a follow-up call, and raises the typed ResponseGuardError.
+
+Command:
+  .\.venv\Scripts\python.exe -m pytest -q -m "not integration"
+Result:
+  183 passed, 28 deselected in 1.13s; no warnings.
+
+Full Docker integration and interactive demo
+--------------------------------------------
+
+[PASS] Keycloak, staging API, authz-service and Envoy became healthy.
+[PASS] Full suite: 211 passed in 126.02s; no warnings.
+[PASS] Exact GET /api/test/prompt-injection fixture traverses Envoy/ext_authz,
+contains no real secret and is quarantined by SafeApiClient.
+[PASS] All four curated POST profiles return their expected status and leave
+GET /api/test/status unchanged with stateless=true.
+[PASS] Backend is not exposed on a host port and API key is consumed before
+the application boundary.
+
+[PASS] Live demo used two separate proposal runs and controlled stdin:
+  - gateway-status: success, HTTP 200;
+  - reject-control: policy_denied/approval_rejected, no response/network fact;
+  - approve-control: success, HTTP 200;
+  - negative-control: policy_denied/endpoint_not_allowed.
+
+Command:
+  .\.venv\Scripts\python.exe scripts/run_all_tests.py
+Controlled test input:
+  Reject, then Approve
+
+[PASS] Compose cleanup completed; docker compose ps returned no project
+services after the run.
+
+Generated artifact validation and sentinel
+--------------------------------------------
+
+Generated artifacts are ignored by Git under security-results/runs/week-5/.
+They are not durable evidence by themselves; the hashes below identify the
+exact sanitized outputs inspected in this run.
+
+Records validated:
+  safe-api-demo-ci.jsonl: 4 receipt v1 records
+  approval-decisions-ci.jsonl: 2 approval records
+  guarded-responses-ci.jsonl: 2 guarded-response records
+  run-events-ci.jsonl: 14 event records
+
+SHA-256:
+  8f2449418d94c38204bfce705e4edaa0c93a87caf5482dd3fe4bf9de47ca02a1  safe-api-demo-ci.jsonl
+  10db25f2bc8a954c93d375e56aae08cd9406fec4868a402fb894a6cdf90c98a9  approval-decisions-ci.jsonl
+  3b28041bf4570bc39ecab8eed936fb28da1c56e3240daf5dc2481882e6b58cd8  guarded-responses-ci.jsonl
+  1ca0d341d75a26ba9d6aeabe0c9c9990f9ac62e32fa485f3aaae878be1393b04  run-events-ci.jsonl
+
+[PASS] Cross-contract assertions found Reject/Approve in separate run IDs,
+both approval records single-use, and receipt outcomes in the expected order.
+[PASS] Pattern sentinel found no raw email, supported phone fixture, Bearer
+value, JWT or unredacted API-key/password/token assignment in the four JSONL
+artifacts.
+
+Regression and security gates
+-----------------------------
+
+[PASS] pip check: no broken requirements.
+[PASS] Knowledge search returned SQL Injection first.
+[PASS] Historical deterministic regression: 27 normalized findings ->
+9 grounded JSONL records.
+[PASS] docker compose config --quiet.
+[PASS] git diff --check (only checkout line-ending notices were printed).
+
+[PASS] Fresh Bandit full-severity data scan: 27 results; 25 Low; 2 Medium;
+0 High. Rules: B101=18, B105=3, B310=2, B404=2, B603=2. The B105 additions
+include stable redaction marker constants and are not credentials.
+[PASS] Independent Bandit High release gate: 0 findings, exit 0.
+
+Commands:
+  .\.venv\Scripts\python.exe -m pip check
+  .\.venv\Scripts\python.exe -m security_pipeline search "SQL Injection" --limit 1
+  .\.venv\Scripts\python.exe -m security_pipeline analyze security-results/normalized-findings.json --knowledge-base data/vulnerabilities.json --provider deterministic --output $env:TEMP\week5-final-analysis.jsonl
+  docker compose config --quiet
+  .\.venv\Scripts\python.exe scripts/run_security_scan.py --output security-results/runs/week-5/bandit-week5-full.json --severity-level low
+  .\.venv\Scripts\python.exe scripts/run_security_scan.py --output security-results/runs/week-5/bandit-week5-high.json --severity-level high
+
+Conclusion
+----------
+
+All Week 5 P0/P1 contract, redaction, prompt-injection, HITL and coordination
+checks passed on the working tree recorded above. Week 6 orchestration,
+evaluation, Compose runner packaging and final end-to-end report remain out of
+this verification scope.

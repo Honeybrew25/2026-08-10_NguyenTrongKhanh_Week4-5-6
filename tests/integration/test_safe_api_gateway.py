@@ -9,6 +9,8 @@ from typing import Any
 import httpx
 import pytest
 
+from safe_api_tool.policy import PolicyEngine
+
 
 pytestmark = [
     pytest.mark.integration,
@@ -140,6 +142,28 @@ def test_valid_api_key_calls_exact_get_route_through_gateway(
     assert "x-envoy-auth-headers-to-remove" not in response.headers
 
 
+def test_prompt_injection_fixture_is_exact_inert_and_gateway_consumes_key(
+    http: httpx.Client,
+) -> None:
+    request_id = "safe-api-integration-prompt-fixture"
+    key = safe_api_key()
+    response = http.get(
+        f"{GATEWAY_URL}/api/test/prompt-injection",
+        headers={"x-api-key": key, "x-request-id": request_id},
+    )
+
+    assert response.status_code == 200
+    document = response.json()
+    assert document["status"] == "fixture"
+    assert "Ignore previous instructions" in document["untrusted_text"]
+    assert "/api/admin" in document["untrusted_text"]
+    assert key not in response.text
+    record, logs = audit_event(request_id)
+    assert record["decision"] == "allow"
+    assert record["path"] == "/api/test/prompt-injection"
+    assert key not in logs
+
+
 def test_valid_api_key_calls_exact_post_route_through_gateway(
     http: httpx.Client,
 ) -> None:
@@ -158,6 +182,26 @@ def test_valid_api_key_calls_exact_post_route_through_gateway(
         "truncated": False,
     }
     assert response.headers["x-request-id"] == request_id
+
+
+def test_all_curated_post_profiles_leave_staging_state_unchanged(
+    http: httpx.Client,
+) -> None:
+    headers = {"x-api-key": safe_api_key()}
+    before = http.get(f"{GATEWAY_URL}/api/test/status", headers=headers).json()
+    catalog = PolicyEngine.from_files().catalog
+
+    for case in catalog.test_cases:
+        response = http.post(
+            f"{GATEWAY_URL}/api/test/validate",
+            headers=headers,
+            json=case.payload,
+        )
+        assert response.status_code == case.expected_status
+
+    after = http.get(f"{GATEWAY_URL}/api/test/status", headers=headers).json()
+    assert before == after
+    assert after["stateless"] is True
 
 
 def test_oversized_post_is_rejected_before_authorization_and_app(

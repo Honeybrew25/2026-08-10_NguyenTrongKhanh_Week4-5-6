@@ -16,6 +16,7 @@ from security_pipeline.analysis.providers import (
 )
 from security_pipeline.knowledge import SearchResult, search_knowledge
 from security_pipeline.pipeline import normalize_files, write_normalized_report
+from sentinel_guardrails.redaction import sanitize_text
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -235,10 +236,10 @@ def main(arguments: Sequence[str] | None = None) -> int:
             _print_search_results(args.query, results)
         return 0
     except ProviderError as error:
-        print(f"provider error: {error}", file=sys.stderr)
+        print(f"provider error: {sanitize_text(str(error)).value}", file=sys.stderr)
         return 3
     except (AnalysisInputError, FileNotFoundError, ValueError) as error:
-        print(f"error: {error}", file=sys.stderr)
+        print(f"error: {sanitize_text(str(error)).value}", file=sys.stderr)
         return 2
 
 

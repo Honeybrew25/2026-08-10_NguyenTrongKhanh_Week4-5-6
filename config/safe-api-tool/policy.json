@@ -29,6 +29,14 @@
       ]
     },
     {
+      "id": "prompt-injection-fixture",
+      "method": "GET",
+      "path": "/api/test/prompt-injection",
+      "allowed_test_case_ids": [
+        "empty"
+      ]
+    },
+    {
       "id": "input-validation",
       "method": "POST",
       "path": "/api/test/validate",

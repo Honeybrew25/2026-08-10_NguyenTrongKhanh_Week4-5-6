@@ -1,0 +1,270 @@
+Project Sentinel - Week 5 baseline verification
+================================================
+
+Date: 2026-08-15 (Asia/Bangkok)
+Commit: b32cd0d35f405d6bed216be1a6534caf24c5860e
+Project interpreter: .venv Python 3.11.9
+Docker server: 29.6.2
+
+Worktree before verification:
+- docs/todo was an existing untracked user file.
+- docs/todo-checklist.md was an untracked planning document.
+- No tracked source-code change was present.
+
+Baseline quality gates
+----------------------
+
+[PASS] Project dependency check: No broken requirements found.
+Command: .\.venv\Scripts\python.exe -m pip check
+
+[PASS] Non-integration suite: 141 passed, 25 deselected in 1.21s.
+Command: .\.venv\Scripts\python.exe -m pytest -q -m "not integration"
+
+[PASS] Knowledge search: SQL Injection returned first.
+[PASS] Knowledge search: Cross-Site Scripting (XSS) returned first.
+Commands:
+  .\.venv\Scripts\python.exe -m security_pipeline search "SQL Injection" --limit 1
+  .\.venv\Scripts\python.exe -m security_pipeline search "XSS" --limit 1
+
+[PASS] Historical deterministic regression: 27 findings -> 9 grounded records.
+[PASS] Historical analysis output was accepted by the current model/grounding path.
+Command:
+  .\.venv\Scripts\python.exe -m security_pipeline analyze security-results/normalized-findings.json --knowledge-base data/vulnerabilities.json --provider deterministic --output $env:TEMP\week5-baseline-analysis-venv.jsonl
+
+[PASS] Docker Compose configuration rendered successfully.
+Rendered Compose SHA-256:
+  a684f6c7bfa8feef5b840c6da9548c638f79c570d763f47655f3da58482dd33f
+Command: docker compose config --quiet
+
+[PASS] Safe API dry-run: GET and POST allowed; admin negative control denied.
+Policy SHA-256 reported by the tool:
+  a969dab49a01609707d4084330284790928bd445e282effea165d2edac1c947d
+Command: .\.venv\Scripts\python.exe -m safe_api_tool demo
+
+Fresh Bandit SAST
+-----------------
+
+[PASS] Full-severity data scan created valid Bandit JSON.
+Expected command exit: 1 because reportable findings exist.
+Findings: 26 total; 24 Low; 2 Medium; 0 High.
+Rules: B101=18, B105=2, B310=2, B404=2, B603=2.
+
+[PASS] Independent High-severity release gate returned exit 0 with 0 findings.
+
+[PASS] Fresh Bandit output normalized: 26 findings from 1 report.
+[PASS] Normalized output matches schemas/normalized-findings.schema.json.
+[PASS] Fresh deterministic analysis: 26 findings -> 5 grounded records.
+[PASS] All 5 JSONL lines match AnalysisFinding.
+
+Commands:
+  .\.venv\Scripts\python.exe scripts/run_security_scan.py --output security-results/runs/week-5/bandit-full.json --severity-level low
+  .\.venv\Scripts\python.exe scripts/run_security_scan.py --output security-results/runs/week-5/bandit-high.json --severity-level high
+  .\.venv\Scripts\python.exe -m security_pipeline normalize security-results/runs/week-5/bandit-full.json --output security-results/runs/week-5/normalized-bandit.json
+  .\.venv\Scripts\python.exe -m security_pipeline analyze security-results/runs/week-5/normalized-bandit.json --knowledge-base data/vulnerabilities.json --provider deterministic --output security-results/runs/week-5/analysis-bandit.jsonl
+
+Full Docker integration
+-----------------------
+
+[PASS] Docker Desktop was started after the first attempt found the daemon offline.
+[PASS] API, authz-service, Keycloak and Envoy became ready.
+[PASS] Full test suite: 166 passed in 115.37s.
+[PASS] Live Safe API demo: GET 200; POST 200; admin policy_denied before network.
+[PASS] Generated Safe API receipt: 3 records valid against safe-api-log schema v1.
+[PASS] Compose cleanup: no project services remained after the run.
+Command: .\.venv\Scripts\python.exe scripts/run_all_tests.py
+
+Fresh ZAP DAST
+--------------
+
+[RESOLVED] The first image pull did not finish within the 604-second timeout.
+The exact pending docker client was stopped and all Compose resources were
+removed. A separate retry then downloaded zaproxy/zap-stable:2.17.0 in 430.9s.
+Image digest:
+  zaproxy/zap-stable@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef
+
+[PASS] Fresh passive ZAP baseline ran through Envoy and returned exit 0.
+[PASS] Console summary: FAIL=0, WARN=5, PASS=62.
+[PASS] Raw JSON: 7 alert rule groups and 20 URL instances.
+Rules:
+  10031    User Controllable HTML Element Attribute (Potential XSS)
+  10049-1  Non-Storable Content
+  10049-3  Storable and Cacheable Content
+  10055-12 CSP: Header & Meta
+  10109    Modern Web Application
+  90004-1  Cross-Origin-Resource-Policy Header Missing or Invalid
+  90004-2  Cross-Origin-Embedder-Policy Header Missing or Invalid
+
+[PASS] Compose cleanup removed API, authz-service, Keycloak, Envoy and the
+project network after the scan.
+
+Scope limitation: the scan was seeded from /health without an Agent token. The
+spider observed 10 public/UI URLs, but protected authenticated APIs were not
+covered. The result is a fresh unauthenticated passive DAST snapshot, not an
+authenticated security assessment.
+
+Fresh combined pipeline
+-----------------------
+
+[PASS] Fresh Bandit and ZAP JSON normalized together: 46 findings.
+By tool: Bandit=26, ZAP=20.
+By severity: Medium=2, Low=28, Informational=16.
+[PASS] Fresh normalized JSON matches normalized-findings schema.
+[PASS] Deterministic analysis: 46 findings -> 12 grounded records.
+[PASS] All 12 JSONL records match AnalysisFinding.
+
+Commands:
+  .\.venv\Scripts\python.exe -m security_pipeline normalize security-results/runs/week-5/bandit-full.json security-results/runs/week-5/zap-fresh.json --output security-results/runs/week-5/normalized-fresh.json
+  .\.venv\Scripts\python.exe -m security_pipeline analyze security-results/runs/week-5/normalized-fresh.json --knowledge-base data/vulnerabilities.json --provider deterministic --output security-results/runs/week-5/analysis-fresh.jsonl
+
+Artifact SHA-256
+---------------
+
+2f95007165559e14cd5815ea0c256ea536f2c4dded2f3aa7ba496d0d0cf91346  security-results/runs/week-5/bandit-full.json
+74b28669adab0ec2e8fdd7eee106cbc0de1d5c28ee4838095fa554a0d64934bb  security-results/runs/week-5/bandit-high.json
+b25b9ab34d97f76d9c569f8584ff9fe8db6e745d3029df2a1e8774b507ba4317  security-results/runs/week-5/normalized-bandit.json
+1dd05867db6e36d9e1a36fd264b27cf92a05c92ff71a3815231c81d603bb09e4  security-results/runs/week-5/analysis-bandit.jsonl
+243c0709b5b0786a4825a8b5310a1d5a281d11c4cfc33e4a286ba4430d320bd4  security-results/runs/week-5/zap-fresh.json
+990904232685cd8363d28bd57dfdca6f8607bb21ce37fa90d31230744ac66965  security-results/runs/week-5/zap-fresh.html
+8813bc5b8c376a6a068ce3251dd5004226cc260e14296cb47daf26fc2e1968b4  security-results/runs/week-5/normalized-fresh.json
+8cede581490fddb49ecda32e8bf226459af49475ac3155e18922deb315f3f41a  security-results/runs/week-5/analysis-fresh.jsonl
+d15da711685a398fc44d643a9b2fa9b42fc9ec4bfffc982236507c5e0d85ff97  security-results/runs/week-4/safe-api-demo-ci.jsonl
+
+CI fresh-artifact wiring
+------------------------
+
+[PASS] Bandit data scan and release gate are separate workflow steps:
+  bandit-ci-full.json uses severity level Low for normalize/analyze input.
+  bandit-ci-high.json uses severity level High for the release gate.
+[PASS] Both Bandit reports are JSON-validated, hashed and uploaded together.
+[PASS] The fresh-analysis job downloads bandit-json and zap-baseline-report
+from the same workflow run, then normalizes the fresh full Bandit JSON with the
+fresh ZAP JSON.
+[PASS] Analysis uses the deterministic provider and writes fresh normalized
+JSON, grounded JSONL and a SHA-256 manifest to fresh-security-analysis with
+14-day retention.
+[PASS] publish-images now depends on fresh-analysis.
+[PASS] Historical security-results/normalized-findings.json is no longer an
+analysis input in unit-and-sast.
+
+Local verification on the implementation working tree:
+  YAML parse: PASS; jobs include fresh-analysis.
+  Workflow regression tests: 3 passed in 0.01s.
+  Non-integration suite: 144 passed, 25 deselected in 1.17s.
+  SQL Injection search: correct result at rank 1.
+  Historical deterministic regression: 27 findings -> 9 grounded records.
+  docker compose config --quiet: PASS.
+
+Commands:
+  .\.venv\Scripts\python.exe -m pytest -q tests/test_security_scan_workflow.py
+  .\.venv\Scripts\python.exe -m pytest -q -m "not integration"
+  .\.venv\Scripts\python.exe -m security_pipeline search "SQL Injection" --limit 1
+  .\.venv\Scripts\python.exe -m security_pipeline analyze security-results/normalized-findings.json --knowledge-base data/vulnerabilities.json --provider deterministic --output $env:TEMP\security-analysis-base08-check.jsonl
+  docker compose config --quiet
+
+Limit: GitHub-hosted execution can only be observed after the branch is pushed;
+the local gate covers YAML parsing, artifact-path contracts and dependency
+wiring without publishing or changing external state.
+
+Dashboard snapshot synchronization
+----------------------------------
+
+[PASS] dashboard-data.json now declares week-5-baseline, verification date,
+full source revision and durable evidence path.
+[PASS] Dashboard metrics match one revision recorded by this evidence:
+  Findings=46; Grounded groups=12; Unit tests=141; Full stack=166.
+[PASS] The architecture fallback and rendered data both show 46 -> 12.
+[PASS] Durable execution evidence remains explicitly sourced from the Week 4
+receipt and is labeled as reverified during the Week 5 baseline; it is not
+misrepresented as a new Week 5 execution run.
+[PASS] A contract test reads the commit, date and test counts from this log and
+compares them with dashboard-data.json. It also requires W5 to be the only
+current roadmap entry.
+[PASS] Dashboard targeted suite: 4 passed in 0.09s.
+[PASS] Current non-integration regression: 145 passed, 25 deselected in 0.86s.
+[PASS] JSON, JavaScript syntax, SQL Injection search, deterministic historical
+analysis, Safe API dry-run and Compose configuration checks passed.
+
+Snapshot rule: the current working-tree test count is intentionally not mixed
+into the dashboard. Update all four metrics only after scanner, unit and full
+Docker verification have evidence for the same release revision.
+
+BASE-10 through BASE-14 closure
+-------------------------------
+
+Header and API contract changes:
+
+[PASS] Every application response now carries
+Cross-Origin-Resource-Policy=same-origin and X-Content-Type-Options=nosniff.
+[PASS] UI responses also carry Cross-Origin-Embedder-Policy=require-corp.
+[PASS] HTML, JSON and health responses use Cache-Control=no-store; public JS
+and CSS use an explicit five-minute cache with versioned URLs.
+[PASS] A query-marker regression proves /ui/ response bytes do not change and
+the marker is not reflected into HTML.
+[PASS] /api/admin no longer returns the ambiguous authentication_enabled=false.
+It reports authorization_boundary=envoy_ext_authz and required_scope=admin:read.
+
+Docker verification after the runtime changes:
+
+[PASS] Full suite: 171 passed in 115.45s.
+[PASS] Live JWT reader/admin authorization and the new /api/admin response
+contract passed through Envoy ext_authz.
+[PASS] Live Safe API GET/POST passed; admin negative control was denied before
+transport; three schema-valid sanitized receipts were produced.
+[PASS] Compose cleanup removed all project containers and network.
+Receipt SHA-256:
+  c77cda36c2229c5a8a83d8b03ccc5bfc7d2b637d52e34b7fb20e8ef2cba08552  security-results/runs/week-4/safe-api-demo-ci.jsonl
+
+ZAP comparison with the same 2.17.0 image:
+
+[PASS] Before hardening: 7 alert refs, 20 instances, 2 Low and 5 Informational;
+console summary FAIL=0, WARN=5, PASS=62.
+[PASS] After hardening: 5 alert refs, 16 instances, 0 Low and 5 Informational;
+console summary FAIL=0, WARN=4, PASS=63.
+[PASS] 90004-1 (CORP) and 90004-2 (COEP) no longer appear.
+[ACCEPTED] 10055-12 dual CSP is required for both static Pages and header-capable
+Envoy serving; the header adds frame-ancestors=none.
+[ACCEPTED] 10109 only identifies a modern JavaScript application.
+[ACCEPTED] 10049-1 covers intentional no-store/runtime/denial responses.
+[ACCEPTED] 10049-3 is limited to public versioned JS/CSS with max-age=300.
+[ACCEPTED] 10031 is a reviewed hotspot: query values are not consumed or
+reflected, DOM writes use textContent and CSP remains restrictive.
+Full rationale and reopen conditions:
+  docs/security-baseline-triage.md
+
+Post-hardening artifact SHA-256:
+  814fb11642f1a6a84d4527240f0ea3e3fbba80fd14fa3488d46f013ff8b4b75c  security-results/runs/week-5/zap-hardening.json
+  c9440d4ff083ec801594085a33604170b60ef43364761b42ce6ed3a3d88ce23f  security-results/runs/week-5/zap-hardening.html
+
+Scope and documentation checks:
+
+[PASS] Workflow and docs identify ZAP as passive/unauthenticated, seeded from
+public /health. It does not use Agent JWT or cover protected APIs.
+[PASS] Four stale docs/README.md links now resolve to the repository README;
+a regression test requires all four corrected links.
+[PASS] Current project-interpreter non-integration suite after all BASE changes:
+148 passed, 25 deselected in 0.87s with no warnings.
+[PASS] SQL Injection and XSS search, deterministic 27 -> 9 regression, Safe API
+dry-run, Compose config and JavaScript syntax checks passed.
+
+Environment note
+----------------
+
+The IDE session's default `python` points to a shared Hermes environment and
+`python -m pip check` there reports unrelated package conflicts. All authoritative
+project checks above were rerun with .\.venv\Scripts\python.exe, where pip check
+passes. Do not use the shared interpreter as release evidence.
+
+Baseline conclusion
+-------------------
+
+- BASE-01 through BASE-06 are verified on commit b32cd0d.
+- Fresh Bandit and ZAP normalize/analyze are verified on commit b32cd0d.
+- BASE-07 is complete: 46 findings -> 12 grounded records with schema coverage.
+- BASE-08 and OPS-05 are implemented and locally verified: CI now analyzes
+  scanner outputs from the same workflow run and gates image publishing on it.
+- BASE-09 is complete: dashboard metrics are bound to the b32cd0d Week 5
+  verification snapshot without relabeling the Week 4 execution receipt.
+- BASE-10 through BASE-14 are complete. Two Low ZAP alerts were fixed; every
+  residual Informational alert has an explicit acceptance and reopen condition.
+- Baseline closure is complete. The next Week 5 implementation gate is the
+  contract/state machine under CON-01..14.

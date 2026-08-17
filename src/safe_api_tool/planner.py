@@ -8,15 +8,11 @@ from pydantic import ValidationError
 
 from safe_api_tool.models import RequestProposal
 from security_pipeline.analysis.models import AnalysisFinding
+from sentinel_guardrails.redaction import sanitize_text
 
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_ANALYSIS_PATH = ROOT / "security-results" / "security-analysis.jsonl"
-_BEARER_TOKEN = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+")
-_SECRET_ASSIGNMENT = re.compile(
-    r"(?i)\b(password|secret|api[_-]?key|access[_-]?token)\b"
-    r"(\s*[:=]\s*)([^\s,;]+)"
-)
 _URL = re.compile(r"https?://[^\s)\]}>'\"]+", re.IGNORECASE)
 
 
@@ -53,11 +49,7 @@ def load_analysis_findings(
 
 
 def _safe_inline_text(value: str, *, limit: int) -> str:
-    redacted = _BEARER_TOKEN.sub("Bearer [REDACTED]", value)
-    redacted = _SECRET_ASSIGNMENT.sub(
-        lambda match: f"{match.group(1)}{match.group(2)}[REDACTED]",
-        redacted,
-    )
+    redacted = sanitize_text(value).value
     redacted = _URL.sub("[URL]", redacted)
     collapsed = re.sub(r"[\x00-\x1f\x7f]+", " ", redacted)
     collapsed = re.sub(r"\s+", " ", collapsed).strip()

@@ -4,13 +4,13 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
-import re
 from threading import Lock
 from typing import Literal
 
 from pydantic import Field
 
 from safe_api_tool.models import HttpMethod, StrictModel
+from sentinel_guardrails.redaction import sanitize_data, sanitize_text
 
 
 ExecutionOutcome = Literal[
@@ -22,16 +22,6 @@ ExecutionOutcome = Literal[
     "connection_error",
     "response_truncated",
 ]
-
-_BEARER_TOKEN = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+")
-_SECRET_NAME = r"(?:password|secret|(?:x-)?api[_-]?key|access[_-]?token)"
-_JSON_SECRET_ASSIGNMENT = re.compile(
-    rf"(?i)([\"']{_SECRET_NAME}[\"']\s*:\s*[\"'])([^\"']*)([\"'])"
-)
-_SECRET_ASSIGNMENT = re.compile(
-    rf"(?i)\b({_SECRET_NAME})\b(\s*[:=]\s*)([^\s,;&}}]+)"
-)
-
 
 class ExecutionReceipt(StrictModel):
     schema_version: Literal["1.0"] = "1.0"
@@ -63,19 +53,7 @@ def utc_timestamp() -> str:
 
 
 def redact_text(value: str, *, secrets: tuple[str, ...] = ()) -> str:
-    redacted = value
-    for secret in secrets:
-        if secret:
-            redacted = redacted.replace(secret, "[REDACTED]")
-    redacted = _BEARER_TOKEN.sub("Bearer [REDACTED]", redacted)
-    redacted = _JSON_SECRET_ASSIGNMENT.sub(
-        lambda match: f"{match.group(1)}[REDACTED]{match.group(3)}",
-        redacted,
-    )
-    return _SECRET_ASSIGNMENT.sub(
-        lambda match: f"{match.group(1)}{match.group(2)}[REDACTED]",
-        redacted,
-    )
+    return sanitize_text(value, secrets=secrets).value
 
 
 class AuditLogWriter:
@@ -86,8 +64,10 @@ class AuditLogWriter:
         self._lock = Lock()
 
     def write(self, receipt: ExecutionReceipt) -> Path:
+        sanitized = sanitize_data(receipt.model_dump(mode="json"))
+        validated = ExecutionReceipt.model_validate(sanitized.value)
         line = json.dumps(
-            receipt.model_dump(mode="json"),
+            validated.model_dump(mode="json"),
             ensure_ascii=False,
             sort_keys=True,
             separators=(",", ":"),

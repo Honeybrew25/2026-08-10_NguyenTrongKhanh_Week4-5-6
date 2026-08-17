@@ -42,43 +42,49 @@ jobs:
       - name: Run unit tests
         run: python -m pytest -q -m "not integration"
 
-      - name: Run Bandit
+      - name: Run Bandit full-severity data scan
         if: always()
-        id: bandit
+        id: bandit_data
         continue-on-error: true
         run: >-
           python scripts/run_security_scan.py
-          --output security-results/bandit-ci.json
+          --output security-results/bandit-ci-full.json
+          --severity-level low
+
+      - name: Run Bandit High release gate
+        if: always()
+        id: bandit_high
+        continue-on-error: true
+        run: >-
+          python scripts/run_security_scan.py
+          --output security-results/bandit-ci-high.json
           --severity-level high
+
+      - name: Validate Bandit JSON
+        if: always()
+        shell: bash
+        run: |
+          python -m json.tool security-results/bandit-ci-full.json > /dev/null
+          python -m json.tool security-results/bandit-ci-high.json > /dev/null
+          sha256sum \
+            security-results/bandit-ci-full.json \
+            security-results/bandit-ci-high.json \
+            > security-results/bandit-ci-SHA256SUMS.txt
 
       - name: Upload Bandit JSON
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: bandit-json
-          path: security-results/bandit-ci.json
-          if-no-files-found: error
-
-      - name: Generate grounded Week 3 JSONL
-        if: always()
-        run: >-
-          python -m security_pipeline analyze
-          security-results/normalized-findings.json
-          --knowledge-base data/vulnerabilities.json
-          --provider deterministic
-          --output security-results/security-analysis-ci.jsonl
-
-      - name: Upload Week 3 security analysis
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: week3-security-analysis-jsonl
-          path: security-results/security-analysis-ci.jsonl
+          path: |
+            security-results/bandit-ci-full.json
+            security-results/bandit-ci-high.json
+            security-results/bandit-ci-SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 14
 
       - name: Fail when Bandit found reportable issues
-        if: steps.bandit.outcome == 'failure'
+        if: steps.bandit_high.outcome == 'failure'
         run: exit 1
 
   docker-integration:
@@ -107,17 +113,21 @@ jobs:
       - name: Run real Keycloak, Envoy, IAM and Safe API Tool tests
         run: python scripts/run_all_tests.py
 
-      - name: Upload sanitized Week 4 Safe API demo receipts
+      - name: Upload sanitized Week 5 Safe API guardrail artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: week4-safe-api-demo-receipts
-          path: security-results/runs/week-4/safe-api-demo-ci.jsonl
+          name: week5-safe-api-guardrail-artifacts
+          path: |
+            security-results/runs/week-5/safe-api-demo-ci.jsonl
+            security-results/runs/week-5/approval-decisions-ci.jsonl
+            security-results/runs/week-5/guarded-responses-ci.jsonl
+            security-results/runs/week-5/run-events-ci.jsonl
           if-no-files-found: warn
           retention-days: 14
 
   dast:
-    name: OWASP ZAP Baseline
+    name: OWASP ZAP passive baseline (unauthenticated)
     needs: unit-and-sast
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -159,7 +169,7 @@ jobs:
           mkdir -p security-results
           chmod 777 security-results
 
-      - name: Run ZAP Baseline
+      - name: Run ZAP passive baseline from public health seed
         shell: bash
         run: |
           envoy_id="$(docker compose ps --quiet envoy)"

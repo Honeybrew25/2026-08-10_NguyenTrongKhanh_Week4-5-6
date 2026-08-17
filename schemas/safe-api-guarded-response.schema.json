@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/safe-api-guarded-response.schema.json",
+  "title": "Safe API Guarded Response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "response_id", "run_id", "request_id", "trust_label",
+    "status_code", "response_bytes", "response_sha256", "response_truncated",
+    "sanitized_excerpt", "injection_detected", "injection_reasons", "redaction_summary"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "response_id": {"type": "string", "pattern": "^[a-f0-9-]{36}$"},
+    "run_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "request_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "trust_label": {"const": "untrusted_http_response"},
+    "status_code": {"type": "integer", "minimum": 100, "maximum": 599},
+    "response_bytes": {"type": "integer", "minimum": 0},
+    "response_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "response_truncated": {"type": "boolean"},
+    "sanitized_excerpt": {"type": ["string", "null"], "maxLength": 1024},
+    "injection_detected": {"type": "boolean"},
+    "injection_reasons": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"enum": ["instruction_override", "secret_exfiltration", "out_of_scope_tool_or_endpoint"]}
+    },
+    "redaction_summary": {
+      "type": "object",
+      "additionalProperties": {"type": "integer", "minimum": 0}
+    }
+  }
+}

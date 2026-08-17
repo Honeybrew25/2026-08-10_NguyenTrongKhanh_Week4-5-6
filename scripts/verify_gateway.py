@@ -11,6 +11,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from safe_api_tool.approval import InteractiveApprovalProvider
 from safe_api_tool.audit import AuditLogWriter
 from safe_api_tool.client import SafeApiClient
 from safe_api_tool.models import RequestProposal
@@ -172,6 +173,7 @@ def verify_safe_api_tool(api_key: str) -> None:
             PolicyEngine.from_files(),
             api_key=api_key,
             audit_writer=AuditLogWriter(audit_path),
+            approval_provider=InteractiveApprovalProvider(),
         ) as client:
             status = client.execute(
                 DeterministicSafeRequestPlanner().status_proposal()

@@ -237,7 +237,8 @@ def test_admin_can_read_admin(http: httpx.Client) -> None:
     assert response.status_code == 200
     assert response.json() == {
         "message": "Administrative demonstration endpoint",
-        "authentication_enabled": False,
+        "authorization_boundary": "envoy_ext_authz",
+        "required_scope": "admin:read",
     }
     assert_audit(
         request_id,

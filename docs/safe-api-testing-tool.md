@@ -1,8 +1,10 @@
-# Safe API Testing Tool — Week 4
+# Safe API Testing Tool — Week 4, hardened in Week 5
 
-> Week 4 · Xem [documentation hub](README.md),
+> Week 4 · Xem [documentation hub](../README.md),
 > [báo cáo tuần](../reports/week-4.md) và
 > [receipt demo](../security-results/runs/week-4/safe-api-demo.jsonl).
+> Phần HITL, prompt-injection guard và redaction hiện hành nằm tại
+> [tài liệu Week 5](week5-guardrails.md).
 
 ## Mục tiêu và ranh giới
 
@@ -17,12 +19,14 @@ Luồng thực thi:
 grounded finding Week 3
   -> deterministic RequestProposal
   -> strict schema
-  -> policy decision / dry-run
+  -> policy decision + risk classification
+  -> HITL cho POST/curated payload
   -> bounded HTTP client
   -> Envoy
   -> ext_authz: API key + exact route + rate limit
   -> stateless FastAPI test surface
-  -> bounded/redacted JSONL receipt
+  -> response guard + shared redaction
+  -> receipt/approval/guarded-response/event JSONL tách biệt
 ```
 
 `RequestProposal` chỉ có `endpoint_id`, `test_case_id`, `rationale`,
@@ -36,7 +40,7 @@ thuộc contract. Payload thật được code dựng từ catalog đã curate.
 | Allowlist, Gateway origin và budget | `config/safe-api-tool/policy.json` |
 | Bốn payload an toàn | `data/safe-api-test-cases.json` |
 | Proposal/policy/client/planner/audit | `src/safe_api_tool/` |
-| API test stateless | `GET /api/test/status`, `POST /api/test/validate` |
+| API test stateless | `GET /api/test/status`, `GET /api/test/prompt-injection`, `POST /api/test/validate` |
 | Enforcement phía Gateway | `config/envoy/envoy.yaml`, `src/authz_service/` |
 | JSON contracts | `schemas/safe-api-*.schema.json` |
 | Receipt mẫu | `security-results/runs/week-4/safe-api-demo.jsonl` |
@@ -65,19 +69,23 @@ chối trước transport.
 | `endpoint_id` | Method/path | Test case hợp lệ | Expected status |
 |---|---|---|---|
 | `test-status` | `GET /api/test/status` | `empty` | 200 |
+| `prompt-injection-fixture` | `GET /api/test/prompt-injection` | `empty` | 200 |
 | `input-validation` | `POST /api/test/validate` | `long-string`, `special-characters`, `empty` | 200 |
 | `input-validation` | `POST /api/test/validate` | `wrong-type` | 422 |
 
 | Identity | Surface được phép | Credential |
 |---|---|---|
 | Anonymous | GET `/health`, GET metadata; GET/HEAD `/` và `/ui/*` | Không có |
-| `safe-api-tool` | Đúng hai route trong policy ở bảng trên | API key riêng, bị Envoy consume |
+| `safe-api-tool` | Đúng ba route trong policy ở bảng trên | API key riêng, bị Envoy consume |
 | `agent-reader` | GET `/api/users` | JWT có `users:read` |
 | `agent-admin` | GET `/api/users`, GET `/api/admin` | JWT có `users:read`, `admin:read` |
 | Mọi trường hợp khác | Không có | Deny-by-default |
 
 API key không thay thế JWT và không cấp quyền tới `/api/users` hoặc
-`/api/admin`. JWT cũng không tự cấp quyền cho safe test surface.
+`/api/admin`. Response `/api/admin` khai báo rõ
+`authorization_boundary: "envoy_ext_authz"` và `required_scope: "admin:read"`;
+backend không dùng boolean `authentication_enabled: false` dễ gây hiểu nhầm.
+JWT cũng không tự cấp quyền cho safe test surface.
 
 ## Defense in depth
 
@@ -94,14 +102,17 @@ API key không thay thế JWT và không cấp quyền tới `/api/users` hoặc
   lỗi encoding ngoài typed execution contract.
 - Body được serialize trước rồi kiểm tra kích thước.
 - Local rate limiter dừng request vượt budget trước transport.
+- Mọi POST hoặc materialized request có curated payload phải có approval còn
+  hạn, single-use và khớp fingerprint sau policy re-check.
 
 ### Tại Gateway boundary
 
-- Tool chỉ có fixed origin `http://localhost:8080`; backend không publish port
-  ra host.
+- Tool chỉ chọn một trong hai trusted profile: host
+  `http://localhost:8080` hoặc Compose `http://envoy:8080`; backend
+  `http://api:8000` không bao giờ là origin hợp lệ của client.
 - `ext_authz` fail closed và đọc cùng policy versioned với Tool.
 - API key riêng được băm SHA-256 và so sánh constant-time trong authz-service.
-- API key chỉ được dùng cho hai route Week 4; không kế thừa quyền JWT
+- API key chỉ được dùng cho ba exact route hiện có; không kế thừa quyền JWT
   `agent-reader` hoặc `agent-admin`.
 - Rate limit được kiểm tra lại ở authz-service để client giả mạo không bypass
   limiter của Tool.
@@ -124,6 +135,9 @@ API key không thay thế JWT và không cấp quyền tới `/api/users` hoặc
   raw request body không được ghi.
 - Response là dữ liệu không tin cậy và không được đưa nguyên văn trở lại
   planner.
+- Prompt-injection signal làm excerpt chuyển thành marker quarantine; không tạo
+  proposal, approval hoặc request kế tiếp. Sanitizer chung che email, số điện
+  thoại lab, token, API key, password và các trường PII đã biết.
 
 ## Threat model rút gọn
 
@@ -134,7 +148,8 @@ API key không thay thế JWT và không cấp quyền tới `/api/users` hoặc
 | Path confusion | Canonical path check ở hai lớp | Encoded traversal/query/double slash tests |
 | Credential override/leak | Header denylist, key inject nội bộ, Envoy consume, redaction | Backend canary + secret sentinel |
 | Resource exhaustion | Request cap ở Tool + Envoy, response cap, timeout, RPM ở hai lớp | 413, streaming, timeout và 429 tests |
-| Prompt injection | Narrative không sở hữu URL/body/header capability | Poisoned-finding planner test |
+| Prompt injection | Response quarantine + narrative không sở hữu URL/body/header capability | Hai hostile response + benign control |
+| HITL bypass/replay | Execution-boundary gate, fingerprint, expiry và single-use | Reject 0 call; Approve 1 call; mismatch/TOCTOU tests |
 | Policy drift/malformed config | Một JSON policy, strict loader ở hai package, fail closed | Contract/schema/config-error tests |
 
 ## Sử dụng
@@ -162,18 +177,23 @@ python -m safe_api_tool run "$env:TEMP\safe-api-proposal.json"
 python -m safe_api_tool demo
 ```
 
-Chỉ `--execute` mới mở network:
+Chỉ `--execute` mới mở network. POST sẽ dừng để người vận hành nhập đúng
+`Approve` hoặc `Reject`:
 
 ```powershell
 python -m safe_api_tool run "$env:TEMP\safe-api-proposal.json" `
-  --execute --audit "$env:TEMP\safe-api-receipts.jsonl"
+  --execute --audit "$env:TEMP\safe-api-receipts.jsonl" `
+  --approval-log "$env:TEMP\safe-api-approvals.jsonl" `
+  --guarded-response-log "$env:TEMP\safe-api-guarded.jsonl" `
+  --event-log "$env:TEMP\safe-api-events.jsonl"
 
 python -m safe_api_tool demo --execute `
   --audit "$env:TEMP\safe-api-demo.jsonl"
 ```
 
-Demo thực hiện GET status, một POST do planner đề xuất và negative control
-`admin` bị policy chặn trước network. Kết thúc bằng:
+Demo thực hiện GET status, hai run POST riêng để chứng minh Reject rồi Approve,
+và negative control `admin` bị policy chặn trước network. Không có `--yes` hoặc
+biến môi trường bypass HITL. Kết thúc bằng:
 
 ```powershell
 docker compose down --remove-orphans
@@ -224,32 +244,32 @@ docker compose config --quiet
 ```
 
 `run_all_tests.py` tạo secret tạm trong process, chạy toàn bộ Docker integration,
-chạy `safe_api_tool demo --execute`, ghi receipt CI đã sanitize rồi dọn stack.
-GitHub Actions upload receipt dưới artifact `week4-safe-api-demo-receipts`.
+chạy `safe_api_tool demo --execute` với hai input test cố định `Reject` và
+`Approve`, ghi bốn JSONL CI đã sanitize rồi dọn stack. GitHub Actions upload
+chúng dưới artifact `week5-safe-api-guardrail-artifacts`.
 
 Evidence bền vững trong repository:
 
 | Artifact | Nội dung cần kiểm tra |
 |---|---|
-| `config/safe-api-tool/policy.json` | Exact origin, hai capability và resource budget |
+| `config/safe-api-tool/policy.json` | Exact routes, ba capability và resource budget |
 | `data/safe-api-test-cases.json` | Bốn profile long/special/empty/wrong-type |
 | `security-results/runs/week-4/safe-api-demo.jsonl` | GET 200, POST 200 và negative control bị deny trước transport |
 | `evidence/week-4/verification.log` | Lệnh, môi trường và kết quả quality gates của run bàn giao |
-| `.github/workflows/security-scan.yml` | Secret tạm, live demo và artifact upload trong CI |
+| `evidence/week-5/verification.log` | Nghiệm thu HITL, redaction, prompt guard và full-stack hiện hành |
+| `.github/workflows/security-scan.yml` | Secret tạm, live demo và bốn artifact upload trong CI |
 
-`policy_sha256` trong receipt là hash của model policy đã canonicalize, hiện là
-`a969dab49a01609707d4084330284790928bd445e282effea165d2edac1c947d`.
-Nó khác SHA-256 của byte file JSON trong verification snapshot Windows
-(`7674196e229dfccfb45f81c5fdd21e2b3b813b7fc1c3236519d6e07bed2fa030`)
-vì whitespace/key serialization không thuộc canonical form. Không dùng hai
-loại hash này để so sánh trực tiếp; raw-file hash còn có thể đổi theo LF/CRLF.
-Receipt demo trong cùng snapshot có SHA-256
-`e5d16a60404f14b8818103c8ede6174081fedc7f871bb07b2b1fc29c6d452e6d`.
+`policy_sha256` hiện hành của model policy canonical là
+`0181e74d35ced610750e1ced2e42f0e1733439d3ce830b6cb62cf2cfee7562a8`.
+Receipt mẫu Week 4 giữ nguyên hash lịch sử cũ; không sửa receipt đó để giả lập
+evidence mới. Hash byte của file JSON còn phụ thuộc newline/whitespace nên không
+được so trực tiếp với canonical model hash.
 
 Checklist review Week 4:
 
 - Proposal chỉ chứa năm field theo schema; không có URL, raw body hoặc secret.
-- Dry-run là mặc định; network chỉ mở khi người vận hành truyền `--execute`.
+- Dry-run là mặc định; `--execute` chỉ bật execution mode, không phải approval.
+- POST vẫn cần quyết định HITL hợp lệ ngay tại execution boundary.
 - Tool và authz cùng đọc một policy, chỉ cho exact method/path/test case.
 - Backend không publish host port; request hợp lệ phải đi qua Envoy.
 - API key được inject nội bộ, so sánh constant-time, consume trước upstream và
@@ -267,7 +287,10 @@ Checklist review Week 4:
   transport/deadline controller riêng nếu chuyển khỏi phạm vi lab.
 - Planner hiện deterministic để CI tái lập được; chưa cho LLM trực tiếp sở hữu
   capability.
-- Gateway origin được pin cho môi trường local staging; triển khai môi trường
-  khác cần policy riêng và kiểm tra origin tương ứng.
-- ZAP baseline hiện vẫn chỉ kiểm tra `/health`; safety contract của Week 4 được
-  kiểm chứng bởi Tool và integration tests riêng.
+- Runtime origin chỉ có profile `host` và `compose`; môi trường khác cần thêm
+  profile tin cậy bằng code/config review, không nhận URL từ proposal.
+- ZAP CI là passive unauthenticated baseline seed từ `/health`; standard spider
+  có thể thấy public root/UI nhưng không nhận Agent token, không gửi curated
+  Safe API payload và không bao phủ protected API. Safety contract Week 4 được
+  kiểm chứng bởi Tool/integration tests riêng; receipt đó không được gọi là
+  authenticated DAST.

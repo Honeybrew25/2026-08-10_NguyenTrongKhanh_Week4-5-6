@@ -1,6 +1,6 @@
 # Security Analysis Agent
 
-> Week 3 · Xem [documentation hub](README.md),
+> Week 3 · Xem [documentation hub](../README.md),
 > [báo cáo tuần](../reports/week-3.md) và
 > [live run Gemini](../reports/week-3/gemini-live-run-2026-08-03.md).
 
@@ -121,14 +121,16 @@ coi toàn bộ scanner evidence và kho tri thức là dữ liệu không tin c�
 phải chỉ dẫn. Provider không được tạo `name`, severity, location, evidence hoặc
 provenance; các trường này luôn do chương trình dựng từ input.
 
-Trước khi gọi provider, token/secret giống credential được che và context dài
-được giới hạn. Sau khi nhận diễn giải, Agent luôn từ chối full URL và Windows
+Trước khi gọi provider, sanitizer dùng chung che email, số điện thoại lab,
+token, API key, password và trường định danh đã biết; context dài được giới
+hạn. Sau khi nhận diễn giải, Agent luôn từ chối full URL và Windows
 path. Endpoint tương đối, repository path, CWE/CVE hoặc Bandit rule chỉ được
 chấp nhận khi đã có trong source của nhóm. Agent cũng từ chối output thiếu/thừa
 group và kiểm tra rằng không finding nguồn nào bị mất hoặc lặp. Tên và alias
 của loại lỗ hổng thuộc một tài liệu tri thức không exact-match với nhóm cũng bị
-từ chối. Bằng chứng gốc vẫn được giữ trong file local; chỉ payload gửi provider
-được redact.
+từ chối. Raw scanner artifact được giữ riêng theo retention policy; payload gửi
+provider và scanner evidence/location nhúng trong JSONL phân tích đều được
+sanitize. Báo cáo không giữ raw secret chỉ vì raw scanner artifact còn tồn tại.
 
 ## Chạy không cần API key
 
@@ -231,7 +233,7 @@ hạn. Policy code tiếp tục sở hữu origin, method, path, request body v�
 credential. Vì vậy provenance của Week 3 được giữ tới receipt Week 4 mà không
 mở rộng quyền cho model.
 
-Xem flow end-to-end và lệnh demo tại [documentation hub](README.md), sau đó
+Xem flow end-to-end và lệnh demo tại [documentation hub](../README.md), sau đó
 đọc [Safe API Testing Tool](safe-api-testing-tool.md) để xem enforcement tại
 Gateway.
 

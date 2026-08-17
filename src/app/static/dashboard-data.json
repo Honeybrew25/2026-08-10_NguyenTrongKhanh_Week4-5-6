@@ -4,7 +4,7 @@
     "week": 4,
     "updated": "2026-08-10",
     "policyVersion": "1.0",
-    "policySha256": "a969dab49a01609707d4084330284790928bd445e282effea165d2edac1c947d",
+    "policySha256": "0181e74d35ced610750e1ced2e42f0e1733439d3ce830b6cb62cf2cfee7562a8",
     "gatewayOrigin": "http://localhost:8080"
   },
   "runtimeRadar": {
@@ -20,8 +20,8 @@
       "layer": "middle",
       "initialState": "verified",
       "version": "1.0",
-      "sha256": "a969dab49a01609707d4084330284790928bd445e282effea165d2edac1c947d",
-      "capabilityCount": 2,
+      "sha256": "0181e74d35ced610750e1ced2e42f0e1733439d3ce830b6cb62cf2cfee7562a8",
+      "capabilityCount": 3,
       "testCaseCount": 4,
       "title": "Policy integrity",
       "description": "Policy SHA, capability và test-case contract được đối chiếu với source; dry-run cập nhật ALLOW hoặc DENY."
@@ -57,6 +57,13 @@
       "label": "Trạng thái test surface",
       "method": "GET",
       "path": "/api/test/status",
+      "allowedTestCases": ["empty"]
+    },
+    {
+      "id": "prompt-injection-fixture",
+      "label": "Response guard fixture",
+      "method": "GET",
+      "path": "/api/test/prompt-injection",
       "allowedTestCases": ["empty"]
     },
     {

@@ -8,6 +8,10 @@ from typing import Sequence
 
 from pydantic import ValidationError
 
+from safe_api_tool.approval import (
+    ContractJsonlWriter,
+    InteractiveApprovalProvider,
+)
 from safe_api_tool.audit import AuditLogWriter, ExecutionReceipt
 from safe_api_tool.client import (
     ClientConfigurationError,
@@ -30,6 +34,7 @@ from safe_api_tool.policy import (
     PolicyEngine,
     PolicyLoadError,
 )
+from sentinel_guardrails.redaction import sanitize_text
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -37,7 +42,16 @@ DEFAULT_PROPOSAL_PATH = (
     ROOT / "security-results" / "runs" / "week-4" / "request-proposal.json"
 )
 DEFAULT_AUDIT_PATH = (
-    ROOT / "security-results" / "runs" / "week-4" / "safe-api-receipts.jsonl"
+    ROOT / "security-results" / "runs" / "week-5" / "safe-api-receipts.jsonl"
+)
+DEFAULT_APPROVAL_PATH = (
+    ROOT / "security-results" / "runs" / "week-5" / "approval-decisions.jsonl"
+)
+DEFAULT_GUARDED_RESPONSE_PATH = (
+    ROOT / "security-results" / "runs" / "week-5" / "guarded-responses.jsonl"
+)
+DEFAULT_EVENT_PATH = (
+    ROOT / "security-results" / "runs" / "week-5" / "run-events.jsonl"
 )
 
 
@@ -47,6 +61,31 @@ def _add_sources(parser: argparse.ArgumentParser) -> None:
         "--test-cases",
         type=Path,
         default=DEFAULT_TEST_CATALOG_PATH,
+    )
+
+
+def _add_execution_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--audit", type=Path, default=DEFAULT_AUDIT_PATH)
+    parser.add_argument(
+        "--approval-log", type=Path, default=DEFAULT_APPROVAL_PATH
+    )
+    parser.add_argument(
+        "--guarded-response-log",
+        type=Path,
+        default=DEFAULT_GUARDED_RESPONSE_PATH,
+    )
+    parser.add_argument("--event-log", type=Path, default=DEFAULT_EVENT_PATH)
+    parser.add_argument(
+        "--runtime-profile",
+        choices=("host", "compose"),
+        default="host",
+        help="Select a trusted runtime origin; proposals cannot provide an origin.",
+    )
+    parser.add_argument(
+        "--approval-timeout",
+        type=float,
+        default=60.0,
+        help="Seconds before an unanswered approval defaults to Reject.",
     )
 
 
@@ -71,7 +110,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     run.add_argument("proposal", type=Path)
     _add_sources(run)
-    run.add_argument("--audit", type=Path, default=DEFAULT_AUDIT_PATH)
+    _add_execution_options(run)
     run.add_argument("--execute", action="store_true")
 
     demo = subparsers.add_parser(
@@ -81,7 +120,7 @@ def _parser() -> argparse.ArgumentParser:
     demo.add_argument("--analysis", type=Path, default=DEFAULT_ANALYSIS_PATH)
     demo.add_argument("--finding-id")
     _add_sources(demo)
-    demo.add_argument("--audit", type=Path, default=DEFAULT_AUDIT_PATH)
+    _add_execution_options(demo)
     demo.add_argument("--execute", action="store_true")
     return parser
 
@@ -147,12 +186,27 @@ def _execute_one(
     *,
     engine: PolicyEngine,
     audit_path: Path,
+    approval_path: Path,
+    guarded_response_path: Path,
+    event_path: Path,
+    runtime_profile: str,
+    approval_timeout: float,
 ) -> ExecutionReceipt:
     api_key = load_api_key(engine.policy.api_key.environment_variable)
+    provider = InteractiveApprovalProvider(
+        timeout_seconds=approval_timeout,
+        input_fn=lambda: input(),
+        output_fn=lambda value: print(value, file=sys.stderr),
+    )
     with SafeApiClient(
         engine,
         api_key=api_key,
         audit_writer=AuditLogWriter(audit_path),
+        approval_writer=ContractJsonlWriter(approval_path),
+        guarded_response_writer=ContractJsonlWriter(guarded_response_path),
+        event_writer=ContractJsonlWriter(event_path),
+        approval_provider=provider,
+        runtime_profile=runtime_profile,
     ) as client:
         return client.execute(proposal)
 
@@ -180,19 +234,55 @@ def _run_demo(args: argparse.Namespace, engine: PolicyEngine) -> int:
         return 0 if [view["allowed"] for view in views] == [True, True, False] else 4
 
     api_key = load_api_key(engine.policy.api_key.environment_variable)
-    writer = AuditLogWriter(args.audit)
-    with SafeApiClient(engine, api_key=api_key, audit_writer=writer) as client:
+    provider = InteractiveApprovalProvider(
+        timeout_seconds=args.approval_timeout,
+        input_fn=lambda: input(),
+        output_fn=lambda value: print(value, file=sys.stderr),
+    )
+    with SafeApiClient(
+        engine,
+        api_key=api_key,
+        audit_writer=AuditLogWriter(args.audit),
+        approval_writer=ContractJsonlWriter(args.approval_log),
+        guarded_response_writer=ContractJsonlWriter(args.guarded_response_log),
+        event_writer=ContractJsonlWriter(args.event_log),
+        approval_provider=provider,
+        runtime_profile=args.runtime_profile,
+    ) as client:
         status_receipt = client.execute(status_proposal)
+        print(
+            "Demo decision 1/2: type Reject to prove zero network calls.",
+            file=sys.stderr,
+        )
+        rejected_receipt = client.execute(finding_proposal)
+        print(
+            "Demo decision 2/2: type Approve to execute one bounded request.",
+            file=sys.stderr,
+        )
         finding_receipt = client.execute(finding_proposal)
         forbidden_receipt = client.execute(forbidden_proposal)
     receipts = [
         _receipt_view("gateway-status", status_receipt),
-        _receipt_view("finding-test", finding_receipt),
+        _receipt_view("reject-control", rejected_receipt),
+        _receipt_view("approve-control", finding_receipt),
         _receipt_view("negative-control", forbidden_receipt),
     ]
-    _print_json({"demo": "execute", "audit": str(args.audit), "steps": receipts})
+    _print_json(
+        {
+            "demo": "execute",
+            "artifacts": {
+                "receipts": str(args.audit),
+                "approvals": str(args.approval_log),
+                "guarded_responses": str(args.guarded_response_log),
+                "events": str(args.event_log),
+            },
+            "steps": receipts,
+        }
+    )
     passed = (
         _is_expected_success(status_receipt)
+        and rejected_receipt.outcome == "policy_denied"
+        and rejected_receipt.reason == "approval_rejected"
         and _is_expected_success(finding_receipt)
         and forbidden_receipt.outcome == "policy_denied"
     )
@@ -229,7 +319,16 @@ def main(arguments: Sequence[str] | None = None) -> int:
             _print_json(_decision_view(proposal, engine, decision))
             return 0 if decision.allowed else 3
 
-        receipt = _execute_one(proposal, engine=engine, audit_path=args.audit)
+        receipt = _execute_one(
+            proposal,
+            engine=engine,
+            audit_path=args.audit,
+            approval_path=args.approval_log,
+            guarded_response_path=args.guarded_response_log,
+            event_path=args.event_log,
+            runtime_profile=args.runtime_profile,
+            approval_timeout=args.approval_timeout,
+        )
         _print_json(_receipt_view("execute", receipt))
         if _is_expected_success(receipt):
             return 0
@@ -241,7 +340,8 @@ def main(arguments: Sequence[str] | None = None) -> int:
         ValidationError,
         ValueError,
     ) as error:
-        print(f"error: {error}", file=sys.stderr)
+        safe_error = sanitize_text(str(error)).value
+        print(f"error: {safe_error}", file=sys.stderr)
         return 2
 
 
