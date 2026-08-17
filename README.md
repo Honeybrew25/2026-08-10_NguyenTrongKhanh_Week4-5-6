@@ -1,4 +1,4 @@
-# Project Sentinel
+# Project Sentinel — Week 6
 
 Hệ thống có thể:
 
@@ -11,6 +11,16 @@ Hệ thống có thể:
 
 Giao diện web chỉ dùng để trình bày. Việc phê duyệt và gửi yêu cầu kiểm thử
 được thực hiện bằng dòng lệnh.
+
+## Chọn đúng branch
+
+```bash
+git switch week-6
+```
+
+Branch `week-6` kế thừa toàn bộ phần bảo vệ của `week-5` và bổ sung quy trình
+đầu-cuối, bộ đánh giá cùng báo cáo cuối. Nếu chỉ muốn xem phần bảo vệ và phê
+duyệt, dùng `git switch week-5`.
 
 ## Kết quả hiện tại
 
@@ -140,10 +150,12 @@ docker compose ps --all
 
 ## Tài liệu thêm
 
+- [Tóm tắt Week 6](docs/week6-summary.md)
 - [Cách hệ thống hoạt động](docs/project-sentinel-architecture.md)
 - [Bộ đánh giá 10 trường hợp](docs/evaluation.md)
 - [Kịch bản demo 10–15 phút](docs/demo-script.md)
-- [Checklist tiến độ](docs/todo-checklist.md)
+- [Báo cáo Week 6](reports/week-6.md)
+- [Bằng chứng kiểm thử](evidence/week-6/verification.log)
 - [Các bước còn cần xác nhận](docs/release-acceptance.md)
 
 Dashboard công khai:
