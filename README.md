@@ -1,125 +1,122 @@
-# Agent IAM Security Lab
+# Project Sentinel — Week 5
 
-Project Sentinel là repository xuyên suốt nhiều tuần: chuẩn hóa kết quả
-Bandit/ZAP, phân tích finding có grounding và thực thi request kiểm thử hữu hạn
-qua API Gateway.
+Branch `week-5` tập trung làm cho việc kiểm thử API an toàn hơn trước khi ghép
+thành sản phẩm hoàn chỉnh ở Week 6.
 
-## Luồng dự án
+Hệ thống có thể:
 
-```text
-Bandit/ZAP
-  -> normalized findings + knowledge base
-  -> Security Analysis Agent
-  -> grounded JSONL
-  -> Safe API Testing Tool
-  -> Envoy / ext_authz
-  -> stateless FastAPI test surface
-  -> sanitized receipt
+- che email, số điện thoại, mật khẩu và mã truy cập khỏi AI và file log;
+- xem nội dung trả về từ website là dữ liệu không đáng tin cậy;
+- cách ly nội dung cố hướng dẫn AI làm sai;
+- yêu cầu người dùng chọn `Approve` hoặc `Reject` trước khi gửi POST;
+- chỉ cho phép đúng đường dẫn và dữ liệu kiểm thử đã định nghĩa sẵn;
+- chặn yêu cầu quản trị hoặc yêu cầu nằm ngoài phạm vi.
+
+Giao diện web chỉ dùng để trình bày. Việc phê duyệt và gửi yêu cầu được thực
+hiện bằng dòng lệnh.
+
+## Chọn đúng branch
+
+```bash
+git switch week-5
 ```
 
-Code giữ quyền sở hữu dữ kiện scanner, URL, payload và credential. Model chỉ
-diễn giải finding hoặc chọn capability đã được giới hạn.
+Branch này không có lệnh `project_sentinel` hoặc bộ đánh giá Week 6. Các phần
+đó nằm trong branch `week-6`.
 
-## Bắt đầu nhanh
+## Cài đặt lần đầu
 
-Yêu cầu: Python 3.11+, Docker Desktop với Compose v2 và Git.
+Cần có Python 3.11+, Git và Docker Compose.
+
+Trên PowerShell/Windows:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --requirement requirements-dev.txt
+python -m pip install --requirement security/requirements.txt
 Copy-Item .env.example .env
 ```
 
-Thay các placeholder Keycloak/Agent IAM và `SAFE_API_TOOL_API_KEY` trong
-`.env`.
-
-```powershell
-docker compose up --build --detach --wait
-Invoke-RestMethod "http://localhost:8080/health"
-Start-Process "http://localhost:8080/ui/"
-```
-
-Kết thúc bằng `docker compose down --remove-orphans`.
-
-## Chạy lại toàn bộ trên Linux (Bash)
-
-Yêu cầu: Python 3.11+, gói `python3-venv`, Docker Engine và Docker Compose v2.
-Docker daemon phải đang chạy và tài khoản hiện tại phải gọi được `docker` mà
-không cần `sudo`. Nếu dùng WSL2 với Docker Desktop, cần bật WSL integration cho
-distro Linux trước khi chạy.
-
-Từ thư mục gốc của repository, tạo môi trường Python sạch và cài dependency:
+Trên Bash/Linux:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install --upgrade pip
 python -m pip install --requirement requirements-dev.txt
-
-if [[ ! -f .env ]]; then
-  cp .env.example .env
-fi
+python -m pip install --requirement security/requirements.txt
+cp .env.example .env
 ```
 
-Kiểm tra cấu hình và các chức năng không cần Docker stack:
+Mở `.env` và thay các giá trị bắt đầu bằng `replace-with-`.
+`SAFE_API_TOOL_API_KEY` cần dài ít nhất 32 ký tự. Không đưa `.env` lên Git.
+
+Kiểm tra cấu hình:
 
 ```bash
 docker version
 docker compose version
 docker compose config --quiet
-python -m pytest -q -m "not integration"
-python -m security_pipeline search "SQL Injection" --limit 1
-python -m security_pipeline analyze \
-  security-results/normalized-findings.json \
-  --knowledge-base data/vulnerabilities.json \
-  --provider deterministic \
-  --output "${TMPDIR:-/tmp}/security-analysis-check.jsonl"
+```
+
+## Chạy demo Week 5
+
+Demo khô chỉ kiểm tra policy, không gửi yêu cầu mạng:
+
+```bash
 python -m safe_api_tool demo
 ```
 
-Chạy full verification.
+Demo đầy đủ:
+
+```bash
+docker compose down --remove-orphans
+docker compose up --build --detach --wait --wait-timeout 180
+python -m safe_api_tool demo --execute
+```
+
+Khi chương trình hỏi, nhập theo thứ tự:
+
+1. `Reject` để xác nhận không có POST nào được gửi.
+2. `Approve` để gửi đúng một POST an toàn qua Gateway.
+
+Kết quả được ghi trong `security-results/runs/week-5/`. File log chỉ giữ dữ
+liệu đã che và không lưu API key.
+
+## Kiểm thử
+
+Kiểm thử nhanh của riêng snapshot branch này:
+
+```bash
+python -m pytest -q -m "not integration"
+```
+
+Kết quả kiểm tra khi tách branch: `177 passed, 28 deselected`.
+
+Kiểm thử đầy đủ với Docker:
 
 ```bash
 python scripts/run_all_tests.py
 ```
 
-## Demo và kiểm thử
+Dừng và dọn hệ thống:
 
-Tạo lại báo cáo deterministic của Week 3:
-
-```powershell
-python -m security_pipeline analyze `
-    security-results/normalized-findings.json `
-    --knowledge-base data/vulnerabilities.json `
-    --provider deterministic `
-    --output "$env:TEMP\security-analysis-check.jsonl"
+```bash
+docker compose down --remove-orphans
+docker compose ps --all
 ```
-
-Chạy demo policy của Week 4; mặc định là dry-run, không mở network:
-
-```powershell
-python -m safe_api_tool demo
-```
-
-Chạy toàn bộ unit và Docker integration tests:
-
-```powershell
-python scripts/run_all_tests.py
-```
-
-## Dashboard
-
-- Local qua Gateway: `http://localhost:8080/ui/`
-- GitHub Pages: <https://honeybrew25.github.io/2026-08-10_NguyenTrongKhanh_Week4-5-6/>
-- Preview static: `python -m http.server 4173 --bind 127.0.0.1 --directory src/app/static`
-
-Dashboard public chỉ trình bày kiến trúc, evidence và dry-run simulator; API
-key không được đưa vào trình duyệt.
 
 ## Tài liệu
 
-- [Security Analysis Agent — Week 3](docs/security-analysis-agent.md)
-- [Safe API Testing Tool — Week 4](docs/safe-api-testing-tool.md)
-- [Dashboard UI](docs/ui-dashboard.md)
-- [CI/CD](docs/ci-cd.md)
+- [Tóm tắt Week 5](docs/week5-summary.md)
+- [Thiết kế bảo vệ Week 5](docs/week5.md)
+- [Kết quả kiểm tra nền](docs/security-baseline-triage.md)
+- [Công cụ kiểm thử API](docs/safe-api-testing-tool.md)
+- [Báo cáo Week 5](reports/week-5.md)
+- [Bằng chứng kiểm thử](evidence/week-5/verification.log)
+
+Muốn chạy sản phẩm hoàn chỉnh, chuyển sang branch `week-6`:
+
+```bash
+git switch week-6
+```
