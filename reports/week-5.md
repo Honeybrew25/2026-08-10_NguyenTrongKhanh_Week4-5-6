@@ -8,33 +8,31 @@ dữ liệu nhạy cảm không đi vào prompt/log và POST chỉ được th�
 
 ## Quá trình
 
-Hệ thống được bổ sung ba lớp bảo vệ chính:
-
-- che email, số điện thoại, mật khẩu và mã truy cập trước khi gửi cho AI hoặc
-  ghi vào báo cáo;
-- không làm theo các câu lệnh đáng ngờ nằm trong nội dung trả về từ website;
-- hỏi người dùng trước khi gửi yêu cầu có thể làm thay đổi dữ liệu.
-
-Khi người dùng chọn `Reject`, hệ thống dừng lại và không gửi yêu cầu. Khi chọn
-`Approve`, hệ thống chỉ gửi đúng yêu cầu đã được hiển thị, trong phạm vi cho
-phép và qua cổng bảo vệ. Quyết định phê duyệt có thời hạn, chỉ dùng một lần và
-không thể chuyển sang yêu cầu khác.
+- Tạo sanitizer dùng chung cho Agent, planner, CLI, approval, response và log;
+  hỗ trợ email, số điện thoại lab, token, API key, password và PII có khóa/mẫu
+  đã định nghĩa.
+- Tạo state machine cùng contract riêng cho risk, approval, guarded response
+  và run event..- Thêm exact GET fixture mô phỏng prompt injection, detector/quarantine và
+  benign control. Response không thể sinh proposal, tự approve hoặc gọi thêm
+  endpoint/tool.
+- Đổi demo thật thành hai run tách biệt: Reject để chứng minh không gọi mạng,
+  sau đó Approve để gửi đúng một bounded POST qua Envoy.
 
 ## Kết quả
 
-- 183 bài kiểm thử thông thường đã đạt.
-- 211 bài kiểm thử đầy đủ với Docker đã đạt.
+- Che email, số điện thoại, mật khẩu và mã truy cập trước khi gửi cho AI hoặc
+  ghi vào báo cáo;
+- Không làm theo các câu lệnh đáng ngờ nằm trong nội dung trả về từ website;
+- Hỏi người dùng trước khi gửi yêu cầu có thể làm thay đổi dữ liệu.
 - Thử nghiệm thực tế xác nhận `Reject` không gửi yêu cầu và `Approve` chỉ gửi
   đúng một yêu cầu an toàn.
-- Đường dẫn quản trị vẫn bị chặn.
-- Các file kết quả đã được kiểm tra và không chứa thông tin nhạy cảm mẫu.
-- Không phát hiện lỗi mức nghiêm trọng cao trong lần quét phát hành.
 
 ## Kết luận
 
-Sau tuần 5, AI không thể tự chọn mục tiêu, tự phê duyệt hoặc tự mở rộng phạm vi
+Với việc chống Prompt Injection AI không thể tự chọn mục tiêu, tự phê duyệt hoặc tự mở rộng phạm vi
 kiểm thử. Mọi nội dung từ website chỉ được xem là dữ liệu tham khảo, không
 được phép điều khiển hệ thống.
-
+Đối với request POST hoặc request có payload đặc biệt cần con người đưa ra quyết định.
+Dữ liệu nhạy cảm không xuất hiện trong prompt hoặc log.
 
 
