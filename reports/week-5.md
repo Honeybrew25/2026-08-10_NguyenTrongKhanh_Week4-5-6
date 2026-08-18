@@ -2,7 +2,7 @@
 
 ## Mục tiêu
 
-Trong tuần 5, em bổ sung các ranh giới để HTTP response không điều khiển Agent,
+Bổ sung các ranh giới để HTTP response không điều khiển Agent,
 dữ liệu nhạy cảm không đi vào prompt/log và POST chỉ được thực thi sau quyết
 định Approve hợp lệ của người dùng.
 
@@ -32,8 +32,8 @@ không thể chuyển sang yêu cầu khác.
 
 ## Kết luận
 
-Sau tuần 5, AI không thể tự chọn địa chỉ, tự phê duyệt hoặc tự mở rộng phạm vi
-kiểm thử. Nội dung từ website cũng chỉ được xem là dữ liệu tham khảo, không
+Sau tuần 5, AI không thể tự chọn mục tiêu, tự phê duyệt hoặc tự mở rộng phạm vi
+kiểm thử. Mọi nội dung từ website chỉ được xem là dữ liệu tham khảo, không
 được phép điều khiển hệ thống.
 
 
