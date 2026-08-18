@@ -15,15 +15,6 @@ Hệ thống có thể:
 Giao diện web chỉ dùng để trình bày. Việc phê duyệt và gửi yêu cầu được thực
 hiện bằng dòng lệnh.
 
-## Chọn đúng branch
-
-```bash
-git switch week-5
-```
-
-Branch này không có lệnh `project_sentinel` hoặc bộ đánh giá Week 6. Các phần
-đó nằm trong branch `week-6`.
-
 ## Cài đặt lần đầu
 
 Cần có Python 3.11+, Git và Docker Compose.
@@ -61,7 +52,7 @@ docker compose config --quiet
 
 ## Chạy demo Week 5
 
-Demo khô chỉ kiểm tra policy, không gửi yêu cầu mạng:
+Demo chỉ kiểm tra policy, không gửi yêu cầu mạng:
 
 ```bash
 python -m safe_api_tool demo
@@ -80,18 +71,29 @@ Khi chương trình hỏi, nhập theo thứ tự:
 1. `Reject` để xác nhận không có POST nào được gửi.
 2. `Approve` để gửi đúng một POST an toàn qua Gateway.
 
-Kết quả được ghi trong `security-results/runs/week-5/`. File log chỉ giữ dữ
-liệu đã che và không lưu API key.
+Kết quả của demo được ghi trong bốn file:
+
+- `security-results/runs/week-5/safe-api-receipts.jsonl`: kết quả thực thi và
+  mã HTTP;
+- `security-results/runs/week-5/approval-decisions.jsonl`: quyết định Reject
+  hoặc Approve;
+- `security-results/runs/week-5/guarded-responses.jsonl`: phản hồi đã được kiểm
+  tra prompt injection và che dữ liệu nhạy cảm;
+- `security-results/runs/week-5/run-events.jsonl`: các bước xử lý của từng lần
+  chạy.
+
+Các file log chỉ giữ dữ liệu đã che và không lưu API key. Những file có hậu tố
+`-ci` được tạo bởi full test/CI, không phải bởi lệnh demo thủ công ở trên.
 
 ## Kiểm thử
 
-Kiểm thử nhanh của riêng snapshot branch này:
+Kiểm thử nhanh của riêng snapshot:
 
 ```bash
 python -m pytest -q -m "not integration"
 ```
 
-Kết quả kiểm tra khi tách branch: `177 passed, 28 deselected`.
+Kết quả kiểm tra : `177 passed, 28 deselected`.
 
 Kiểm thử đầy đủ với Docker:
 
@@ -108,15 +110,8 @@ docker compose ps --all
 
 ## Tài liệu
 
-- [Tóm tắt Week 5](docs/week5-summary.md)
 - [Thiết kế bảo vệ Week 5](docs/week5.md)
 - [Kết quả kiểm tra nền](docs/security-baseline-triage.md)
 - [Công cụ kiểm thử API](docs/safe-api-testing-tool.md)
 - [Báo cáo Week 5](reports/week-5.md)
 - [Bằng chứng kiểm thử](evidence/week-5/verification.log)
-
-Muốn chạy sản phẩm hoàn chỉnh, chuyển sang branch `week-6`:
-
-```bash
-git switch week-6
-```

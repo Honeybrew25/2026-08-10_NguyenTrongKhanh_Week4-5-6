@@ -8,38 +8,33 @@ dữ liệu nhạy cảm không đi vào prompt/log và POST chỉ được th�
 
 ## Quá trình
 
-- Tạo sanitizer dùng chung cho Agent, planner, CLI, approval, response và log;
-  hỗ trợ email, số điện thoại lab, token, API key, password và PII có khóa/mẫu
-  đã định nghĩa.
-- Tạo state machine cùng contract riêng cho risk, approval, guarded response
-  và run event, đồng thời giữ nguyên receipt schema v1 của Week 4.
-- Đặt cổng approval ngay trong `SafeApiClient`. Approval được gắn với run,
-  proposal, policy, trusted origin, request fingerprint, thời hạn và chỉ dùng
-  một lần.
-- Thêm exact GET fixture mô phỏng prompt injection, detector/quarantine và
-  benign control. Response không thể sinh proposal, tự approve hoặc gọi thêm
-  endpoint/tool.
-- Đổi demo thật thành hai run tách biệt: Reject để chứng minh không gọi mạng,
-  sau đó Approve để gửi đúng một bounded POST qua Envoy.
+Hệ thống được bổ sung ba lớp bảo vệ chính:
+
+- che email, số điện thoại, mật khẩu và mã truy cập trước khi gửi cho AI hoặc
+  ghi vào báo cáo;
+- không làm theo các câu lệnh đáng ngờ nằm trong nội dung trả về từ website;
+- hỏi người dùng trước khi gửi yêu cầu có thể làm thay đổi dữ liệu.
+
+Khi người dùng chọn `Reject`, hệ thống dừng lại và không gửi yêu cầu. Khi chọn
+`Approve`, hệ thống chỉ gửi đúng yêu cầu đã được hiển thị, trong phạm vi cho
+phép và qua cổng bảo vệ. Quyết định phê duyệt có thời hạn, chỉ dùng một lần và
+không thể chuyển sang yêu cầu khác.
 
 ## Kết quả
 
-- Non-integration suite đạt **183 passed, 28 deselected**, không warning.
-- Full-stack suite với Keycloak, Envoy, authz-service và API đạt
-  **211 passed**, không warning; bốn curated POST profile không đổi state.
-- Live demo cho kết quả GET 200, Reject POST với 0 response/network fact,
-  Approve POST 200 và admin bị policy chặn.
-- Bốn JSONL artifact qua schema; secret/PII sentinel không tìm thấy giá trị raw.
-- Bandit High release gate đạt 0 finding.
-
-Chi tiết lệnh, hash và tiêu chí Pass/Fail nằm trong
-[`evidence/week-5/verification.log`](../evidence/week-5/verification.log). Thiết
-kế và cách chạy nằm trong
-[`docs/week5-guardrails.md`](../docs/week5-guardrails.md).
+- 183 bài kiểm thử thông thường đã đạt.
+- 211 bài kiểm thử đầy đủ với Docker đã đạt.
+- Thử nghiệm thực tế xác nhận `Reject` không gửi yêu cầu và `Approve` chỉ gửi
+  đúng một yêu cầu an toàn.
+- Đường dẫn quản trị vẫn bị chặn.
+- Các file kết quả đã được kiểm tra và không chứa thông tin nhạy cảm mẫu.
+- Không phát hiện lỗi mức nghiêm trọng cao trong lần quét phát hành.
 
 ## Kết luận
 
-Week 5 hoàn thành lớp guardrails, redaction và HITL có thể kiểm chứng bằng hành
-vi. Phần còn lại của Week 6 là nối các contract này thành orchestrator đầu-cuối,
-evaluation và báo cáo cuối; không cần mở rộng quyền của model hay bỏ qua
-allowlist/Gateway hiện có.
+Sau tuần 5, AI không thể tự chọn địa chỉ, tự phê duyệt hoặc tự mở rộng phạm vi
+kiểm thử. Nội dung từ website cũng chỉ được xem là dữ liệu tham khảo, không
+được phép điều khiển hệ thống.
+
+
+
