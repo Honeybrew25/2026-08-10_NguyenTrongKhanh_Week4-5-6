@@ -2,7 +2,7 @@
 
 ## Mục tiêu
 
-Trong tuần 5, em bổ sung các ranh giới để HTTP response không điều khiển Agent,
+Bổ sung các ranh giới để HTTP response không điều khiển Agent,
 dữ liệu nhạy cảm không đi vào prompt/log và POST chỉ được thực thi sau quyết
 định Approve hợp lệ của người dùng.
 
@@ -12,11 +12,7 @@ dữ liệu nhạy cảm không đi vào prompt/log và POST chỉ được th�
   hỗ trợ email, số điện thoại lab, token, API key, password và PII có khóa/mẫu
   đã định nghĩa.
 - Tạo state machine cùng contract riêng cho risk, approval, guarded response
-  và run event, đồng thời giữ nguyên receipt schema v1 của Week 4.
-- Đặt cổng approval ngay trong `SafeApiClient`. Approval được gắn với run,
-  proposal, policy, trusted origin, request fingerprint, thời hạn và chỉ dùng
-  một lần.
-- Thêm exact GET fixture mô phỏng prompt injection, detector/quarantine và
+  và run event..- Thêm exact GET fixture mô phỏng prompt injection, detector/quarantine và
   benign control. Response không thể sinh proposal, tự approve hoặc gọi thêm
   endpoint/tool.
 - Đổi demo thật thành hai run tách biệt: Reject để chứng minh không gọi mạng,
@@ -24,22 +20,19 @@ dữ liệu nhạy cảm không đi vào prompt/log và POST chỉ được th�
 
 ## Kết quả
 
-- Non-integration suite đạt **183 passed, 28 deselected**, không warning.
-- Full-stack suite với Keycloak, Envoy, authz-service và API đạt
-  **211 passed**, không warning; bốn curated POST profile không đổi state.
-- Live demo cho kết quả GET 200, Reject POST với 0 response/network fact,
-  Approve POST 200 và admin bị policy chặn.
-- Bốn JSONL artifact qua schema; secret/PII sentinel không tìm thấy giá trị raw.
-- Bandit High release gate đạt 0 finding.
-
-Chi tiết lệnh, hash và tiêu chí Pass/Fail nằm trong
-[`evidence/week-5/verification.log`](../evidence/week-5/verification.log). Thiết
-kế và cách chạy nằm trong
-[`docs/week5-guardrails.md`](../docs/week5-guardrails.md).
+- Che email, số điện thoại, mật khẩu và mã truy cập trước khi gửi cho AI hoặc
+  ghi vào báo cáo;
+- Không làm theo các câu lệnh đáng ngờ nằm trong nội dung trả về từ website;
+- Hỏi người dùng trước khi gửi yêu cầu có thể làm thay đổi dữ liệu.
+- Thử nghiệm thực tế xác nhận `Reject` không gửi yêu cầu và `Approve` chỉ gửi
+  đúng một yêu cầu an toàn.
 
 ## Kết luận
 
-Week 5 hoàn thành lớp guardrails, redaction và HITL có thể kiểm chứng bằng hành
-vi. Phần còn lại của Week 6 là nối các contract này thành orchestrator đầu-cuối,
-evaluation và báo cáo cuối; không cần mở rộng quyền của model hay bỏ qua
-allowlist/Gateway hiện có.
+Với việc chống Prompt Injection AI không thể tự chọn mục tiêu, tự phê duyệt hoặc tự mở rộng phạm vi
+kiểm thử. Mọi nội dung từ website chỉ được xem là dữ liệu tham khảo, không
+được phép điều khiển hệ thống.
+Đối với request POST hoặc request có payload đặc biệt cần con người đưa ra quyết định.
+Dữ liệu nhạy cảm không xuất hiện trong prompt hoặc log.
+
+
