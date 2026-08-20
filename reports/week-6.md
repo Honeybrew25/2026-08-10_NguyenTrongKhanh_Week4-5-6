@@ -16,7 +16,7 @@ evaluation và lệnh demo tái hiện được.
 - Tạo bộ evaluation 10 case có expected/actual, truth unit TP/FP/FN, các trap
   empty/invalid/hallucination/injection/redaction/approval và release threshold.
 - Thêm CI Week 6 dùng Bandit/ZAP artefact cùng workflow, schema/hash/sentinel
-  gate, product brief, kiến trúc, README và kịch bản demo 10–15 phút.
+  gate, product brief, kiến trúc.
 
 ## Kết quả
 
@@ -29,20 +29,10 @@ evaluation và lệnh demo tái hiện được.
 - Final report phân biệt scanner fact, AI narrative, human decision và request
   result; status 200 chỉ là verification signal, không phải exploit proof.
 
-Chi tiết command, hash và giới hạn nằm trong
-[`evidence/week-6/verification.log`](../evidence/week-6/verification.log), kiến
-trúc tại [`docs/project-sentinel-architecture.md`](../docs/project-sentinel-architecture.md)
-và evaluation tại [`docs/evaluation.md`](../docs/evaluation.md). Ánh xạ từng
-nhóm rubric sang evidence/lệnh cùng release review nằm tại
-[`docs/rubric-evidence.md`](../docs/rubric-evidence.md); tài liệu này không tự
-chấm điểm.
-
 ## Kết luận
 
 Các P0 chức năng Week 6 đã có code và evidence thực thi. Sản phẩm vẫn là lab:
 ZAP passive `/health`, Keycloak dev/HTTP local, rate limiter process-local và
 regex guard có phạm vi hữu hạn. Bước quản trị còn lại là owner review/stage/
 commit toàn bộ file bàn giao rồi ghi lại clean release revision; báo cáo này
-không giả rằng working tree hiện tại đã được version-control. Biểu mẫu peer
-rerun, rehearsal và owner release nằm tại
-[`docs/release-acceptance.md`](../docs/release-acceptance.md).
+không giả rằng working tree hiện tại đã được version-control.

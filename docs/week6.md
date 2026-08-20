@@ -1,4 +1,4 @@
-# Tuần 6 — Bản tóm tắt dễ hiểu
+# Tuần 6
 
 ## Tuần này làm gì?
 
@@ -33,9 +33,3 @@ nhiên, đây vẫn là môi trường lab: ZAP mới kiểm tra thụ động �
 Keycloak dùng chế độ phát triển và giới hạn số yêu cầu được lưu trong từng tiến
 trình.
 
-Trước khi chốt bản phát hành, chủ dự án vẫn cần xem lại thay đổi, chạy buổi demo
-theo thời gian thật và lưu mã phiên bản cuối cùng.
-
-Xem [báo cáo gốc](../reports/week-6.md),
-[bằng chứng kiểm thử](../evidence/week-6/verification.log) và
-[các bước xác nhận cuối](release-acceptance.md).

@@ -101,5 +101,3 @@ giữ để review; baseline không bị xóa hoặc ghi đè.
 - Docker lỗi: `docker compose logs --no-color --tail 200`, cleanup, rồi start
   clean. Không tái sử dụng run ID.
 
-Trước thuyết trình chính thức, chạy đúng script này với đồng hồ; gate là 10–15
-phút, đủ Reject/Approve, injection, redaction, evaluation và cleanup.
