@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Bảng điều khiển Project Sentinel Week 4: API Gateway và kiểm thử request an toàn.">
+  <meta name="description" content="Bảng điều khiển Project Sentinel Week 6: phát lại luồng E2E, guardrails và kiểm thử request an toàn.">
   <meta name="theme-color" content="#071019">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; connect-src 'self'; font-src 'self'; form-action 'none'; frame-src 'none'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self'">
-  <title>Project Sentinel · Week 4</title>
-  <link rel="stylesheet" href="./styles.css?v=runtime-radar-2">
-  <script src="./app.js?v=runtime-radar-2" defer></script>
+  <title>Project Sentinel · Week 6</title>
+  <link rel="stylesheet" href="./styles.css?v=e2e-replay-4">
+  <script src="./app.js?v=e2e-replay-4" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main-content">Bỏ qua đến nội dung chính</a>
@@ -30,6 +30,7 @@
 
     <nav class="main-nav" aria-label="Điều hướng chính">
       <a href="#architecture">Kiến trúc</a>
+      <a href="#e2e">E2E Replay</a>
       <a href="#simulator">Dry-run</a>
       <a href="#controls">Kiểm soát</a>
       <a href="#evidence">Bằng chứng</a>
@@ -44,18 +45,18 @@
   <main id="main-content">
     <section class="hero section-shell" id="top" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <p class="eyebrow"><span>WEEK 04</span> · API GATEWAY + SAFE REQUESTS</p>
+        <p class="eyebrow"><span>WEEK 06</span> · END-TO-END CONTROL + EVIDENCE</p>
         <h1 id="hero-title">
           <span>Kiểm thử API an toàn</span>
           <em>Có ranh giới. Có bằng chứng.</em>
         </h1>
         <p class="hero-lede">
-          Agent chỉ đề xuất capability đã được định danh. Policy materialize request từ catalog an toàn,
-          gateway cưỡng chế lần hai, và evidence receipt chỉ giữ metadata đã làm sạch.
+          Theo dõi từ scanner đến báo cáo cuối, xem lại quyết định Reject/Approve,
+          response bị quarantine và request ngoài policy bị chặn trước transport.
         </p>
         <div class="hero-actions">
-          <a class="button button-primary" href="#simulator">Mở dry-run simulator</a>
-          <a class="button button-secondary" href="#architecture">Xem luồng bảo vệ</a>
+          <a class="button button-primary" href="#e2e">Xem E2E Replay</a>
+          <a class="button button-secondary" href="#simulator">Mở dry-run</a>
         </div>
         <div class="trust-strip" aria-label="Cam kết an toàn">
           <span><i aria-hidden="true"></i> Fixed origin</span>
@@ -91,7 +92,7 @@
           </div>
           <strong id="runtime-inspector-title">Policy integrity</strong>
           <p id="runtime-inspector-description">Policy SHA, capability và test-case contract đã được đối chiếu với source.</p>
-          <small id="runtime-inspector-detail">2 capabilities · 4 test cases</small>
+          <small id="runtime-inspector-detail">3 capabilities · 4 test cases</small>
         </div>
         <dl class="runtime-list">
           <div class="runtime-row">
@@ -100,7 +101,7 @@
           </div>
           <div class="runtime-row">
             <dt><span class="runtime-signal" id="policy-signal" data-state="verified" aria-hidden="true"></span>Policy</dt>
-            <dd><strong id="policy-runtime-state">VERIFIED · v1.0</strong><small id="policy-runtime-detail">2 capabilities · 4 test cases</small></dd>
+            <dd><strong id="policy-runtime-state">VERIFIED · v1.0</strong><small id="policy-runtime-detail">3 capabilities · 4 test cases</small></dd>
           </div>
           <div class="runtime-row">
             <dt><span class="runtime-signal" id="evidence-signal" data-state="snapshot" aria-hidden="true"></span>Evidence</dt>
@@ -119,10 +120,10 @@
 
     <section class="metrics section-shell" aria-label="Chỉ số dự án">
       <div class="metric-grid" id="metric-grid">
-        <article class="metric-card tone-cyan"><span>Findings</span><strong>27</strong><small>Bandit + OWASP ZAP</small></article>
-        <article class="metric-card tone-violet"><span>Grounded groups</span><strong>9</strong><small>Provenance đầy đủ</small></article>
-        <article class="metric-card tone-lime"><span>Unit tests</span><strong>141</strong><small>Không cần Docker</small></article>
-        <article class="metric-card tone-amber"><span>Full stack</span><strong>166</strong><small>Docker integration</small></article>
+        <article class="metric-card tone-cyan"><span>Findings</span><strong>41</strong><small>Fresh Week 6 · Bandit Low</small></article>
+        <article class="metric-card tone-violet"><span>Grounded groups</span><strong>6</strong><small>Deterministic · grounded</small></article>
+        <article class="metric-card tone-lime"><span>Unit tests</span><strong>216</strong><small>Pre-release · no warnings</small></article>
+        <article class="metric-card tone-amber"><span>Full stack</span><strong>244</strong><small>Docker verified locally</small></article>
       </div>
     </section>
 
@@ -137,17 +138,114 @@
       <ol class="architecture-flow" id="architecture-flow">
         <li><span>01</span><strong>Scan</strong><small>Bandit + ZAP</small></li>
         <li><span>02</span><strong>Normalize</strong><small>Schema 1.0</small></li>
-        <li><span>03</span><strong>Analyze</strong><small>27 → 9 groups</small></li>
+        <li><span>03</span><strong>Analyze</strong><small>41 → 6 groups</small></li>
         <li><span>04</span><strong>Propose</strong><small>Capability IDs</small></li>
-        <li><span>05</span><strong>Enforce</strong><small>Gateway policy</small></li>
-        <li><span>06</span><strong>Evidence</strong><small>Sanitized receipt</small></li>
+        <li><span>05</span><strong>Approve</strong><small>HITL for POST</small></li>
+        <li><span>06</span><strong>Enforce</strong><small>Gateway policy</small></li>
+        <li><span>07</span><strong>Guard</strong><small>Injection + redaction</small></li>
+        <li><span>08</span><strong>Evidence</strong><small>Linked contracts</small></li>
       </ol>
+    </section>
+
+    <section class="content-section section-shell e2e-section" id="e2e" aria-labelledby="e2e-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">02 · E2E RUN VIEWER</p>
+          <h2 id="e2e-title">Một pipeline, bốn tình huống kiểm soát</h2>
+        </div>
+        <div class="offline-pill"><span aria-hidden="true"></span> BẢN PHÁT LẠI · KHÔNG GỬI REQUEST</div>
+      </div>
+
+      <div class="replay-shell panel">
+        <div class="replay-toolbar">
+          <div class="replay-scenarios" id="e2e-scenario-tabs" role="tablist" aria-label="Kịch bản E2E Week 6">
+            <button class="replay-scenario-tab is-active" id="e2e-tab-reject" type="button" role="tab" aria-selected="true" aria-controls="e2e-scenario-panel" data-e2e-scenario="reject">Xem Reject</button>
+            <button class="replay-scenario-tab" id="e2e-tab-approve" type="button" role="tab" aria-selected="false" aria-controls="e2e-scenario-panel" data-e2e-scenario="approve" tabindex="-1">Xem Approve</button>
+            <button class="replay-scenario-tab" id="e2e-tab-injection" type="button" role="tab" aria-selected="false" aria-controls="e2e-scenario-panel" data-e2e-scenario="injection" tabindex="-1">Xem Injection</button>
+            <button class="replay-scenario-tab" id="e2e-tab-admin" type="button" role="tab" aria-selected="false" aria-controls="e2e-scenario-panel" data-e2e-scenario="admin" tabindex="-1">Xem Admin bị chặn</button>
+          </div>
+          <p class="replay-notice" id="e2e-replay-notice">Dữ liệu đã làm sạch; approval thật vẫn chạy trong CLI.</p>
+        </div>
+
+        <div class="replay-evaluation" aria-label="Kết quả evaluation Week 6">
+          <div><span>Cases</span><strong id="e2e-eval-cases">10</strong></div>
+          <div><span>Passed</span><strong id="e2e-eval-passed">10</strong></div>
+          <div><span>TP</span><strong id="e2e-eval-tp">6</strong></div>
+          <div><span>FP</span><strong id="e2e-eval-fp">0</strong></div>
+          <div><span>FN</span><strong id="e2e-eval-fn">0</strong></div>
+          <div><span>Leak / bypass</span><strong id="e2e-eval-safety">0 / 0</strong></div>
+        </div>
+
+        <div id="e2e-scenario-panel" role="tabpanel" aria-labelledby="e2e-tab-reject" tabindex="0">
+          <div class="replay-scenario-heading">
+            <div>
+              <span class="panel-label" id="e2e-scenario-tag">HUMAN DECISION</span>
+              <h3 id="e2e-scenario-title">Reject — dừng trước transport</h3>
+              <p id="e2e-scenario-summary">Người vận hành từ chối request có rủi ro; pipeline kết thúc mà không mở transport.</p>
+            </div>
+            <span class="replay-status" id="e2e-scenario-status" data-state="rejected">REJECTED</span>
+          </div>
+
+          <ol class="replay-stage-flow" id="e2e-stage-flow" aria-label="Các bước của kịch bản Reject">
+            <li><button type="button" class="replay-stage is-active" data-state="success" data-e2e-stage="scanner_input" aria-pressed="true" aria-controls="e2e-stage-detail"><span>01</span><strong>Scan</strong><small>SUCCESS</small></button></li>
+            <li><button type="button" class="replay-stage" data-state="success" data-e2e-stage="normalize" aria-pressed="false" aria-controls="e2e-stage-detail"><span>02</span><strong>Chuẩn hóa</strong><small>SUCCESS</small></button></li>
+            <li><button type="button" class="replay-stage" data-state="success" data-e2e-stage="analysis" aria-pressed="false" aria-controls="e2e-stage-detail"><span>03</span><strong>Phân tích</strong><small>SUCCESS</small></button></li>
+            <li><button type="button" class="replay-stage" data-state="success" data-e2e-stage="proposal" aria-pressed="false" aria-controls="e2e-stage-detail"><span>04</span><strong>Đề xuất</strong><small>SUCCESS</small></button></li>
+            <li><button type="button" class="replay-stage" data-state="rejected" data-e2e-stage="approval" aria-pressed="false" aria-controls="e2e-stage-detail"><span>05</span><strong>Phê duyệt</strong><small>REJECTED</small></button></li>
+            <li><button type="button" class="replay-stage" data-state="skipped" data-e2e-stage="request" aria-pressed="false" aria-controls="e2e-stage-detail"><span>06</span><strong>Gateway</strong><small>SKIPPED</small></button></li>
+            <li><button type="button" class="replay-stage" data-state="skipped" data-e2e-stage="response_guard" aria-pressed="false" aria-controls="e2e-stage-detail"><span>07</span><strong>Response guard</strong><small>SKIPPED</small></button></li>
+            <li><button type="button" class="replay-stage" data-state="success" data-e2e-stage="final_report" aria-pressed="false" aria-controls="e2e-stage-detail"><span>08</span><strong>Báo cáo</strong><small>SUCCESS</small></button></li>
+          </ol>
+
+          <div class="replay-stage-detail" id="e2e-stage-detail" role="status" aria-live="polite">
+            <span class="event-state allow" id="e2e-stage-state">SUCCESS</span>
+            <div><strong id="e2e-stage-title">Input đã được giữ</strong><p id="e2e-stage-description">Scanner input được giữ riêng và liên kết bằng SHA-256.</p></div>
+          </div>
+
+          <div class="replay-summary-grid">
+            <article class="replay-card">
+              <span class="panel-label">RUN</span>
+              <h3 id="e2e-run-status">rejected</h3>
+              <dl>
+                <div><dt>Network</dt><dd id="e2e-network-mode">Tắt trên UI</dd></div>
+                <div><dt>Proposal/run</dt><dd id="e2e-proposal-cardinality">1</dd></div>
+              </dl>
+            </article>
+            <article class="replay-card">
+              <span class="panel-label">REQUEST</span>
+              <h3><code id="e2e-request-line">POST /api/test/validate</code></h3>
+              <dl>
+                <div><dt>Risk</dt><dd id="e2e-request-risk">Cần phê duyệt</dd></div>
+                <div><dt>Credential</dt><dd id="e2e-credential-boundary">Runtime nội bộ</dd></div>
+              </dl>
+            </article>
+            <article class="replay-card">
+              <span class="panel-label">APPROVAL</span>
+              <h3 id="e2e-human-decision">Reject</h3>
+              <dl>
+                <div><dt>Kênh thật</dt><dd>CLI / runtime</dd></div>
+                <div><dt>Trên UI</dt><dd>Chỉ phát lại</dd></div>
+              </dl>
+            </article>
+            <article class="replay-card">
+              <span class="panel-label">RESULT</span>
+              <h3 id="e2e-result-headline">0 request được gửi</h3>
+              <dl>
+                <div><dt>Request đã gửi</dt><dd id="e2e-requests-sent">0</dd></div>
+                <div><dt>Response guard</dt><dd id="e2e-guard-result">Không chạy</dd></div>
+                <div><dt>Diễn giải</dt><dd id="e2e-interpretation">Bị chặn trước transport</dd></div>
+                <div><dt>Safe code</dt><dd id="e2e-safe-code">approval_rejected</dd></div>
+              </dl>
+            </article>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section class="content-section section-shell simulator-section" id="simulator" aria-labelledby="simulator-title">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">02 · INTERACTIVE DRY-RUN</p>
+          <p class="eyebrow">03 · INTERACTIVE DRY-RUN</p>
           <h2 id="simulator-title">Agent đề xuất. Policy quyết định.</h2>
         </div>
         <div class="offline-pill"><span aria-hidden="true"></span> MÔ PHỎNG CỤC BỘ · KHÔNG GỬI REQUEST</div>
@@ -235,7 +333,7 @@
     <section class="content-section section-shell" id="controls" aria-labelledby="controls-title">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">03 · DEFENSE CONTROLS</p>
+          <p class="eyebrow">04 · DEFENSE CONTROLS</p>
           <h2 id="controls-title">An toàn nằm trong code, không nằm trong lời hứa</h2>
         </div>
         <p>Policy từ chối trước transport; gateway tiếp tục kiểm tra nếu client bị giả mạo.</p>
@@ -251,7 +349,7 @@
     <section class="content-section section-shell evidence-section" id="evidence" aria-labelledby="evidence-title">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">04 · EVIDENCE LEDGER</p>
+          <p class="eyebrow">05 · EVIDENCE LEDGER</p>
           <h2 id="evidence-title">Mọi quyết định đều truy vết được</h2>
         </div>
         <p>Ví dụ đã làm sạch; không chứa body đầy đủ, token hoặc giá trị header.</p>
@@ -265,7 +363,7 @@
         </div>
 
         <aside class="roadmap panel" aria-labelledby="roadmap-title">
-          <div class="panel-header"><strong id="roadmap-title">Đường đến Week 6</strong><span class="panel-label">ROADMAP</span></div>
+          <div class="panel-header"><strong id="roadmap-title">Project Sentinel Week 6</strong><span class="panel-label">ROADMAP</span></div>
           <ol id="roadmap-list">
             <li class="is-current"><span>W4</span><div><strong>Safe request boundary</strong><small>Gateway · policy · audit</small></div></li>
             <li><span>W5</span><div><strong>AI guardrails</strong><small>Prompt injection · approval · redaction</small></div></li>
@@ -278,7 +376,7 @@
 
   <footer class="site-footer section-shell">
     <div><strong>PROJECT SENTINEL</strong><span>VinUni × VinSOC · 6-week capstone</span></div>
-    <p>Dự án giáo dục độc lập; dashboard chỉ trình bày dữ liệu curated và dry-run cục bộ.</p>
+    <p>Dự án giáo dục độc lập; E2E viewer chỉ phát lại dữ liệu đã làm sạch và không gửi request.</p>
   </footer>
 
   <noscript>

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/safe-api-run-event.schema.json",
+  "title": "Safe API Run Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "event_id", "run_id", "timestamp", "stage", "outcome",
+    "duration_ms", "safe_error_code", "counters", "related_ids"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "event_id": {"type": "string", "pattern": "^[a-f0-9-]{36}$"},
+    "run_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "stage": {"enum": ["validate", "risk_classification", "approval", "policy_recheck", "execute", "response_guard"]},
+    "outcome": {"enum": ["success", "approved", "rejected", "blocked", "failed"]},
+    "duration_ms": {"type": "number", "minimum": 0},
+    "safe_error_code": {"type": ["string", "null"], "maxLength": 100},
+    "counters": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+    "related_ids": {"type": "array", "items": {"type": "string"}}
+  }
+}

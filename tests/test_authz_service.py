@@ -55,6 +55,7 @@ def use_safe_api_runtime(
         routes=frozenset(
             {
                 ("GET", "/api/test/status"),
+                ("GET", "/api/test/prompt-injection"),
                 ("POST", "/api/test/validate"),
             }
         ),

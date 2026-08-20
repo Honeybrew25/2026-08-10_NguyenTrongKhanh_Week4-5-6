@@ -1,0 +1,19 @@
+{
+  "checks": {
+    "ci_network_calls": 0,
+    "evaluation_cases": "10/10",
+    "final_report_schema": "pass",
+    "fn": 0,
+    "fp": 0,
+    "git_diff_check": "pass",
+    "manifest_hashes": "pass",
+    "pipeline_event_schema_and_run_id": "pass",
+    "secret_pii_sentinel": "pass",
+    "tp": 6
+  },
+  "commit": "ea98afa2d9c03cb5ff00c82aeebd18ed5ce3b0c1",
+  "evaluation_id": "eval-release-review-20260820-final",
+  "run_id": "release-review-20260820-final-dry",
+  "schema_version": "1.0",
+  "verified_at": "2026-08-20T07:15:38.401312Z"
+}

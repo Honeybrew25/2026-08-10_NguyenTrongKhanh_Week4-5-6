@@ -91,8 +91,12 @@ class PolicyEngine:
         unknown = referenced.difference(self._test_cases)
         if unknown:
             raise PolicyLoadError("policy_references_unknown_test_case")
-        self.policy_sha256 = hashlib.sha256(
-            _canonical_bytes(policy.model_dump(by_alias=True, mode="json"))
+
+    @property
+    def policy_sha256(self) -> str:
+        """Hash current policy state so approval re-checks detect TOCTOU changes."""
+        return hashlib.sha256(
+            _canonical_bytes(self.policy.model_dump(by_alias=True, mode="json"))
         ).hexdigest()
 
     @classmethod

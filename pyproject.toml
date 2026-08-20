@@ -10,10 +10,12 @@ requires-python = ">=3.11"
 dependencies = [
   "httpx==0.28.1",
   "pydantic==2.13.4",
+  "rich==14.3.3",
 ]
 
 [project.scripts]
 safe-api-tool = "safe_api_tool.__main__:main"
+project-sentinel = "project_sentinel.__main__:main"
 
 [project.optional-dependencies]
 agent = ["google-genai==2.16.0"]

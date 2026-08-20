@@ -6,6 +6,7 @@ from pathlib import Path
 import httpx
 from jsonschema import Draft202012Validator
 
+from safe_api_tool.approval import StaticApprovalProvider
 from safe_api_tool.audit import AuditLogWriter
 from safe_api_tool.client import SafeApiClient
 from safe_api_tool.models import RequestProposal
@@ -51,6 +52,7 @@ def client(
         PolicyEngine.from_files(),
         api_key=API_KEY,
         audit_writer=AuditLogWriter(audit_path) if audit_path else None,
+        approval_provider=StaticApprovalProvider("approve"),
         transport=httpx.MockTransport(handler),
         monotonic_clock=clock,
         request_id_factory=lambda: "safe-client-request-1",
@@ -155,6 +157,7 @@ def test_response_stream_stops_at_configured_byte_cap() -> None:
     with SafeApiClient(
         engine,
         api_key=API_KEY,
+        approval_provider=StaticApprovalProvider("approve"),
         transport=httpx.MockTransport(handler),
         request_id_factory=lambda: "response-cap",
     ) as tool:
@@ -182,6 +185,7 @@ def test_truncated_response_does_not_log_a_partial_api_key() -> None:
     with SafeApiClient(
         engine,
         api_key=API_KEY,
+        approval_provider=StaticApprovalProvider("approve"),
         transport=httpx.MockTransport(handler),
         request_id_factory=lambda: "partial-secret-cap",
     ) as tool:
@@ -190,7 +194,7 @@ def test_truncated_response_does_not_log_a_partial_api_key() -> None:
     assert receipt.response_truncated is True
     assert receipt.response_excerpt is not None
     assert API_KEY[:exposed_prefix_length] not in receipt.response_excerpt
-    assert receipt.response_excerpt.endswith("[REDACTED]")
+    assert receipt.response_excerpt.endswith("[REDACTED_API_KEY]")
 
 
 def test_local_rate_limit_blocks_before_second_transport_call() -> None:
@@ -206,6 +210,7 @@ def test_local_rate_limit_blocks_before_second_transport_call() -> None:
     with SafeApiClient(
         engine,
         api_key=API_KEY,
+        approval_provider=StaticApprovalProvider("approve"),
         transport=httpx.MockTransport(handler),
         monotonic_clock=lambda: 1.0,
         request_id_factory=lambda: "rate-limit",

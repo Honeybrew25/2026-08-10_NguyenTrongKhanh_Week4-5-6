@@ -1,0 +1,96 @@
+Project Sentinel - Week 6 pre-release verification
+Date: 2026-08-20 14:07 +07:00 (Asia/Bangkok)
+Base HEAD: ea98afa2d9c03cb5ff00c82aeebd18ed5ce3b0c1
+Branch: week-6
+Evidence kind: pre_release_dirty_worktree
+Working tree: DIRTY with understood source, test, documentation and evidence paths. This review verifies the current local files; it does not claim a clean final release commit.
+Release gate passed: false (final commit, hosted CI and independent rerun remain external gates).
+
+Environment
+  Windows / PowerShell 7
+  Python 3.11.9
+  Docker 29.6.2
+  Docker Compose v5.3.1
+  Policy SHA-256: 0181e74d35ced610750e1ced2e42f0e1733439d3ce830b6cb62cf2cfee7562a8
+
+[PASS] Non-integration suite
+Command: python -m pytest -q -m "not integration"
+  216 passed, 28 deselected in 1.36s; no warnings.
+
+[PASS] Full Docker suite and live Week 5-6 controls
+Command: python scripts/run_all_tests.py
+[PASS] Full suite: 244 passed in 126.03s; no warnings.
+  Whole command elapsed: 179.4s including Compose build/start, controls and cleanup.
+  Keycloak, API, authz-service and Envoy reached healthy/running state.
+  Week 5 receipt/approval/guard/event schemas and secret/PII sentinel: PASS.
+  Week 6 Reject run: rejected; requests_sent=0; rejections=1.
+  Week 6 Approve run: completed; requests_sent=1; approvals=1.
+  Week 6 prompt-injection run: completed; requests_sent=1; injection_flags=1; raw hostile instruction was not persisted.
+  Week 6 admin negative run: blocked; requests_sent=0.
+  Demo summary: expectations_met=true; one proposal per run.
+  Demo ID: demo-20260820-070703-552dd32b; four-run duration=12735ms.
+  Demo summary SHA-256: 816263877d1750c36eb4bdd9fdcf3d668fc9e3b05f71c5b4c2299ca584621b17
+  docker compose down --remove-orphans completed in finally.
+  docker compose ps --all --quiet returned no project containers.
+
+[PASS] Fresh Bandit release input and High gate
+Command: python scripts/run_security_scan.py --output <ignored-week6-input>/bandit-low.json --severity-level low
+  Data-scan exit=1 is expected because reportable findings exist; JSON is valid.
+Fresh Bandit Low JSON normalized: 41 findings
+  Input SHA-256: 3adc0e9bb1636ee9b875c3a9f40413e9bf1b591028c85fde48bb9d99f5b4f5ee
+Command: python scripts/run_security_scan.py --output <ignored-week6-input>/bandit-high.json --severity-level high
+  High release-gate exit=0; 0 High findings.
+  High JSON SHA-256: d53b8fc6fc07ca984dd9059f429b7adbb2240bf817f3dc8b17f173af36b933d1
+  Scope remains src/ and scripts/; this is not dependency/container/config scanning.
+
+[PASS] Deterministic end-to-end dry run
+Command: python -m project_sentinel run <fresh-bandit-low-json> --provider deterministic --run-id release-review-20260820-final-dry --output-root security-results/runs/week-6 --format json
+  status=dry_run; raw=41; normalized=41; analysis_groups=6; requests_sent=0; errors=0.
+Deterministic analysis: 41 findings -> 6 grounded records
+  Final report SHA-256: 0664b3d29e61b14db6aa6b75c315bcf5531a24fd73e461cce729deffc58520e5
+  Scanner input retained with provenance/hash; workspace and manifest were not overwritten.
+
+[PASS] Curated evaluation
+Command: python -m project_sentinel evaluate --provider deterministic --evaluation-id eval-release-review-20260820-final --output-root security-results/runs/week-6
+  10/10 passed; 5 Agent analysis cases and 5 behavioral cases.
+  TP=6; FP=0; FN=0.
+  schema-valid=100%; source coverage=100%.
+  persisted hallucination=0; secret/PII leak=0; policy bypass=0.
+  Evaluation summary SHA-256: d9b4efff0e65cd49a6f3c1a09562a49264edc4935458f61bac55ac5ac52fd4d7
+  Truth unit: expected (tool, rule_id) group per analysis case; behavioral cases are not included in the FP/FN denominator.
+
+[PASS] Artifact verifier
+Command: python scripts/verify_week6_artifacts.py --run-directory <release-run> --evaluation-directory <evaluation-run> --verification-log evidence/week-6/artifact-verification-2026-08-20.json
+  Final report schema, pipeline event schema/run ID, manifest hashes, dry-run network count, evaluation thresholds, secret/PII sentinel and git diff --check: PASS.
+  Durable machine-readable result: evidence/week-6/artifact-verification-2026-08-20.json
+
+[PASS] Existing functional gates rechecked
+  SQL Injection search returned SQL Injection at rank 1.
+  XSS search returned Cross-Site Scripting (XSS) at rank 1.
+  Historical normalized baseline: 27 findings -> 9 deterministic grounded JSONL records.
+  project_sentinel preflight: policy/fixture, environment contract, Docker daemon and Compose config PASS.
+  docker compose config --quiet: PASS.
+  Ruff: all checks passed.
+  git diff --check: PASS (line-ending notices only, no whitespace error).
+  Documentation-link regression: PASS.
+  Delivery sentinel: 28 docs/evidence/dashboard/golden files checked; 7 sensitive .env values and published raw fixtures had 0 hits.
+  .env is ignored and not tracked.
+
+[PASS] Technical demo rehearsal
+  Automated live controls completed in under 3 minutes including stack lifecycle; the four scenario runs took 12.735s.
+  docs/demo-script.md allocates the explanation and UI review across a 10-15 minute presentation.
+  Reject, Approve, injection quarantine, admin deny, fallback instructions and cleanup are present.
+  This technical timing is not an independent audience sign-off for DEMO-12.
+
+Git/release state that remains open
+  docs/todo-checklist.md and the other new delivery/evidence files are visible to Git after .gitignore cleanup, but are not tracked because no commit was authorized.
+  Hosted CI cannot run for this working tree because the week-6 remote branch/ref does not contain these local changes.
+  DOC-08 requires a person who did not implement the changes to rerun README from a clean checkout.
+  REL-07 requires this gate to be rerun on the final clean commit.
+  REL-11 requires all delivery files to be committed and git status to be clean.
+
+Known limitations / honest release notes
+  ZAP is passive and unauthenticated from /health; the local pre-release pass used the existing ZAP contract/evidence while hosted CI remains pending for the final commit.
+  Keycloak start-dev, local HTTP and process-local rate limiters are lab controls, not production deployment.
+  PII and injection regexes are bounded to documented fixture classes and may have false positives/negatives outside the dataset.
+  Bandit Low findings are triage signals, not proof of exploitation; the current six groups and proposed follow-up are documented in docs/evaluation.md.

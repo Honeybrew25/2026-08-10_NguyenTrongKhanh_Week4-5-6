@@ -132,6 +132,7 @@ def test_authz_loads_exact_routes_and_rate_limit_from_shared_policy() -> None:
     assert policy.routes == frozenset(
         {
             ("GET", "/api/test/status"),
+            ("GET", "/api/test/prompt-injection"),
             ("POST", "/api/test/validate"),
         }
     )

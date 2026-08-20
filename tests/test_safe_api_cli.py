@@ -141,3 +141,32 @@ def test_execute_returns_failure_when_http_status_breaks_contract(
     output = json.loads(capsys.readouterr().out)
     assert output["outcome"] == "unexpected_status"
     assert output["expected_status_matched"] is False
+
+
+def test_cli_error_path_sanitizes_sensitive_exception_text(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    proposal_path = tmp_path / "proposal.json"
+    proposal_path.write_text(
+        RequestProposal(
+            endpoint_id="input-validation",
+            test_case_id="empty",
+            rationale="Exercise the curated empty profile.",
+            source_finding_ids=[],
+            requested_headers={},
+        ).model_dump_json(),
+        encoding="utf-8",
+    )
+
+    def fail(*args, **kwargs):
+        raise ValueError("owner@example.test password=exception-secret")
+
+    monkeypatch.setattr(cli_module, "_execute_one", fail)
+    assert main(["run", str(proposal_path), "--execute"]) == 2
+    error = capsys.readouterr().err
+    assert "owner@example.test" not in error
+    assert "exception-secret" not in error
+    assert "[REDACTED_EMAIL]" in error
+    assert "[REDACTED_PASSWORD]" in error

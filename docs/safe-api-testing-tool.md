@@ -1,153 +1,124 @@
-# Safe API Testing Tool — Week 4
+# Công cụ kiểm thử API an toàn
 
-> Week 4 · Xem [documentation hub](README.md),
-> [báo cáo tuần](../reports/week-4.md) và
-> [receipt demo](../security-results/runs/week-4/safe-api-demo.jsonl).
+> Week 4 · Xem [hướng dẫn chính](../README.md),
+> [báo cáo tuần](../reports/week-4.md),
+> [kết quả demo](../security-results/runs/week-4/safe-api-demo.jsonl) và
+> [các lớp bảo vệ thêm ở Week 5](week5.md).
 
-## Mục tiêu và ranh giới
+## Mục đích
 
-Safe API Testing Tool cho phép Agent đề xuất rồi thực thi một số request GET
-và POST an toàn qua Envoy. Tool không phải scanner khai thác: nó không nhận
-URL tùy ý, không tạo payload phá hoại, không đổi dữ liệu thật và không truy cập
-trực tiếp backend.
+Safe API Testing Tool cho bộ phân tích chọn một số bài kiểm tra GET/POST có sẵn
+rồi gửi qua Envoy. Nó không nhận địa chỉ tùy ý, không tạo dữ liệu phá hoại,
+không sửa dữ liệu thật và không kết nối thẳng vào ứng dụng phía sau Envoy.
 
-Luồng thực thi:
+Mỗi đề xuất chỉ có `endpoint_id`, `test_case_id`, `rationale`,
+`source_finding_ids` và `requested_headers`. Địa chỉ, dữ liệu gửi và thông tin
+đăng nhập không nằm trong đề xuất; chương trình tự tạo dữ liệu từ danh sách đã
+duyệt. POST hoặc yêu cầu có dữ liệu phải được người vận hành chọn `Approve`
+ngay trước khi gửi.
 
-```text
-grounded finding Week 3
-  -> deterministic RequestProposal
-  -> strict schema
-  -> policy decision / dry-run
-  -> bounded HTTP client
-  -> Envoy
-  -> ext_authz: API key + exact route + rate limit
-  -> stateless FastAPI test surface
-  -> bounded/redacted JSONL receipt
-```
+Danh sách cho phép nằm tại `config/safe-api-tool/policy.json`; bốn mẫu dữ liệu
+tại `data/safe-api-test-cases.json`; mã công cụ tại `src/safe_api_tool/`; quy
+định định dạng tại `schemas/safe-api-*.schema.json`. Công cụ và authz-service
+dùng cùng một danh sách.
 
-`RequestProposal` chỉ có `endpoint_id`, `test_case_id`, `rationale`,
-`source_finding_ids` và `requested_headers`. URL, raw body và credential không
-thuộc contract. Payload thật được code dựng từ catalog đã curate.
+Giới hạn hiện tại: 12 yêu cầu/phút cho mỗi API key, phương thức và đường dẫn;
+chờ tối đa 3 giây; yêu cầu 4 KiB; phản hồi 64 KiB; tối đa bốn trường HTTP tùy
+chọn và 256 byte cho mỗi giá trị.
 
-## Thành phần
+## Liên kết với cảnh báo Week 3
 
-| Thành phần | Source of truth |
-|---|---|
-| Allowlist, Gateway origin và budget | `config/safe-api-tool/policy.json` |
-| Bốn payload an toàn | `data/safe-api-test-cases.json` |
-| Proposal/policy/client/planner/audit | `src/safe_api_tool/` |
-| API test stateless | `GET /api/test/status`, `POST /api/test/validate` |
-| Enforcement phía Gateway | `config/envoy/envoy.yaml`, `src/authz_service/` |
-| JSON contracts | `schemas/safe-api-*.schema.json` |
-| Receipt mẫu | `security-results/runs/week-4/safe-api-demo.jsonl` |
+Bộ chọn mẫu đọc `security-results/security-analysis.jsonl` và giữ
+`source_finding_ids`. Mỗi đề xuất có dấu vân tay 16 ký tự; nhật ký lưu dấu này,
+SHA-256 của danh sách cho phép, ID bài kiểm tra và `x-request-id` để truy ngược
+quyết định. Nội dung Week 3 chỉ giúp chọn bài kiểm tra có sẵn, không thể tạo địa
+chỉ, dữ liệu gửi, API key hay trường HTTP mới. Chỉ dẫn độc hại và đường dẫn
+ngoài danh sách vẫn bị chặn trước khi kết nối.
 
-Policy hiện tại cho phép tối đa 12 request/phút trên mỗi API key, method và
-route; timeout 3 giây; request body 4 KiB; response 64 KiB; tối đa bốn custom
-header và 256 byte cho mỗi header value.
+## API và quyền
 
-## Kế thừa và truy vết từ Week 3
-
-Planner đọc `security-results/security-analysis.jsonl`, giữ
-`source_finding_ids` của nhóm đã grounded rồi tạo `RequestProposal`. Tool tính
-fingerprint 16 ký tự từ canonical proposal; receipt ghi fingerprint đó cùng
-policy SHA-256, endpoint/test-case ID và `x-request-id` để nối quyết định của
-Tool với audit của authz-service.
-
-Tên finding, explanation và verification steps của Week 3 có thể ảnh hưởng
-việc chọn một `test_case_id` đã curate cùng rationale. Chúng không được chuyển
-thành URL, raw body, API key hoặc header capability. Nếu finding chứa prompt
-injection hoặc yêu cầu endpoint ngoài allowlist, deterministic planner vẫn chỉ
-có thể chọn capability/test case đã định nghĩa; policy tiếp tục có quyền từ
-chối trước transport.
-
-## Contract matrix
-
-| `endpoint_id` | Method/path | Test case hợp lệ | Expected status |
+| `endpoint_id` | Phương thức/đường dẫn | Mẫu thử hợp lệ | Mã cần nhận |
 |---|---|---|---|
 | `test-status` | `GET /api/test/status` | `empty` | 200 |
+| `prompt-injection-fixture` | `GET /api/test/prompt-injection` | `empty` | 200 |
 | `input-validation` | `POST /api/test/validate` | `long-string`, `special-characters`, `empty` | 200 |
 | `input-validation` | `POST /api/test/validate` | `wrong-type` | 422 |
 
-| Identity | Surface được phép | Credential |
+| Danh tính | Được phép | Xác thực |
 |---|---|---|
-| Anonymous | GET `/health`, GET metadata; GET/HEAD `/` và `/ui/*` | Không có |
-| `safe-api-tool` | Đúng hai route trong policy ở bảng trên | API key riêng, bị Envoy consume |
+| Không đăng nhập | GET `/health`, GET metadata; GET/HEAD `/` và `/ui/*` | Không có |
+| `safe-api-tool` | Đúng ba đường dẫn trên | API key riêng, bị Envoy xóa trước ứng dụng |
 | `agent-reader` | GET `/api/users` | JWT có `users:read` |
 | `agent-admin` | GET `/api/users`, GET `/api/admin` | JWT có `users:read`, `admin:read` |
-| Mọi trường hợp khác | Không có | Deny-by-default |
+| Trường hợp khác | Không có | Mặc định từ chối |
 
-API key không thay thế JWT và không cấp quyền tới `/api/users` hoặc
-`/api/admin`. JWT cũng không tự cấp quyền cho safe test surface.
+API key của Tool không mở `/api/users` hay `/api/admin`; JWT không mở ba API
+thử nghiệm. `/api/admin` ghi rõ
+`authorization_boundary: "envoy_ext_authz"` và
+`required_scope: "admin:read"`, không dùng cờ
+`authentication_enabled: false` dễ gây hiểu nhầm.
 
-## Defense in depth
+## Quy tắc an toàn
 
-### Trước khi mở kết nối
+Trước khi gửi:
 
-- Agent chỉ chọn ID có capability hữu hạn.
-- Pydantic và JSON Schema cấm field ngoài contract.
-- Policy chỉ chấp nhận exact method/path dưới `/api/test/`.
-- Cấm absolute URL, query, fragment, `%` encoding, `..`, backslash và double
-  slash.
-- Cấm `Host`, `Authorization`, `x-api-key`, hop-by-hop header và
-  `X-Forwarded-*` do proposal điều khiển.
-- Custom header value chỉ nhận printable ASCII để transport không phát sinh
-  lỗi encoding ngoài typed execution contract.
-- Body được serialize trước rồi kiểm tra kích thước.
-- Local rate limiter dừng request vượt budget trước transport.
+- Chỉ nhận ID và trường có trong định dạng đã định. Phương thức và đường dẫn
+  phải khớp chính xác một mục dưới `/api/test/`.
+- Chặn địa chỉ đầy đủ, tham số URL, phần neo, mã hóa `%`, `..`, dấu gạch chéo
+  ngược và dấu gạch chéo kép. Đề xuất không được đặt `Host`, `Authorization`,
+  `x-api-key`, trường giữa các proxy hoặc `X-Forwarded-*`; trường tùy chọn chỉ
+  nhận ký tự ASCII có thể in.
+- Dữ liệu gửi được tạo rồi kiểm tra kích thước. Công cụ chặn yêu cầu vượt tần suất trước
+  khi kết nối.
+- Phê duyệt cho POST hoặc yêu cầu có dữ liệu phải còn hạn, chỉ dùng một lần và
+  khớp dấu vân tay sau lần kiểm tra danh sách cuối. Kiểm thử xác nhận `Reject`
+  gửi 0 yêu cầu, `Approve` gửi
+  đúng 1; bản hết hạn, dùng lại hoặc bị thay đổi đều thất bại.
 
-### Tại Gateway boundary
+Tại cổng Envoy:
 
-- Tool chỉ có fixed origin `http://localhost:8080`; backend không publish port
-  ra host.
-- `ext_authz` fail closed và đọc cùng policy versioned với Tool.
-- API key riêng được băm SHA-256 và so sánh constant-time trong authz-service.
-- API key chỉ được dùng cho hai route Week 4; không kế thừa quyền JWT
-  `agent-reader` hoặc `agent-admin`.
-- Rate limit được kiểm tra lại ở authz-service để client giả mạo không bypass
-  limiter của Tool.
-- Envoy giới hạn body 4 KiB trên đúng `POST /api/test/validate` trước
-  `ext_authz`; request vượt cap bị trả 413 mà không tới authz hoặc ứng dụng.
-- Khi allow, authz-service yêu cầu Envoy consume `x-api-key` trước upstream.
-  Backend có canary fail-closed: nếu header này còn tồn tại, request trả 500.
+- Công cụ chỉ dùng `http://localhost:8080` khi chạy trên máy hoặc
+  `http://envoy:8080` trong Compose. `http://api:8000` không bao giờ hợp lệ và
+  ứng dụng không mở cổng trực tiếp ra máy.
+- `ext_authz` mặc định từ chối khi lỗi. authz-service băm API key bằng SHA-256,
+  so sánh theo cách không làm lộ thời gian và chỉ cho đúng ba đường dẫn. Công cụ tự
+  chèn key; key không có quyền `agent-reader` hay `agent-admin`.
+- authz-service kiểm tra lại tần suất. Envoy chặn body lớn hơn 4 KiB trên
+  `POST /api/test/validate` bằng 413 trước authz và ứng dụng.
+- Envoy phải xóa `x-api-key` trước khi chuyển yêu cầu. Nếu ứng dụng còn thấy
+  trường này, nó trả 500 để tránh chạy sai cấu hình.
 
-### Khi đọc response và ghi log
+Khi nhận phản hồi và ghi nhật ký:
 
-- Client dùng `follow_redirects=False`, `trust_env=False` và yêu cầu
-  `Accept-Encoding: identity`.
-- Response được đọc theo stream và dừng đúng byte cap; không tải toàn bộ rồi
-  mới kiểm tra kích thước.
-- Timeout, connection error, 429, status sai contract và response truncated là
-  typed outcome, không ghi raw exception.
-- Receipt chỉ ghi tên header, byte count, SHA-256, status, latency và bounded
-  excerpt. Toàn bộ response đã giữ lại được redact trước khi cắt excerpt để
-  secret nằm qua ranh giới không lộ một phần; API key, Authorization value và
-  raw request body không được ghi.
-- Response là dữ liệu không tin cậy và không được đưa nguyên văn trở lại
-  planner.
+- Chương trình gửi yêu cầu dùng `follow_redirects=False`, `trust_env=False` và
+  `Accept-Encoding: identity`. Phản hồi được đọc từng phần và dừng ở giới hạn
+  byte.
+- Hết thời gian, lỗi kết nối, 429, sai mã trả về và phản hồi bị cắt có kết quả riêng;
+  không ghi lỗi hệ thống thô.
+- Biên nhận chỉ lưu tên trường HTTP, số byte, SHA-256, mã trả về, thời gian và
+  đoạn trích. Phản hồi được che dữ liệu trước khi cắt; API key, giá trị
+  `Authorization` và dữ liệu thô không được ghi.
+- Phản hồi không được đưa nguyên văn lại cho bộ chọn mẫu. Dấu hiệu chỉ dẫn độc
+  hại bị cách ly và không thể tạo đề xuất, phê duyệt hay yêu cầu tiếp theo. Bộ
+  lọc che email, số điện thoại lab, token, API key, mật khẩu và các trường dữ liệu
+  cá nhân đã biết.
 
-## Threat model rút gọn
+Các kiểm thử còn xác nhận phương thức/đường dẫn lạ và `/api/admin` bị chặn; key
+không tới ứng dụng; yêu cầu lớn trả 413; phản hồi lớn, hết thời gian và 429 được
+giới hạn; hai phản hồi độc hại bị cách ly nhưng phản hồi bình thường không bị
+chặn. Danh sách cho phép bị lỗi hoặc sai định dạng luôn bị từ chối.
 
-| Nguy cơ | Kiểm soát | Bằng chứng |
-|---|---|---|
-| SSRF/direct backend | Capability ID, origin cố định, không redirect, backend private | Unit + Docker integration |
-| Endpoint/method cấm | Exact allowlist ở Tool và authz | `/api/admin`, route/method lạ bị deny |
-| Path confusion | Canonical path check ở hai lớp | Encoded traversal/query/double slash tests |
-| Credential override/leak | Header denylist, key inject nội bộ, Envoy consume, redaction | Backend canary + secret sentinel |
-| Resource exhaustion | Request cap ở Tool + Envoy, response cap, timeout, RPM ở hai lớp | 413, streaming, timeout và 429 tests |
-| Prompt injection | Narrative không sở hữu URL/body/header capability | Poisoned-finding planner test |
-| Policy drift/malformed config | Một JSON policy, strict loader ở hai package, fail closed | Contract/schema/config-error tests |
+## Cách chạy
 
-## Sử dụng
-
-Chuẩn bị `.env` từ `.env.example` và đặt một API key ngẫu nhiên tối thiểu 32
-byte cho `SAFE_API_TOOL_API_KEY`. Không truyền key trên command line.
+Tạo `.env` từ `.env.example`; đặt `SAFE_API_TOOL_API_KEY` ngẫu nhiên, dài tối
+thiểu 32 byte. Không truyền key trên command line.
 
 ```powershell
 python -m pip install --requirement requirements-dev.txt
 docker compose up --build --detach --wait
 ```
 
-Tạo proposal từ finding grounded đầu tiên:
+Tạo đề xuất từ cảnh báo đầu tiên có nguồn:
 
 ```powershell
 python -m safe_api_tool propose `
@@ -155,66 +126,56 @@ python -m safe_api_tool propose `
   --output "$env:TEMP\safe-api-proposal.json"
 ```
 
-Dry-run là mặc định và không cần secret hoặc network:
+Mặc định chỉ kiểm tra, không cần secret hoặc network:
 
 ```powershell
 python -m safe_api_tool run "$env:TEMP\safe-api-proposal.json"
 python -m safe_api_tool demo
 ```
 
-Chỉ `--execute` mới mở network:
+Chỉ `--execute` mới gửi yêu cầu. Với POST, nhập đúng `Approve` hoặc `Reject`:
 
 ```powershell
 python -m safe_api_tool run "$env:TEMP\safe-api-proposal.json" `
-  --execute --audit "$env:TEMP\safe-api-receipts.jsonl"
+  --execute --audit "$env:TEMP\safe-api-receipts.jsonl" `
+  --approval-log "$env:TEMP\safe-api-approvals.jsonl" `
+  --guarded-response-log "$env:TEMP\safe-api-guarded.jsonl" `
+  --event-log "$env:TEMP\safe-api-events.jsonl"
 
 python -m safe_api_tool demo --execute `
   --audit "$env:TEMP\safe-api-demo.jsonl"
 ```
 
-Demo thực hiện GET status, một POST do planner đề xuất và negative control
-`admin` bị policy chặn trước network. Kết thúc bằng:
+Demo chạy GET, POST `Reject`, POST `Approve` và xác nhận `admin` bị chặn trước
+khi gửi. Không có `--yes` hoặc biến môi trường để bỏ qua phê duyệt. Dọn hệ thống:
 
 ```powershell
 docker compose down --remove-orphans
 ```
 
-## Typed outcomes
+## Kết quả và mã trả về
 
-- `success`: request hoàn tất và HTTP status khớp test case.
-- `unexpected_status`: Gateway/API trả status khác contract; CLI/demo fail thay
-  vì báo đậu giả.
-- `policy_denied`: capability bị chặn trước transport.
-- `rate_limited`: local budget hoặc Gateway trả 429.
-- `timeout`: hết timeout mà không lộ raw exception.
-- `connection_error`: không kết nối được Gateway.
-- `response_truncated`: response đã bị cắt đúng giới hạn nhưng vẫn có receipt.
-
-CLI và CI chỉ trả success khi outcome là `success` và
-`expected_status_matched=true`. Receipt bị truncate vẫn được lưu để điều tra
-nhưng không làm demo đậu.
-
-Exit code của CLI:
-
-| Code | Ý nghĩa |
-|---:|---|
-| `0` | Proposal/dry-run hợp lệ, hoặc execution/demo khớp toàn bộ contract |
-| `2` | Input, policy, catalog, credential hoặc cấu hình không hợp lệ |
-| `3` | Một lệnh `run` bị policy từ chối trước transport |
-| `4` | Execution/demo không khớp contract: HTTP status sai, timeout, 429, connection error hoặc response truncated |
-
-Troubleshooting nhanh:
-
-| Triệu chứng | Kiểm tra |
+| Kết quả | Ý nghĩa |
 |---|---|
-| Exit `2`, thiếu key | Chỉ với `--execute`: kiểm tra `SAFE_API_TOOL_API_KEY` trong `.env`; không truyền key qua CLI |
-| HTTP 401 / exit `4` | Key của Tool và authz-service không khớp hoặc placeholder chưa được thay |
-| HTTP 413 | Request vượt body cap 4 KiB; không tăng cap nếu chưa review policy và Envoy cùng lúc |
-| Outcome `rate_limited` / HTTP 429 | Chờ cửa sổ một phút; không retry dồn dập |
-| `connection_error` | Kiểm tra `docker compose ps` và public `/health`; không đổi origin sang backend trực tiếp |
-| `policy_denied` / exit `3` | Đối chiếu exact endpoint/test-case/header với `policy.json`; không bypass bằng URL tùy ý |
+| `success` | Hoàn tất, mã HTTP đúng |
+| `unexpected_status` | Mã HTTP khác dự kiến |
+| `policy_denied` | Bị chặn trước khi gửi |
+| `rate_limited` | Công cụ chặn hoặc Envoy trả 429 |
+| `timeout` | Hết thời gian chờ |
+| `connection_error` | Không nối được Envoy |
+| `response_truncated` | Phản hồi bị cắt; biên nhận vẫn được lưu |
 
-## Kiểm thử và evidence
+CLI/CI chỉ đạt khi `success` và `expected_status_matched=true`. Phản hồi bị cắt
+không làm demo đạt.
+
+| Mã | Ý nghĩa |
+|---:|---|
+| `0` | Đề xuất hoặc lần chạy thử hợp lệ; lần chạy thật đúng yêu cầu |
+| `2` | Dữ liệu, danh sách cho phép, danh mục, thông tin đăng nhập hoặc cấu hình sai |
+| `3` | Lệnh `run` bị chặn trước khi gửi |
+| `4` | Sai mã HTTP, hết thời gian, 429, lỗi kết nối hoặc phản hồi bị cắt |
+
+## Kiểm thử và bằng chứng
 
 ```powershell
 python -m pytest -q -m "not integration"
@@ -223,51 +184,37 @@ python -m json.tool config/safe-api-tool/policy.json > $null
 docker compose config --quiet
 ```
 
-`run_all_tests.py` tạo secret tạm trong process, chạy toàn bộ Docker integration,
-chạy `safe_api_tool demo --execute`, ghi receipt CI đã sanitize rồi dọn stack.
-GitHub Actions upload receipt dưới artifact `week4-safe-api-demo-receipts`.
+`run_all_tests.py` tạo thông tin bí mật tạm, chạy kiểm thử Docker và demo
+`Reject`/`Approve`, lưu bốn JSONL đã che dữ liệu rồi dọn hệ thống. GitHub
+Actions tải chúng lên
+`week5-safe-api-guardrail-artifacts`.
 
-Evidence bền vững trong repository:
-
-| Artifact | Nội dung cần kiểm tra |
+| Bằng chứng | Nội dung |
 |---|---|
-| `config/safe-api-tool/policy.json` | Exact origin, hai capability và resource budget |
-| `data/safe-api-test-cases.json` | Bốn profile long/special/empty/wrong-type |
-| `security-results/runs/week-4/safe-api-demo.jsonl` | GET 200, POST 200 và negative control bị deny trước transport |
-| `evidence/week-4/verification.log` | Lệnh, môi trường và kết quả quality gates của run bàn giao |
-| `.github/workflows/security-scan.yml` | Secret tạm, live demo và artifact upload trong CI |
+| `config/safe-api-tool/policy.json` | Đường dẫn, ba quyền và giới hạn |
+| `data/safe-api-test-cases.json` | Bốn mẫu long/special/empty/wrong-type |
+| `security-results/runs/week-4/safe-api-demo.jsonl` | GET 200, POST 200, trường hợp cấm bị chặn trước khi gửi |
+| `evidence/week-4/verification.log` | Lệnh, môi trường và kết quả Week 4 |
+| `evidence/week-5/verification.log` | Phê duyệt, che dữ liệu, chặn chỉ dẫn xấu và hệ thống đầy đủ |
+| `.github/workflows/security-scan.yml` | Thông tin bí mật tạm, demo thật và bốn file kết quả CI |
 
-`policy_sha256` trong receipt là hash của model policy đã canonicalize, hiện là
-`a969dab49a01609707d4084330284790928bd445e282effea165d2edac1c947d`.
-Nó khác SHA-256 của byte file JSON trong verification snapshot Windows
-(`7674196e229dfccfb45f81c5fdd21e2b3b813b7fc1c3236519d6e07bed2fa030`)
-vì whitespace/key serialization không thuộc canonical form. Không dùng hai
-loại hash này để so sánh trực tiếp; raw-file hash còn có thể đổi theo LF/CRLF.
-Receipt demo trong cùng snapshot có SHA-256
-`e5d16a60404f14b8818103c8ede6174081fedc7f871bb07b2b1fc29c6d452e6d`.
+SHA-256 của danh sách cho phép đã chuẩn hóa là
+`0181e74d35ced610750e1ced2e42f0e1733439d3ce830b6cb62cf2cfee7562a8`.
+Kết quả mẫu Week 4 giữ mã lịch sử cũ; không sửa nó thành bằng chứng mới. Mã
+SHA-256 của file JSON có thể đổi do cách xuống dòng hoặc khoảng trắng nên không
+so trực tiếp với mã của danh sách đã chuẩn hóa.
 
-Checklist review Week 4:
+## Giới hạn
 
-- Proposal chỉ chứa năm field theo schema; không có URL, raw body hoặc secret.
-- Dry-run là mặc định; network chỉ mở khi người vận hành truyền `--execute`.
-- Tool và authz cùng đọc một policy, chỉ cho exact method/path/test case.
-- Backend không publish host port; request hợp lệ phải đi qua Envoy.
-- API key được inject nội bộ, so sánh constant-time, consume trước upstream và
-  không xuất hiện trong receipt/audit.
-- Request/response/timeout/RPM đều có cap và lỗi được ánh xạ thành typed
-  outcome.
-- CLI/CI chỉ báo đậu khi status khớp contract; negative control phải bị chặn.
-
-## Giới hạn đã biết
-
-- Limiter phía authz hiện là process-local, phù hợp một replica của lab. Nếu
-  scale ngang phải thay bằng distributed store hoặc Gateway rate-limit service.
-- `timeout_seconds` áp dụng riêng cho connect/read/write của HTTP client; route
-  Envoy có ceiling 5 giây. Một hard deadline xuyên suốt nhiều chunk sẽ cần
-  transport/deadline controller riêng nếu chuyển khỏi phạm vi lab.
-- Planner hiện deterministic để CI tái lập được; chưa cho LLM trực tiếp sở hữu
-  capability.
-- Gateway origin được pin cho môi trường local staging; triển khai môi trường
-  khác cần policy riêng và kiểm tra origin tương ứng.
-- ZAP baseline hiện vẫn chỉ kiểm tra `/health`; safety contract của Week 4 được
-  kiểm chứng bởi Tool và integration tests riêng.
+- Bộ giới hạn authz-service chỉ dùng bộ nhớ của một tiến trình, phù hợp một bản
+  chạy trong lab. Nhiều bản chạy cần kho dùng chung hoặc dịch vụ tại Envoy.
+- `timeout_seconds` áp dụng riêng cho kết nối/đọc/ghi; đường dẫn Envoy có trần
+  5 giây. Chưa có một thời hạn chung cho phản hồi gồm nhiều phần.
+- Bộ chọn mẫu chạy theo quy tắc cố định để CI lặp lại được; AI không tự nắm quyền
+  gọi API.
+- Chỉ có hai địa chỉ tin cậy `host` và `compose`. Môi trường khác phải thêm qua
+  xem xét, không nhận URL từ đề xuất.
+- ZAP CI chỉ quét thụ động, không đăng nhập, bắt đầu từ `/health`; nó không có
+  token của bộ phân tích, không gửi dữ liệu mẫu và không kiểm tra API cần quyền.
+  Quyền của công cụ được kiểm tra riêng; biên nhận này không phải kết quả quét
+  có đăng nhập.

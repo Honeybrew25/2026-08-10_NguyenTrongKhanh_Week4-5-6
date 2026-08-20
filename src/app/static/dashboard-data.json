@@ -1,11 +1,18 @@
 {
   "project": {
     "name": "Project Sentinel",
-    "week": 4,
-    "updated": "2026-08-10",
+    "week": 6,
+    "updated": "2026-08-20",
     "policyVersion": "1.0",
-    "policySha256": "a969dab49a01609707d4084330284790928bd445e282effea165d2edac1c947d",
+    "policySha256": "0181e74d35ced610750e1ced2e42f0e1733439d3ce830b6cb62cf2cfee7562a8",
     "gatewayOrigin": "http://localhost:8080"
+  },
+  "verification": {
+    "snapshot": "week-6-release",
+    "sourceRevision": "ea98afa2d9c03cb5ff00c82aeebd18ed5ce3b0c1",
+    "verifiedAt": "2026-08-20",
+    "evidence": "evidence/week-6/pre-release-verification-2026-08-20.log",
+    "scannerEvidence": "evidence/week-6/pre-release-verification-2026-08-20.log"
   },
   "runtimeRadar": {
     "gateway": {
@@ -20,8 +27,8 @@
       "layer": "middle",
       "initialState": "verified",
       "version": "1.0",
-      "sha256": "a969dab49a01609707d4084330284790928bd445e282effea165d2edac1c947d",
-      "capabilityCount": 2,
+      "sha256": "0181e74d35ced610750e1ced2e42f0e1733439d3ce830b6cb62cf2cfee7562a8",
+      "capabilityCount": 3,
       "testCaseCount": 4,
       "title": "Policy integrity",
       "description": "Policy SHA, capability và test-case contract được đối chiếu với source; dry-run cập nhật ALLOW hoặc DENY."
@@ -31,25 +38,29 @@
       "initialState": "snapshot",
       "source": "security-results/runs/week-4/safe-api-demo.jsonl",
       "verifiedAt": "2026-08-10",
+      "reverifiedAt": "2026-08-20",
+      "sourceWeek": 4,
       "successCount": 2,
       "deniedCount": 1,
       "title": "Execution evidence",
-      "description": "Snapshot lấy từ durable receipt; receipt mới trên giao diện vẫn là dry-run và không mở network."
+      "description": "Durable receipt Week 4 được tái xác minh trong baseline Week 5; receipt mới trên giao diện vẫn là dry-run và không mở network."
     }
   },
   "metrics": [
-    {"label": "Findings", "value": 27, "detail": "Bandit + OWASP ZAP", "tone": "cyan"},
-    {"label": "Grounded groups", "value": 9, "detail": "Provenance đầy đủ", "tone": "violet"},
-    {"label": "Unit tests", "value": 141, "detail": "Không cần Docker", "tone": "lime"},
-    {"label": "Full stack", "value": 166, "detail": "Docker integration", "tone": "amber"}
+    {"label": "Findings", "value": 41, "detail": "Fresh Week 6 · Bandit Low", "tone": "cyan"},
+    {"label": "Grounded groups", "value": 6, "detail": "Deterministic · grounded", "tone": "violet"},
+    {"label": "Unit tests", "value": 216, "detail": "Pre-release · no warnings", "tone": "lime"},
+    {"label": "Full stack", "value": 244, "detail": "Docker verified locally", "tone": "amber"}
   ],
   "architecture": [
     {"step": "01", "title": "Scan", "detail": "Bandit + ZAP"},
     {"step": "02", "title": "Normalize", "detail": "Schema 1.0"},
-    {"step": "03", "title": "Analyze", "detail": "27 → 9 groups"},
+    {"step": "03", "title": "Analyze", "detail": "41 → 6 groups"},
     {"step": "04", "title": "Propose", "detail": "Capability IDs"},
-    {"step": "05", "title": "Enforce", "detail": "Gateway policy"},
-    {"step": "06", "title": "Evidence", "detail": "Sanitized receipt"}
+    {"step": "05", "title": "Approve", "detail": "HITL for POST"},
+    {"step": "06", "title": "Enforce", "detail": "Gateway policy"},
+    {"step": "07", "title": "Guard", "detail": "Injection + redaction"},
+    {"step": "08", "title": "Evidence", "detail": "Separate contracts"}
   ],
   "endpoints": [
     {
@@ -57,6 +68,13 @@
       "label": "Trạng thái test surface",
       "method": "GET",
       "path": "/api/test/status",
+      "allowedTestCases": ["empty"]
+    },
+    {
+      "id": "prompt-injection-fixture",
+      "label": "Response guard fixture",
+      "method": "GET",
+      "path": "/api/test/prompt-injection",
       "allowedTestCases": ["empty"]
     },
     {
@@ -106,16 +124,181 @@
     {"index": "01", "title": "Fixed origin", "description": "Chỉ gateway nội bộ được phép nhận request.", "tag": "EGRESS BOUNDARY"},
     {"index": "02", "title": "Exact allowlist", "description": "Method, path và test case đều phải khớp policy.", "tag": "CAPABILITY MODEL"},
     {"index": "03", "title": "Bounded I/O", "description": "Request, response, timeout và RPM có giới hạn cứng.", "tag": "RESOURCE CONTROL"},
-    {"index": "04", "title": "Sanitized evidence", "description": "Chỉ tên header và hash; không lưu giá trị nhạy cảm.", "tag": "DATA MINIMIZATION"}
+    {"index": "04", "title": "Human approval", "description": "POST cần approval còn hạn, đúng fingerprint và chỉ dùng một lần.", "tag": "HITL BOUNDARY"},
+    {"index": "05", "title": "Untrusted response", "description": "Response bị cap, quarantine và redact trước khi persist.", "tag": "PROMPT GUARD"},
+    {"index": "06", "title": "Sanitized evidence", "description": "Chỉ tên header, hash, safe reason và marker; không lưu giá trị nhạy cảm.", "tag": "DATA MINIMIZATION"}
   ],
+  "e2eReplay": {
+    "mode": "sanitized_replay",
+    "networkExecutionEnabled": false,
+    "oneProposalPerRun": true,
+    "sourceSnapshot": "security-results/runs/week-6/golden/release-summary.json",
+    "notice": "Bản phát lại đã làm sạch; thao tác trên giao diện không gửi request và không thay thế approval CLI.",
+    "stageOrder": [
+      {"id": "scanner_input", "step": "01", "label": "Scan"},
+      {"id": "normalize", "step": "02", "label": "Chuẩn hóa"},
+      {"id": "analysis", "step": "03", "label": "Phân tích"},
+      {"id": "proposal", "step": "04", "label": "Đề xuất"},
+      {"id": "approval", "step": "05", "label": "Phê duyệt"},
+      {"id": "request", "step": "06", "label": "Gateway"},
+      {"id": "response_guard", "step": "07", "label": "Response guard"},
+      {"id": "final_report", "step": "08", "label": "Báo cáo"}
+    ],
+    "evaluation": {
+      "cases": 10,
+      "passed": 10,
+      "tp": 6,
+      "fp": 0,
+      "fn": 0,
+      "schemaValidRate": 1.0,
+      "sourceCoverageRate": 1.0,
+      "hallucinationCount": 0,
+      "secretPiiLeakCount": 0,
+      "policyBypassCount": 0
+    },
+    "scenarios": [
+      {
+        "id": "reject",
+        "label": "Xem Reject",
+        "tag": "HUMAN DECISION",
+        "focusStage": "approval",
+        "status": "rejected",
+        "tone": "rejected",
+        "summary": "Người vận hành từ chối request có rủi ro; pipeline kết thúc mà không mở transport.",
+        "request": {
+          "method": "POST",
+          "path": "/api/test/validate",
+          "risk": "Cần phê duyệt",
+          "humanDecision": "Reject",
+          "credentialBoundary": "Runtime nội bộ"
+        },
+        "result": {
+          "headline": "0 request được gửi",
+          "requestsSent": 0,
+          "guard": "Không chạy",
+          "interpretation": "Bị chặn trước transport",
+          "safeCode": "approval_rejected"
+        },
+        "stages": [
+          {"id": "scanner_input", "state": "success", "title": "Input đã được giữ", "detail": "Scanner input được giữ riêng và liên kết bằng SHA-256."},
+          {"id": "normalize", "state": "success", "title": "Chuẩn hóa hoàn tất", "detail": "Finding được đưa về schema chung trước khi phân tích."},
+          {"id": "analysis", "state": "success", "title": "Phân tích có nguồn", "detail": "Narrative được nối với finding nguồn; code vẫn sở hữu scanner facts."},
+          {"id": "proposal", "state": "success", "title": "Proposal hợp lệ", "detail": "Proposal chỉ chọn capability và test case đã định danh."},
+          {"id": "approval", "state": "rejected", "title": "Người dùng chọn Reject", "detail": "Approval bị từ chối và trở thành trạng thái kết thúc của request này."},
+          {"id": "request", "state": "skipped", "title": "Không gọi Gateway", "detail": "Reject bảo đảm số request gửi qua transport bằng 0."},
+          {"id": "response_guard", "state": "skipped", "title": "Không có response", "detail": "Không có network call nên response guard không cần chạy."},
+          {"id": "final_report", "state": "success", "title": "Đã tạo báo cáo", "detail": "Báo cáo ghi human decision và request_blocked_before_transport."}
+        ]
+      },
+      {
+        "id": "approve",
+        "label": "Xem Approve",
+        "tag": "BOUNDED EXECUTION",
+        "focusStage": "approval",
+        "status": "completed",
+        "tone": "approved",
+        "summary": "Approval hợp lệ cho phép đúng một request đã materialize đi qua Gateway.",
+        "request": {
+          "method": "POST",
+          "path": "/api/test/validate",
+          "risk": "Cần phê duyệt",
+          "humanDecision": "Approve",
+          "credentialBoundary": "Runtime nội bộ"
+        },
+        "result": {
+          "headline": "1 request được gửi",
+          "requestsSent": 1,
+          "guard": "Đã sanitize",
+          "interpretation": "Tín hiệu kiểm tra, không phải bằng chứng khai thác",
+          "safeCode": "Không có"
+        },
+        "stages": [
+          {"id": "scanner_input", "state": "success", "title": "Input đã được giữ", "detail": "Scanner input được giữ riêng và liên kết bằng SHA-256."},
+          {"id": "normalize", "state": "success", "title": "Chuẩn hóa hoàn tất", "detail": "Finding được đưa về schema chung trước khi phân tích."},
+          {"id": "analysis", "state": "success", "title": "Phân tích có nguồn", "detail": "Narrative được nối với finding nguồn; code vẫn sở hữu scanner facts."},
+          {"id": "proposal", "state": "success", "title": "Proposal hợp lệ", "detail": "Policy materialize exact method, path và curated payload."},
+          {"id": "approval", "state": "approved", "title": "Người dùng chọn Approve", "detail": "Approval khớp run, proposal, policy, origin, fingerprint và còn hạn."},
+          {"id": "request", "state": "success", "title": "Gateway nhận một request", "detail": "Client re-check policy rồi gửi đúng một bounded request qua Envoy."},
+          {"id": "response_guard", "state": "success", "title": "Response đã làm sạch", "detail": "Response bị giới hạn kích thước và sanitize trước khi persist."},
+          {"id": "final_report", "state": "success", "title": "Đã tạo báo cáo", "detail": "HTTP success chỉ được diễn giải là verification signal."}
+        ]
+      },
+      {
+        "id": "injection",
+        "label": "Xem Injection",
+        "tag": "UNTRUSTED RESPONSE",
+        "focusStage": "response_guard",
+        "status": "completed",
+        "tone": "quarantined",
+        "summary": "HTTP response chứa câu lệnh đáng ngờ bị cách ly và không thể tạo hành động tiếp theo.",
+        "request": {
+          "method": "GET",
+          "path": "/api/test/prompt-injection",
+          "risk": "GET không body",
+          "humanDecision": "Không cần approval",
+          "credentialBoundary": "Runtime nội bộ"
+        },
+        "result": {
+          "headline": "Injection bị quarantine",
+          "requestsSent": 1,
+          "guard": "Quarantined",
+          "interpretation": "Không gọi tool, endpoint hoặc request tiếp theo",
+          "safeCode": "Không có"
+        },
+        "stages": [
+          {"id": "scanner_input", "state": "success", "title": "Input đã được giữ", "detail": "Scanner input được giữ riêng và liên kết bằng SHA-256."},
+          {"id": "normalize", "state": "success", "title": "Chuẩn hóa hoàn tất", "detail": "Finding được đưa về schema chung trước khi phân tích."},
+          {"id": "analysis", "state": "success", "title": "Phân tích có nguồn", "detail": "HTTP response chưa xuất hiện trong input của planner."},
+          {"id": "proposal", "state": "success", "title": "GET fixture hợp lệ", "detail": "Proposal chọn exact prompt-injection fixture đã có trong allowlist."},
+          {"id": "approval", "state": "not_required", "title": "Không cần approval", "detail": "GET không body được policy cho đi thẳng tới execution boundary."},
+          {"id": "request", "state": "success", "title": "Gateway nhận một request", "detail": "Request đi qua exact allowlist và Gateway."},
+          {"id": "response_guard", "state": "quarantined", "title": "Đã phát hiện prompt injection", "detail": "Raw response không được persist; UI chỉ hiển thị trạng thái quarantine."},
+          {"id": "final_report", "state": "success", "title": "Đã tạo báo cáo", "detail": "Báo cáo ghi injection flag nhưng không giữ câu lệnh độc hại."}
+        ]
+      },
+      {
+        "id": "admin",
+        "label": "Xem Admin bị chặn",
+        "tag": "NEGATIVE CONTROL",
+        "focusStage": "proposal",
+        "status": "blocked",
+        "tone": "blocked",
+        "summary": "Endpoint quản trị nằm ngoài capability của Safe API Tool nên bị chặn trước transport.",
+        "request": {
+          "method": "GET",
+          "path": "/api/admin",
+          "risk": "Ngoài allowlist",
+          "humanDecision": "Không yêu cầu",
+          "credentialBoundary": "Không cấp credential"
+        },
+        "result": {
+          "headline": "0 request được gửi",
+          "requestsSent": 0,
+          "guard": "Không chạy",
+          "interpretation": "Policy chặn trước transport",
+          "safeCode": "endpoint_not_allowed"
+        },
+        "stages": [
+          {"id": "scanner_input", "state": "success", "title": "Input đã được giữ", "detail": "Scanner input được giữ riêng và liên kết bằng SHA-256."},
+          {"id": "normalize", "state": "success", "title": "Chuẩn hóa hoàn tất", "detail": "Finding được đưa về schema chung trước khi phân tích."},
+          {"id": "analysis", "state": "success", "title": "Phân tích có nguồn", "detail": "Analysis không cấp quyền truy cập endpoint quản trị."},
+          {"id": "proposal", "state": "blocked", "title": "Proposal bị policy chặn", "detail": "Endpoint ID không thuộc exact capability allowlist."},
+          {"id": "approval", "state": "not_required", "title": "Không mở approval", "detail": "Approval không thể biến request ngoài policy thành request hợp lệ."},
+          {"id": "request", "state": "blocked", "title": "Chặn trước Gateway", "detail": "Số request gửi qua transport bằng 0."},
+          {"id": "response_guard", "state": "skipped", "title": "Không có response", "detail": "Không có network call nên response guard không cần chạy."},
+          {"id": "final_report", "state": "success", "title": "Đã tạo báo cáo", "detail": "Báo cáo giữ safe code endpoint_not_allowed."}
+        ]
+      }
+    ]
+  },
   "evidence": [
     {"state": "ALLOW", "tone": "allow", "requestId": "ecbe7e3e-d8e5-4ed8-b53f-0f654de78e17", "summary": "GET /api/test/status", "result": "200 · 2,047 ms"},
     {"state": "ALLOW", "tone": "allow", "requestId": "81cb0be9-6347-40a0-bf34-533fc1e934e3", "summary": "POST /api/test/validate", "result": "200 · <1 ms"},
     {"state": "DENY", "tone": "deny", "requestId": "b1b76abf-4d1e-4537-a899-f4f774b22c25", "summary": "endpoint_not_allowed", "result": "pre-transport"}
   ],
   "roadmap": [
-    {"week": "W4", "title": "Safe request boundary", "detail": "Gateway · policy · audit", "current": true},
-    {"week": "W5", "title": "AI guardrails", "detail": "Prompt injection · approval · redaction", "current": false},
-    {"week": "W6", "title": "End-to-end evidence", "detail": "Evaluation · metrics · final demo", "current": false}
+    {"week": "W4", "title": "Safe request boundary", "detail": "Gateway · policy · audit", "current": false},
+    {"week": "W5", "title": "AI guardrails", "detail": "Hoàn tất · HITL · redaction · response guard", "current": false},
+    {"week": "W6", "title": "End-to-end evidence", "detail": "Hoàn tất · 10/10 evaluation · final report", "current": true}
   ]
 }

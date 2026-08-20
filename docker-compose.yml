@@ -87,3 +87,31 @@ services:
     volumes:
       - ./config/envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
     init: true
+
+  sentinel-runner:
+    profiles: ["sentinel"]
+    build:
+      context: .
+      dockerfile: src/project_sentinel/Dockerfile
+    command:
+      - demo
+      - --provider
+      - deterministic
+      - --execute
+      - --runtime-profile
+      - compose
+      - --output-root
+      - /app/security-results/runs/week-6
+    environment:
+      SAFE_API_TOOL_API_KEY: ${SAFE_API_TOOL_API_KEY:?Set SAFE_API_TOOL_API_KEY in .env}
+    depends_on:
+      envoy:
+        condition: service_started
+    volumes:
+      - ./config/safe-api-tool:/app/config/safe-api-tool:ro
+      - ./data:/app/data:ro
+      - ./schemas:/app/schemas:ro
+      - ./security-results/runs/week-6:/app/security-results/runs/week-6
+    stdin_open: true
+    tty: true
+    init: true

@@ -338,7 +338,7 @@ def test_prompt_injection_remains_escaped_evidence_not_a_new_record(
     assert "Bearer [REDACTED]" not in serialized_request
 
 
-def test_secret_like_values_are_redacted_only_from_provider_payload(
+def test_secret_like_values_are_redacted_from_provider_and_final_report(
     tmp_path: Path,
 ) -> None:
     document = _document()
@@ -358,12 +358,46 @@ def test_secret_like_values_are_redacted_only_from_provider_payload(
         [request.model_dump() for request in provider.requests]
     )
     assert secret not in provider_payload
-    assert "Bearer [REDACTED]" in provider_payload
-    assert any(
-        evidence.evidence == secret
+    assert "[REDACTED_TOKEN]" in provider_payload
+    assert all(
+        evidence.evidence != secret
         for record in records
         for evidence in record.scanner_evidence
     )
+    assert "[REDACTED_TOKEN]" in json.dumps(
+        [record.model_dump(mode="json") for record in records]
+    )
+
+
+def test_email_and_phone_are_redacted_from_provider_and_final_report(
+    tmp_path: Path,
+) -> None:
+    document = _document()
+    findings = document["findings"]
+    assert isinstance(findings, list)
+    email = "analyst@example.test"
+    phone = "+84 912 345 678"
+    findings[0]["evidence"] = f"Contact {email} or {phone}"
+    input_path = _write_document(tmp_path / "pii.json", document)
+    provider = StaticProvider()
+
+    records = SecurityAnalysisAgent(
+        provider=provider,
+        knowledge_base=KNOWLEDGE_BASE,
+    ).analyze(load_normalized_report(input_path))
+
+    provider_payload = json.dumps(
+        [request.model_dump() for request in provider.requests]
+    )
+    final_report = json.dumps(
+        [record.model_dump(mode="json") for record in records]
+    )
+    for value in (email, phone):
+        assert value not in provider_payload
+        assert value not in final_report
+    for marker in ("[REDACTED_EMAIL]", "[REDACTED_PHONE]"):
+        assert marker in provider_payload
+        assert marker in final_report
 
 
 def test_representative_context_cap_is_stable_without_losing_provenance() -> None:

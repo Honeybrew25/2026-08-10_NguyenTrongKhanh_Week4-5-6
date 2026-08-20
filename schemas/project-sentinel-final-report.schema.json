@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/project-sentinel-final-report.schema.json",
+  "title": "Project Sentinel Final Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "run_id", "status", "started_at", "completed_at",
+    "provider", "provider_config", "policy_sha256", "schema_sha256",
+    "scanner_inputs", "metrics", "analysis_group", "proposal_id", "proposal",
+    "risk_decision", "approval", "execution_receipt", "guarded_response",
+    "source_finding_ids", "human_decision", "test_interpretation",
+    "trust_statement", "safe_error_codes", "artifact_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "run_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,127}$"},
+    "status": {"enum": ["dry_run", "completed", "completed_no_findings", "rejected", "blocked", "failed"]},
+    "started_at": {"type": "string", "format": "date-time"},
+    "completed_at": {"type": "string", "format": "date-time"},
+    "provider": {"type": "string", "minLength": 1},
+    "provider_config": {"type": "object", "additionalProperties": {"type": "string"}},
+    "policy_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "schema_sha256": {"type": "object", "additionalProperties": {"type": "string", "pattern": "^[a-f0-9]{64}$"}},
+    "scanner_inputs": {"type": "array", "items": {"$ref": "#/$defs/scannerInput"}},
+    "metrics": {"$ref": "#/$defs/metrics"},
+    "analysis_group": {"type": ["object", "null"]},
+    "proposal_id": {"type": ["string", "null"], "pattern": "^[a-f0-9]{16}$"},
+    "proposal": {"type": ["object", "null"]},
+    "risk_decision": {"type": ["object", "null"]},
+    "approval": {"type": ["object", "null"]},
+    "execution_receipt": {"type": ["object", "null"]},
+    "guarded_response": {"type": ["object", "null"]},
+    "source_finding_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+    "human_decision": {"enum": ["not_required", "not_requested", "approve", "reject"]},
+    "test_interpretation": {"enum": ["not_executed", "verification_signal_not_exploit_proof", "request_blocked_before_transport"]},
+    "trust_statement": {"const": "scanner_facts_code_owned_narrative_provider_owned_http_untrusted"},
+    "safe_error_codes": {"type": "array", "items": {"type": "string"}},
+    "artifact_sha256": {"type": "object", "additionalProperties": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+  },
+  "$defs": {
+    "scannerInput": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "tool", "sha256", "bytes", "retained_path"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "tool": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "bytes": {"type": "integer", "minimum": 0},
+        "retained_path": {"type": "string", "minLength": 1}
+      }
+    },
+    "metrics": {
+      "type": "object", "additionalProperties": false,
+      "required": ["total_duration_ms", "raw_findings", "normalized_findings", "analysis_groups", "requests_attempted", "requests_sent", "approvals", "rejections", "injection_flags", "redactions", "errors", "stage_duration_ms"],
+      "properties": {
+        "total_duration_ms": {"type": "number", "minimum": 0},
+        "raw_findings": {"type": "integer", "minimum": 0},
+        "normalized_findings": {"type": "integer", "minimum": 0},
+        "analysis_groups": {"type": "integer", "minimum": 0},
+        "requests_attempted": {"type": "integer", "minimum": 0},
+        "requests_sent": {"type": "integer", "minimum": 0},
+        "approvals": {"type": "integer", "minimum": 0},
+        "rejections": {"type": "integer", "minimum": 0},
+        "injection_flags": {"type": "integer", "minimum": 0},
+        "redactions": {"type": "integer", "minimum": 0},
+        "errors": {"type": "integer", "minimum": 0},
+        "stage_duration_ms": {"type": "object", "additionalProperties": {"type": "number", "minimum": 0}}
+      }
+    }
+  }
+}

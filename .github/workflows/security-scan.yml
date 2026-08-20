@@ -42,43 +42,49 @@ jobs:
       - name: Run unit tests
         run: python -m pytest -q -m "not integration"
 
-      - name: Run Bandit
+      - name: Run Bandit full-severity data scan
         if: always()
-        id: bandit
+        id: bandit_data
         continue-on-error: true
         run: >-
           python scripts/run_security_scan.py
-          --output security-results/bandit-ci.json
+          --output security-results/bandit-ci-full.json
+          --severity-level low
+
+      - name: Run Bandit High release gate
+        if: always()
+        id: bandit_high
+        continue-on-error: true
+        run: >-
+          python scripts/run_security_scan.py
+          --output security-results/bandit-ci-high.json
           --severity-level high
+
+      - name: Validate Bandit JSON
+        if: always()
+        shell: bash
+        run: |
+          python -m json.tool security-results/bandit-ci-full.json > /dev/null
+          python -m json.tool security-results/bandit-ci-high.json > /dev/null
+          sha256sum \
+            security-results/bandit-ci-full.json \
+            security-results/bandit-ci-high.json \
+            > security-results/bandit-ci-SHA256SUMS.txt
 
       - name: Upload Bandit JSON
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: bandit-json
-          path: security-results/bandit-ci.json
-          if-no-files-found: error
-
-      - name: Generate grounded Week 3 JSONL
-        if: always()
-        run: >-
-          python -m security_pipeline analyze
-          security-results/normalized-findings.json
-          --knowledge-base data/vulnerabilities.json
-          --provider deterministic
-          --output security-results/security-analysis-ci.jsonl
-
-      - name: Upload Week 3 security analysis
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: week3-security-analysis-jsonl
-          path: security-results/security-analysis-ci.jsonl
+          path: |
+            security-results/bandit-ci-full.json
+            security-results/bandit-ci-high.json
+            security-results/bandit-ci-SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 14
 
       - name: Fail when Bandit found reportable issues
-        if: steps.bandit.outcome == 'failure'
+        if: steps.bandit_high.outcome == 'failure'
         run: exit 1
 
   docker-integration:
@@ -107,17 +113,21 @@ jobs:
       - name: Run real Keycloak, Envoy, IAM and Safe API Tool tests
         run: python scripts/run_all_tests.py
 
-      - name: Upload sanitized Week 4 Safe API demo receipts
+      - name: Upload sanitized Week 5 Safe API guardrail artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: week4-safe-api-demo-receipts
-          path: security-results/runs/week-4/safe-api-demo-ci.jsonl
+          name: week5-safe-api-guardrail-artifacts
+          path: |
+            security-results/runs/week-5/safe-api-demo-ci.jsonl
+            security-results/runs/week-5/approval-decisions-ci.jsonl
+            security-results/runs/week-5/guarded-responses-ci.jsonl
+            security-results/runs/week-5/run-events-ci.jsonl
           if-no-files-found: warn
           retention-days: 14
 
   dast:
-    name: OWASP ZAP Baseline
+    name: OWASP ZAP passive baseline (unauthenticated)
     needs: unit-and-sast
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -159,7 +169,7 @@ jobs:
           mkdir -p security-results
           chmod 777 security-results
 
-      - name: Run ZAP Baseline
+      - name: Run ZAP passive baseline from public health seed
         shell: bash
         run: |
           envoy_id="$(docker compose ps --quiet envoy)"
@@ -204,12 +214,165 @@ jobs:
         if: always()
         run: docker compose down --remove-orphans
 
+  fresh-analysis:
+    name: Normalize and analyze fresh scanner outputs
+    needs:
+      - unit-and-sast
+      - dast
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.10"
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            requirements.txt
+            requirements-dev.txt
+            src/authz_service/requirements.txt
+
+      - name: Install analysis dependencies
+        run: python -m pip install --requirement requirements-dev.txt
+
+      - name: Download fresh Bandit reports
+        uses: actions/download-artifact@v4
+        with:
+          name: bandit-json
+          path: security-results/ci-inputs/bandit
+
+      - name: Download fresh ZAP reports
+        uses: actions/download-artifact@v4
+        with:
+          name: zap-baseline-report
+          path: security-results/ci-inputs/zap
+
+      - name: Normalize fresh scanner reports
+        run: >-
+          python -m security_pipeline normalize
+          security-results/ci-inputs/bandit/bandit-ci-full.json
+          security-results/ci-inputs/zap/zap-baseline-ci.json
+          --output security-results/runs/ci/normalized-findings.json
+
+      - name: Analyze fresh normalized findings
+        run: >-
+          python -m security_pipeline analyze
+          security-results/runs/ci/normalized-findings.json
+          --knowledge-base data/vulnerabilities.json
+          --provider deterministic
+          --output security-results/runs/ci/security-analysis.jsonl
+
+      - name: Validate and hash fresh analysis artifacts
+        shell: bash
+        run: |
+          python -m json.tool \
+            security-results/runs/ci/normalized-findings.json \
+            > /dev/null
+          python -c "from pathlib import Path; from security_pipeline.analysis.models import AnalysisFinding; path = Path('security-results/runs/ci/security-analysis.jsonl'); [AnalysisFinding.model_validate_json(line) for line in path.read_text(encoding='utf-8').splitlines() if line.strip()]"
+          sha256sum \
+            security-results/ci-inputs/bandit/bandit-ci-full.json \
+            security-results/ci-inputs/bandit/bandit-ci-high.json \
+            security-results/ci-inputs/zap/zap-baseline-ci.json \
+            security-results/runs/ci/normalized-findings.json \
+            security-results/runs/ci/security-analysis.jsonl \
+            > security-results/runs/ci/SHA256SUMS.txt
+
+      - name: Upload fresh normalized and analysis artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fresh-security-analysis
+          path: |
+            security-results/runs/ci/normalized-findings.json
+            security-results/runs/ci/security-analysis.jsonl
+            security-results/runs/ci/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
+
+  week6-e2e:
+    name: Week 6 deterministic E2E and evaluation
+    needs:
+      - unit-and-sast
+      - dast
+      - fresh-analysis
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.10"
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install deterministic runtime and verification dependencies
+        run: python -m pip install --requirement requirements-dev.txt
+
+      - name: Download same-workflow Bandit reports
+        uses: actions/download-artifact@v4
+        with:
+          name: bandit-json
+          path: security-results/ci-inputs/bandit
+
+      - name: Download same-workflow ZAP reports
+        uses: actions/download-artifact@v4
+        with:
+          name: zap-baseline-report
+          path: security-results/ci-inputs/zap
+
+      - name: Run deterministic Project Sentinel dry-run
+        run: >-
+          python -m project_sentinel run
+          security-results/ci-inputs/bandit/bandit-ci-full.json
+          security-results/ci-inputs/zap/zap-baseline-ci.json
+          --provider deterministic
+          --run-id ci-${{ github.run_id }}
+          --output-root security-results/runs/week-6
+
+      - name: Run curated 10-case evaluation
+        run: >-
+          python -m project_sentinel evaluate
+          --provider deterministic
+          --evaluation-id eval-ci-${{ github.run_id }}
+          --output-root security-results/runs/week-6
+
+      - name: Validate schemas, hashes, metrics and secret sentinel
+        run: >-
+          python scripts/verify_week6_artifacts.py
+          --run-directory security-results/runs/week-6/ci-${{ github.run_id }}
+          --evaluation-directory security-results/runs/week-6/eval-ci-${{ github.run_id }}
+          --verification-log security-results/runs/week-6/verification-ci.json
+
+      - name: Upload sanitized Week 6 release artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: week6-release-artifacts
+          path: |
+            security-results/runs/week-6/ci-${{ github.run_id }}/final-report.json
+            security-results/runs/week-6/ci-${{ github.run_id }}/manifest.json
+            security-results/runs/week-6/ci-${{ github.run_id }}/pipeline-events.jsonl
+            security-results/runs/week-6/eval-ci-${{ github.run_id }}/evaluation-summary.json
+            security-results/runs/week-6/eval-ci-${{ github.run_id }}/evaluation-manifest.json
+            security-results/runs/week-6/verification-ci.json
+          if-no-files-found: error
+          retention-days: 14
+
   publish-images:
     name: Publish ${{ matrix.image }}
     needs:
       - unit-and-sast
       - docker-integration
       - dast
+      - fresh-analysis
+      - week6-e2e
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:
@@ -222,6 +385,8 @@ jobs:
             dockerfile: src/app/Dockerfile
           - image: authz-service
             dockerfile: src/authz_service/Dockerfile
+          - image: sentinel-runner
+            dockerfile: src/project_sentinel/Dockerfile
     steps:
       - name: Check out repository
         uses: actions/checkout@v4

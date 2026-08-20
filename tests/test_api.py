@@ -32,9 +32,16 @@ def test_dashboard_static_index_supports_get_and_head() -> None:
             "content-security-policy"
         ]
         assert secured_response.headers["cross-origin-opener-policy"] == "same-origin"
+        assert secured_response.headers["cross-origin-embedder-policy"] == (
+            "require-corp"
+        )
+        assert secured_response.headers["cross-origin-resource-policy"] == (
+            "same-origin"
+        )
         assert secured_response.headers["referrer-policy"] == "no-referrer"
         assert secured_response.headers["x-content-type-options"] == "nosniff"
         assert secured_response.headers["x-frame-options"] == "DENY"
+        assert secured_response.headers["cache-control"] == "no-store"
 
     for path, media_types in (
         ("/ui/styles.css", {"text/css"}),
@@ -45,6 +52,29 @@ def test_dashboard_static_index_supports_get_and_head() -> None:
         assert asset.status_code == 200
         assert asset.headers["content-type"].split(";", 1)[0] in media_types
         assert asset.content
+        assert asset.headers["cross-origin-embedder-policy"] == "require-corp"
+        assert asset.headers["cross-origin-resource-policy"] == "same-origin"
+        assert asset.headers["x-content-type-options"] == "nosniff"
+        expected_cache = (
+            "no-store"
+            if path.endswith("dashboard-data.json")
+            else "public, max-age=300"
+        )
+        assert asset.headers["cache-control"] == expected_cache
+
+
+def test_dashboard_query_is_not_reflected_into_static_html() -> None:
+    marker = "zap-query-marker-8f4d1a"
+
+    baseline = client.get("/ui/")
+    response = client.get(
+        "/ui/",
+        params={"finding": marker, "language": "en", "purpose": "week-5-triage"},
+    )
+
+    assert response.status_code == 200
+    assert response.content == baseline.content
+    assert marker not in response.text
 
 
 def test_dashboard_rejects_mutating_methods_at_application_boundary() -> None:
@@ -71,6 +101,9 @@ def test_health() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+    assert response.headers["cross-origin-resource-policy"] == "same-origin"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["cache-control"] == "no-store"
 
 
 def test_protected_resource_metadata() -> None:
@@ -105,6 +138,18 @@ def test_test_status_describes_stateless_limits() -> None:
         "max_input_characters": MAX_TEST_INPUT_CHARACTERS,
         "max_preview_characters": MAX_TEST_PREVIEW_CHARACTERS,
     }
+
+
+def test_prompt_injection_fixture_is_exact_stateless_inert_text() -> None:
+    before = client.get("/api/test/status").json()
+    response = client.get("/api/test/prompt-injection")
+    after = client.get("/api/test/status").json()
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "fixture"
+    assert "Ignore previous instructions" in response.json()["untrusted_text"]
+    assert "/api/admin" in response.json()["untrusted_text"]
+    assert before == after
 
 
 def test_test_surface_fails_closed_if_gateway_key_reaches_backend() -> None:
@@ -207,5 +252,6 @@ def test_admin_is_an_explicit_unauthenticated_demo() -> None:
     assert response.status_code == 200
     assert response.json() == {
         "message": "Administrative demonstration endpoint",
-        "authentication_enabled": False,
+        "authorization_boundary": "envoy_ext_authz",
+        "required_scope": "admin:read",
     }

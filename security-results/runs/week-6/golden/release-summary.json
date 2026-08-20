@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "snapshot": "week-6-deterministic-fallback",
+  "reviewed_at": "2026-08-20",
+  "base_revision": "ea98afa2d9c03cb5ff00c82aeebd18ed5ce3b0c1",
+  "working_tree_claim": "verified_dirty_worktree_not_final_release_commit",
+  "provider": "deterministic-v1",
+  "fresh_scan": {
+    "tool": "bandit",
+    "minimum_severity": "low",
+    "findings": 41,
+    "grounded_groups": 6,
+    "high_gate_findings": 0,
+    "input_sha256": "3adc0e9bb1636ee9b875c3a9f40413e9bf1b591028c85fde48bb9d99f5b4f5ee",
+    "final_report_sha256": "0664b3d29e61b14db6aa6b75c315bcf5531a24fd73e461cce729deffc58520e5"
+  },
+  "evaluation": {
+    "cases": 10,
+    "passed": 10,
+    "tp": 6,
+    "fp": 0,
+    "fn": 0,
+    "schema_valid_rate": 1.0,
+    "source_coverage_rate": 1.0,
+    "hallucination_count": 0,
+    "secret_pii_leak_count": 0,
+    "policy_bypass_count": 0,
+    "summary_sha256": "d9b4efff0e65cd49a6f3c1a09562a49264edc4935458f61bac55ac5ac52fd4d7"
+  },
+  "live_controls": {
+    "reject_requests_sent": 0,
+    "approve_requests_sent": 1,
+    "prompt_injection_flags": 1,
+    "admin_requests_sent": 0,
+    "raw_http_response_retained": false
+  },
+  "tests": {
+    "non_integration_passed": 216,
+    "non_integration_deselected": 28,
+    "full_stack_passed": 244
+  },
+  "evidence": "evidence/week-6/pre-release-verification-2026-08-20.log",
+  "notice": "Sanitized pre-release snapshot from a verified dirty working tree; rerun on the final clean commit before release."
+}

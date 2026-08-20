@@ -30,6 +30,7 @@ from security_pipeline.analysis.providers import (
     ProviderOutputError,
 )
 from security_pipeline.knowledge import load_knowledge_base
+from sentinel_guardrails.redaction import sanitize_text
 
 
 SEVERITY_ORDER: dict[str, int] = {
@@ -48,12 +49,6 @@ CONFIDENCE_ORDER: dict[str, int] = {
 }
 MAX_SCANNER_CONTEXTS_PER_GROUP = 3
 
-_BEARER_TOKEN = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+")
-_JWT = re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b")
-_SECRET_ASSIGNMENT = re.compile(
-    r"(?i)\b(password|secret|api[_-]?key|access[_-]?token)\b"
-    r"(\s*[:=]\s*)([^\s,;]+)"
-)
 _URL = re.compile(r"https?://[^\s)\]}>'\"]+", re.IGNORECASE)
 _ENDPOINT = re.compile(r"(?<![\w])/(?:[A-Za-z0-9._~:@%+-]+/?)+")
 _WINDOWS_PATH = re.compile(r"\b[A-Za-z]:\\[^\s]+")
@@ -258,12 +253,7 @@ def _normalize_confidence(value: str | None) -> Confidence:
 def _redact_for_model(value: str | None, *, limit: int = 1200) -> str | None:
     if value is None:
         return None
-    redacted = _BEARER_TOKEN.sub("Bearer [REDACTED]", value)
-    redacted = _JWT.sub("[REDACTED_JWT]", redacted)
-    redacted = _SECRET_ASSIGNMENT.sub(
-        lambda match: f"{match.group(1)}{match.group(2)}[REDACTED]",
-        redacted,
-    )
+    redacted = sanitize_text(value).value
     if len(redacted) > limit:
         return redacted[:limit] + "…[TRUNCATED]"
     return redacted
@@ -446,9 +436,9 @@ def _build_record(
     for finding in group.findings:
         key = (finding.file_or_url, finding.line, finding.method)
         locations_by_key[key] = FindingLocation(
-            file_or_url=finding.file_or_url,
+            file_or_url=_redact_for_model(finding.file_or_url) or "[LOCATION_REDACTED]",
             line=finding.line,
-            method=finding.method,
+            method=_redact_for_model(finding.method),
         )
     location_keys = sorted(
         locations_by_key,
@@ -462,23 +452,29 @@ def _build_record(
     evidence = [
         ScannerEvidence(
             finding_id=finding.id,
-            tool=finding.tool,
-            rule_id=finding.rule_id,
-            source_file=finding.source_file,
-            evidence=finding.evidence,
+            tool=_redact_for_model(finding.tool) or "unknown",
+            rule_id=_redact_for_model(finding.rule_id) or "unknown",
+            source_file=_redact_for_model(finding.source_file) or "[SOURCE_REDACTED]",
+            evidence=_redact_for_model(finding.evidence),
         )
         for finding in sorted(group.findings, key=lambda item: item.id)
     ]
     source_ids = sorted(finding.id for finding in group.findings)
     return AnalysisFinding(
         id=group.group_id,
-        name=group.name,
+        name=_redact_for_model(group.name) or group.rule_id,
         severity=group.severity,
         locations=[locations_by_key[key] for key in location_keys],
         scanner_evidence=evidence,
-        explanation=draft.explanation,
-        verification_steps=draft.verification_steps,
-        remediation_steps=draft.remediation_steps,
+        explanation=_redact_for_model(draft.explanation) or "Narrative unavailable.",
+        verification_steps=[
+            _redact_for_model(value) or "Verification step unavailable."
+            for value in draft.verification_steps
+        ],
+        remediation_steps=[
+            _redact_for_model(value) or "Remediation step unavailable."
+            for value in draft.remediation_steps
+        ],
         confidence=group.confidence,
         occurrence_count=len(source_ids),
         source_finding_ids=source_ids,

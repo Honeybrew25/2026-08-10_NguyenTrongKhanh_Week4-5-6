@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/safe-api-risk-decision.schema.json",
+  "title": "Safe API Risk Decision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "requires_approval", "reason", "method", "test_case_id"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "requires_approval": {"type": "boolean"},
+    "reason": {"enum": ["post_method", "curated_payload", "no_payload_get"]},
+    "method": {"enum": ["GET", "POST"]},
+    "test_case_id": {"type": "string", "minLength": 1}
+  }
+}

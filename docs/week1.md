@@ -1,103 +1,80 @@
-# Week 1 — Docker application và security scanning
+# Tuần 1 — Chạy ứng dụng và quét bảo mật
 
-## Phạm vi
+## Mục tiêu
 
-Week 1 chứng minh staging application chạy bằng Docker Compose, xác định các
-endpoint chính và tích hợp hai công cụ mã nguồn mở:
+Tuần 1 chạy ứng dụng bằng Docker Compose với hai công cụ:
 
-- Bandit `1.9.4` để SAST source Python.
-- OWASP ZAP `2.17.0` Baseline để DAST thụ động qua Envoy.
+- Bandit `1.9.4` kiểm tra mã Python.
+- OWASP ZAP `2.17.0` kiểm tra phản hồi web qua Envoy.
 
-Kết quả gốc được lưu tại
+Kết quả gốc:
 [`bandit-baseline.json`](../security-results/bandit-baseline.json) và
 [`zap-baseline-local.json`](../security-results/zap-baseline-local.json).
 
-## 1. Kiến trúc ứng dụng
+## Cách ứng dụng hoạt động
 
 ```text
-Agent/client ---- HTTP :8080 ----> Envoy API Gateway ---- allow ----> FastAPI :8000
-                                      |
-                                      | ext_authz check
-                                      v
-                                authz-service ---- JWKS ----> Keycloak :8081
+Agent/client --> Envoy :8080 --> FastAPI :8000
+                    |
+                    +--> authz-service --> Keycloak :8081
 ```
 
-Envoy là cổng duy nhất cho application traffic. FastAPI và `authz-service` chỉ
-nằm trong Docker network; Keycloak publish cổng riêng để cấp OAuth token.
-`authz-service` chỉ trả quyết định allow/deny cho Envoy, không chuyển tiếp
-request đến FastAPI. Khi request được allow, chính Envoy forward request đến
-FastAPI.
-Bandit đọc source trước khi chạy ứng dụng, còn ZAP gửi request tới Envoy khi
-stack đang chạy.
+Envoy là cổng vào duy nhất. FastAPI và dịch vụ kiểm tra quyền ở trong mạng
+Docker; Keycloak cấp token. Bandit đọc mã, còn ZAP kiểm tra ứng dụng đang chạy.
 
-## 2. Các endpoint chính
-
-| Endpoint | Mục đích | Quyền |
+| Đường dẫn | Mục đích | Quyền truy cập |
 |---|---|---|
-| `GET /health` | Kiểm tra staging API | Public |
-| `GET /.well-known/oauth-protected-resource` | MCP/OAuth protected-resource metadata | Public |
-| `GET /api/users` | Dữ liệu user minh họa | Bearer token hợp lệ của Agent được phép, có `users:read` |
-| `GET /api/admin` | Dữ liệu admin minh họa | Bearer token hợp lệ của Agent được phép, có `admin:read` |
-| Route khác | Không thuộc allowlist | Deny mặc định |
+| `GET /health` | Kiểm tra API | Công khai |
+| `GET /.well-known/oauth-protected-resource` | Thông tin OAuth | Công khai |
+| `GET /api/users` | Dữ liệu user mẫu | Token có quyền `users:read` |
+| `GET /api/admin` | Dữ liệu admin mẫu | Token có quyền `admin:read` |
+| Đường dẫn khác | Ngoài danh sách cho phép | Bị chặn |
 
-Token hợp lệ phải có chữ ký RS256 xác minh được qua JWKS, đúng `issuer`,
-`audience`, còn hạn, thuộc một Agent client được phép và chứa scope tương ứng.
+Token phải hợp lệ, còn hạn, thuộc Agent được phép và có đúng quyền.
 
-## 3. Lỗ hổng và cảnh báo phát hiện
+## Kết quả quét
 
-### Bandit SAST
+### Bandit
 
-| Severity | Số lượng |
+| Mức độ | Số lượng |
 |---|---:|
 | High | 0 |
 | Medium | 2 |
 | Low | 19 |
 
-| Rule | Số lượng | Kết quả review |
+21 cảnh báo đều nằm trong script kiểm tra, không nằm trong `src/app/` hoặc
+`src/authz_service/`:
+
+| Mã | Số lượng | Nhận xét ngắn |
 |---|---:|---|
-| B310 | 2 | `urlopen` cần giới hạn scheme; URL hiện là hằng số HTTP localhost |
-| B101 | 14 | `assert` nằm trong verification script, không thuộc production request path |
-| B105 | 1 | False positive: chuỗi bị báo là password thực tế là token endpoint URL |
-| B404/B603 | 4 | Runner dùng argv cố định và `shell=False`; vẫn cần giữ input không tin cậy khỏi command |
+| B310 | 2 | `urlopen` cần giới hạn loại URL; hiện chỉ dùng HTTP localhost |
+| B101 | 14 | `assert` chỉ nằm trong script xác minh |
+| B105 | 1 | Nhận nhầm URL cấp token là mật khẩu |
+| B404/B603 | 4 | Lệnh dùng tham số cố định và `shell=False` |
 
-Không có finding trong `src/app/` hoặc `src/authz_service/`; toàn bộ 21 cảnh
-báo thuộc script chạy scan/test. Đây là cảnh báo cần review, không đồng nghĩa
-có 21 lỗ hổng khai thác được.
+### OWASP ZAP
 
-### ZAP Baseline DAST
+ZAP quét thụ động từ `/health`, không thấy cảnh báo High hoặc Medium. Hai
+header nên bổ sung ở mức Low là
+`Cross-Origin-Resource-Policy: same-origin` và
+`X-Content-Type-Options: nosniff`. Phần còn lại liên quan đến bộ nhớ đệm và
+phản hồi `403` của `/`, `/robots.txt`, `/sitemap.xml`.
 
-ZAP quét public endpoint `/health` qua Envoy và ghi nhận:
+ZAP không dùng token, không tấn công chủ động và chưa quét đủ hai API bảo vệ.
 
-| Risk | Alert | Nhận định |
-|---|---|---|
-| Low | Cross-Origin-Resource-Policy header missing/invalid | Nên cân nhắc `Cross-Origin-Resource-Policy: same-origin` |
-| Low | `X-Content-Type-Options` header missing | Nên thêm `X-Content-Type-Options: nosniff` tại gateway |
-| Informational | Storable and cacheable content | Cần quyết định chính sách cache cho `/health` |
-| Informational | Non-storable content | Xuất hiện trên `/`, `/robots.txt` và `/sitemap.xml`; cả ba không thuộc allowlist và bị deny `403` |
+## Kết quả tuần 1
 
-Không có cảnh báo High hoặc Medium. ZAP Baseline bắt đầu từ public endpoint
-`/health`, spider và passive-scan các response thu được. Scan không dùng Agent
-token, không thực hiện active attack và không bao phủ đầy đủ hai API được bảo
-vệ.
+Ứng dụng chạy được bằng Docker và tạo JSON thật. GitHub Actions đã cấu hình,
+nhưng cần một lần chạy thành công để làm bằng chứng CI.
 
-## Kết luận
-
-Week 1 đã có application chạy bằng Docker, danh sách endpoint, SAST và DAST
-tạo JSON thật ở local. GitHub Actions đã được cấu hình để chạy lại các kiểm tra
-và upload Bandit/ZAP artifact trong CI; cần dẫn link tới một workflow run thành
-công nếu muốn dùng nó làm bằng chứng CI. Hai header hardening mức Low là hạng
-mục nên xử lý tiếp; các cảnh báo Bandit còn lại có ngữ cảnh chủ yếu ở test
-runner.
-
-Lần xác minh local ngày 29/07/2026 bằng `python scripts/run_all_tests.py` đạt
-`29 passed`; bản ghi kết quả nằm tại
+Lần xác minh local ngày 29/07/2026 đạt `29 passed`; xem
 [`evidence/integration-tests.log`](../evidence/integration-tests.log).
 
-Không có finding không phải bằng chứng hệ thống an toàn. Bandit không kiểm tra
-dependency/image/runtime authorization; ZAP Baseline không thay thế active API
-scan hoặc kiểm thử thủ công.
+Không có cảnh báo nghiêm trọng chưa có nghĩa là hệ thống hoàn toàn an toàn.
+Bandit không kiểm tra thư viện, image hoặc quyền khi chạy; ZAP không thay thế
+quét chủ động và kiểm thử thủ công.
 
-## Lệnh tái lập trên PowerShell
+## Chạy lại trên PowerShell
 
 Bandit:
 
@@ -113,9 +90,7 @@ Get-Content security-results/bandit-local.json -Raw |
     Select-Object -ExpandProperty results
 ```
 
-Ở ngưỡng `low`, Bandit dự kiến trả exit code `1` khi có finding dù file JSON
-vẫn được tạo thành công. Đây là trạng thái có finding cần review, không phải lỗi
-khởi chạy scanner.
+Ở mức `low`, mã trả về `1` nghĩa là có cảnh báo; file JSON vẫn được tạo.
 
 ZAP:
 
