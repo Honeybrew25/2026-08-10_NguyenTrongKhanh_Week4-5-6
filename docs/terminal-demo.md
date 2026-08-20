@@ -15,8 +15,7 @@ python -m project_sentinel preflight --execute
 python -m project_sentinel demo --provider deterministic --execute --format human
 ```
 
-Nếu màu chữ khó đọc, thêm `--no-color`. Chỉ dùng `--verbose` khi cần xem mã của
-quy tắc và yêu cầu.
+Chỉ dùng `--verbose` khi cần xem mã của quy tắc và yêu cầu.
 
 Mỗi tình huống có tám bước: nhận kết quả quét, chuẩn hóa, phân tích, tạo đề
 xuất, phê duyệt, gửi qua cổng Envoy, kiểm tra phản hồi và tạo báo cáo.

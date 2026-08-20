@@ -155,7 +155,6 @@ docker compose ps --all
 - [Báo cáo Week 6 (snapshot lịch sử)](reports/week-6.md)
 - [Demo terminal](docs/terminal-demo.md)
 - [Bằng chứng kiểm thử hiện tại](evidence/week-6/pre-release-verification-2026-08-20.log)
-- [Phiếu nghiệm thu còn chờ](docs/release-acceptance.md)
 
 Dashboard công khai:
 <https://honeybrew25.github.io/2026-08-10_NguyenTrongKhanh_Week4-5-6/>.
