@@ -1,29 +1,25 @@
 # Phiếu nghiệm thu bản bàn giao
 
-Phiếu này chỉ dành cho những gate không thể tự đóng trong lúc đang sửa project.
-Mọi mục bên dưới hiện ở trạng thái **chờ xác nhận**. Người xác nhận điền bằng
-chứng thật rồi mới cập nhật [`todo-checklist.md`](todo-checklist.md).
+Các mục sau vẫn **chờ xác nhận**. Chỉ cập nhật
+[`todo-checklist.md`](todo-checklist.md) khi có bằng chứng.
 
-| Gate | Người xác nhận | Trạng thái |
+| Mục | Người xác nhận | Trạng thái |
 |---|---|---|
-| `DOC-08` — chạy lại từ clean checkout | Peer độc lập | Chờ |
-| `DOC-09`, `REL-07`, `REL-11` — final commit, hosted CI và file được quản lý bởi Git | Owner | Chờ |
-| `DEMO-12` — diễn tập demo | Người thực hiện/peer theo yêu cầu nghiệm thu | Chờ |
+| `DOC-08` — chạy lại từ bản mã mới tải về | Người kiểm tra độc lập | Chờ |
+| `DOC-09`, `REL-07`, `REL-11` — commit cuối, CI và Git theo dõi đủ file | Chủ project | Chờ |
+| `DEMO-12` — diễn tập demo | Người thực hiện hoặc người kiểm tra | Chờ |
 
-## 1. Final commit và hosted CI (`DOC-09`, `REL-07`, `REL-11`)
-
-Owner chỉ xác nhận sau khi đã commit toàn bộ file bàn giao và đẩy đúng nhánh để
-hosted CI chạy trên chính commit đó.
+## 1. Commit cuối và CI (`DOC-09`, `REL-07`, `REL-11`)
 
 - Nhánh: ____________________
-- Final commit SHA: ____________________
-- URL hosted CI: ____________________
-- Kết quả full Docker trên final commit: ____________________
-- Evidence mới gắn với commit: ____________________
-- Kết quả cleanup: ____________________
+- Commit SHA: ____________________
+- Link CI: ____________________
+- Kết quả kiểm thử đầy đủ với Docker: ____________________
+- Bằng chứng gắn với commit: ____________________
+- Kết quả dọn môi trường: ____________________
 - Người/ngày xác nhận: ____________________
 
-Lệnh kiểm tra tối thiểu:
+Lệnh kiểm tra:
 
 ```powershell
 git diff --check
@@ -33,50 +29,44 @@ git ls-files --error-unmatch docs/todo-checklist.md docs/release-acceptance.md
 python scripts/run_all_tests.py
 ```
 
-Điều kiện đóng gate: working tree sạch; mọi file bàn giao được Git theo dõi;
-full Docker và hosted CI cùng đạt trên final commit; evidence ghi đúng commit
-đó. Không sửa evidence cũ để thay đổi revision lịch sử.
+Đạt khi cây làm việc sạch, Git theo dõi đủ file, Docker và CI đạt trên commit
+cuối. Không sửa bằng chứng cũ.
 
-## 2. Peer chạy lại từ clean checkout (`DOC-08`)
+## 2. Người khác chạy lại (`DOC-08`)
 
-Peer không tham gia triển khai làm theo [`README.md`](../README.md) trong một
-thư mục checkout mới, không dùng artifact hoặc môi trường ảo từ workspace của
-người phát triển.
+Người không tham gia code làm theo [README](../README.md) từ thư mục mới, không
+dùng lại kết quả hay môi trường ảo cũ.
 
-- Peer/ngày/môi trường: ____________________
-- Commit được checkout: ____________________
+- Người kiểm tra/ngày/môi trường: ____________________
+- Commit đã tải về: ____________________
 - Cài đặt và preflight: ____________________
-- Deterministic dry-run: ____________________
-- Evaluation: ____________________
-- Full Docker và cleanup: ____________________
-- Bước khó hiểu hoặc lỗi tái lập: ____________________
+- Chạy thử ở chế độ cố định: ____________________
+- Đánh giá 10 trường hợp: ____________________
+- Kiểm thử đầy đủ với Docker và dọn môi trường: ____________________
+- Bước khó hiểu hoặc lỗi: ____________________
 - Kết luận `DOC-08`: Pass / Fail
 
-Không ghi secret, nội dung `.env` hoặc PII thô vào phiếu/evidence.
+Không ghi `.env`, thông tin bí mật hoặc dữ liệu cá nhân vào phiếu.
 
 ## 3. Diễn tập demo (`DEMO-12`)
 
-### Technical rehearsal
+Phần kỹ thuật đã chạy theo [`demo-script.md`](demo-script.md):
 
-Chạy đúng [`demo-script.md`](demo-script.md), bấm giờ và lưu evidence kỹ thuật.
-Việc đã chạy tự động không đồng nghĩa gate được tự động đánh dấu đạt.
+- Ngày chạy: 20/08/2026.
+- Tổng thời gian: 179,4 giây; bốn tình huống thật mất 12,735 giây.
+- Bằng chứng: [`pre-release-verification-2026-08-20.log`](../evidence/week-6/pre-release-verification-2026-08-20.log).
+- Reject gửi 0 yêu cầu: Đạt.
+- Approve gửi đúng 1 yêu cầu: Đạt.
+- `/api/admin` bị chặn trước khi gửi: Đạt.
+- Chỉ dẫn độc hại bị cách ly, dữ liệu nhạy cảm được che: Đạt.
+- Dọn môi trường và phương án dự phòng: Đạt.
 
-- Người chạy/ngày: local automated rehearsal, 20/08/2026
-- Tổng thời gian kỹ thuật: 179.4 giây gồm stack lifecycle; bốn live scenario
-  dùng 12.735 giây
-- Evidence: [`pre-release-verification-2026-08-20.log`](../evidence/week-6/pre-release-verification-2026-08-20.log)
-- Reject không gửi request: Pass
-- Approve gửi đúng một request: Pass
-- Admin bị chặn trước network: Pass
-- Prompt injection được quarantine và dữ liệu nhạy cảm được redact: Pass
-- Cleanup và phương án fallback: Pass
+Kết quả tự động chưa tự đóng `DEMO-12`. Người nghiệm thu điền thêm:
 
-### Trình bày với peer (nếu yêu cầu nghiệm thu)
-
-- Peer/ngày: ____________________
-- Thời lượng: ____________________
+- Người kiểm tra/ngày: ____________________
+- Thời lượng trình bày: ____________________
 - Phản hồi hoặc lỗi cần sửa: ____________________
 - Kết luận `DEMO-12`: Pass / Fail
 
-Chỉ đóng `DEMO-12` sau khi người chịu trách nhiệm nghiệm thu đã xem evidence,
-xác nhận thời lượng phù hợp và không có control bắt buộc nào bị bỏ qua.
+Chỉ đóng mục này sau khi người chịu trách nhiệm chấp nhận bằng chứng, thời lượng
+và các bước an toàn.

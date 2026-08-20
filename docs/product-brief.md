@@ -1,78 +1,60 @@
-# Product brief — Project Sentinel
+# Tóm tắt sản phẩm — Project Sentinel
 
-## Vấn đề
+## 1. Vấn đề
 
-Các công cụ SAST/DAST tạo báo cáo khó đọc, khác schema và dễ bị hiểu quá mức.
-Khi thêm AI vào chuỗi bảo mật, hai rủi ro mới xuất hiện: model có thể bịa dữ
-kiện hoặc bị HTTP response điều khiển; một đề xuất kiểm thử cũng có thể biến
-thành request vượt phạm vi. Nhóm kỹ thuật cần một lab nhỏ để tổng hợp evidence,
-giải thích finding và minh họa kiểm thử an toàn mà không thực hiện khai thác.
+Bandit và ZAP tạo báo cáo khác nhau, còn AI có thể giải thích sai hoặc làm theo
+chỉ dẫn xấu. Project Sentinel gộp các báo cáo và minh họa kiểm thử an toàn,
+không tự khai thác lỗ hổng.
 
-## Người dùng
+## 2. Người dùng
 
-- Sinh viên/nhóm AppSec cần demo chuỗi scan → phân tích → kiểm tra có kiểm soát.
-- Developer cần báo cáo dễ hiểu nhưng vẫn truy ngược được scanner evidence.
-- Reviewer/giảng viên cần expected/actual, audit trail và lệnh tái hiện thay vì
-  chỉ xem ảnh chụp hoặc tuyên bố của model.
+- Sinh viên hoặc nhóm bảo mật cần demo toàn bộ quy trình.
+- Lập trình viên cần báo cáo dễ đọc và có nguồn.
+- Người nghiệm thu cần kết quả cùng lệnh chạy lại.
 
-## Giá trị
+## 3. Giải pháp
 
-Project Sentinel biến Bandit/ZAP JSON thành một final report có provenance và
-đưa mọi hành động qua bốn ranh giới độc lập: exact policy, human approval,
-Gateway authorization và response guard. Sản phẩm cho thấy AI có thể hỗ trợ
-diễn giải mà không sở hữu quyền thực thi. Người review có thể kiểm hash input,
-source finding IDs, human decision, request receipt, redaction/injection flags
-và metrics trong cùng run ID.
+Hệ thống đưa kết quả Bandit/ZAP về cùng một dạng, gộp cảnh báo trùng và tạo báo
+cáo. Phần AI chỉ giải thích dữ kiện.
 
-## Phạm vi sản phẩm
+Trước khi gửi, code kiểm tra đường dẫn và mẫu thử, chờ `Approve`, rồi kiểm tra
+lại tại Envoy. Chỉ dẫn độc hại bị cách ly, dữ liệu nhạy cảm bị che. Mỗi lần chạy
+có mã để nối nguồn, quyết định và kết quả.
+
+## 4. Phạm vi hiện tại
 
 Sản phẩm gồm:
 
-- Bandit SAST và ZAP passive DAST artefact trong CI;
-- schema chung và keyword knowledge base 17 tài liệu;
-- Security Analysis Agent deterministic/Gemini tùy chọn, grounding và JSONL;
-- deterministic bounded request planner, exact allowlist và bốn payload curate;
-- Envoy, ext_authz, Keycloak lab IAM và API key riêng cho Safe API Tool;
-- HITL Approve/Reject có fingerprint, expiry, single-use và policy re-check;
-- response cap, prompt-injection quarantine và shared sensitive-data redaction;
-- one-proposal-per-run orchestrator, final report, event/metrics và manifest;
-- evaluation 10 case, CI release artefact, Compose runner và demo 10–15 phút.
+- quét Bandit và ZAP thụ động trong CI;
+- kho kiến thức 17 tài liệu và chế độ phân tích cố định hoặc Gemini;
+- bốn mẫu thử có sẵn, không cho nhập URL hay nội dung tùy ý;
+- phê duyệt `Approve/Reject`, có thời hạn và dùng một lần;
+- Envoy, dịch vụ kiểm quyền, Keycloak và API key cho lab;
+- cách ly chỉ dẫn độc hại, che dữ liệu, báo cáo và nhật ký;
+- bộ đánh giá 10 trường hợp, kiểm thử tự động và giao diện demo.
 
-Ngoài phạm vi: khai thác thật, production deployment, GraphRAG, multi-agent
-phức tạp, MCP/A2A IAM hoàn chỉnh, self-host GPU/vLLM và LLM-as-a-Judge.
+Có thể chạy thử không gửi yêu cầu. Giao diện chỉ phát lại dữ liệu sạch; thao
+tác thật chạy trên terminal.
 
-## Trải nghiệm chính
+Không thuộc phạm vi: khai thác thật, môi trường thật, nhiều AI tự phối hợp, GPU
+riêng hoặc dùng AI tự chấm AI.
 
-Người dùng chạy dry-run một lệnh để tạo fresh scanner JSON và final report mà
-không mở network. Trong interactive mode, CLI hiển thị exact request view; POST
-chỉ đi tiếp khi người dùng gõ `Approve`. `Reject`, timeout, EOF hoặc input lạ
-đều tạo 0 call. Approval không mở allowlist. HTTP response bị coi là untrusted,
-giới hạn byte, quarantine instruction và redact trước khi persist.
+## 5. Điều kiện hoàn thành
 
-Dashboard trình bày kiến trúc, evidence và policy simulator cho audience không
-kỹ thuật. Nó không nhận credential và không thay execution CLI.
+- Kết quả quét mới được xử lý trong cùng lần chạy và có mã đối chiếu.
+- Dữ liệu sai hoặc lỗi dịch vụ tạo nội dung/cổng Envoy đều dừng an toàn.
+- `Reject` gửi 0 yêu cầu; `Approve` gửi đúng 1 yêu cầu qua Envoy.
+- Đường dẫn ngoài danh sách gửi 0 yêu cầu và không tự chuyển hướng.
+- Nội dung xấu và dữ liệu nhạy cảm không có trong báo cáo cuối.
+- Bộ đánh giá đạt 10/10, TP=6, FP=0, FN=0 và giữ đủ nguồn.
+- Người khác có thể làm theo README, chạy lại và dọn môi trường sạch.
 
-## Tiêu chí thành công
+## 6. Hạn chế và hướng phát triển
 
-- Fresh scanner artefact được normalize/analyze trong cùng run, có hash.
-- Empty/invalid input và provider/Gateway lỗi fail closed.
-- Reject = 0 request; Approve = đúng một bounded request qua Envoy.
-- Endpoint ngoài allowlist = 0 request; redirect không theo.
-- Raw HTTP instruction và fixture sensitive data không xuất hiện trong final
-  artefact.
-- Evaluation đạt schema/source coverage 100%, hallucination/leak/bypass 0 và
-  báo TP/FP/FN theo truth unit công bố.
-- Một người khác có thể chạy lại bằng README, xem evidence và cleanup sạch.
+Đây là môi trường học tập: Keycloak chạy chế độ dev, dùng HTTP nội bộ; giới hạn
+tốc độ theo từng tiến trình; ZAP chưa đăng nhập. Bộ lọc dựa vào mẫu chữ và dữ
+liệu đánh giá còn nhỏ. Gemini không dùng trong bản phát hành.
 
-## Hạn chế và hướng phát triển
-
-Phiên bản này là educational lab: Keycloak `start-dev`, HTTP loopback,
-process-local rate limit, passive unauthenticated ZAP và regex guard. Dataset
-evaluation nhỏ nên không đại diện toàn bộ security domain. Gemini phụ thuộc
-dịch vụ ngoài và không nằm trên release path.
-
-Hướng tiếp theo sau P0 là authenticated DAST an toàn, dependency/container
-scanning, shared/distributed rate limiting, centralized telemetry, secret
-manager, digest/SHA pinning và mở rộng dataset theo failure thực tế. Chỉ cân
-nhắc semantic retrieval hoặc multi-agent khi các ranh giới policy, evaluation
-và observability hiện tại vẫn được giữ nguyên.
+Bước tiếp theo là quét ZAP có đăng nhập, kiểm tra thư viện/image Docker, quản lý
+thông tin bí mật tốt hơn và mở rộng bộ đánh giá. Mọi phần AI mới vẫn phải giữ
+phê duyệt và nhật ký.

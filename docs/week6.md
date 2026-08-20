@@ -1,52 +1,45 @@
-# Tuần 6
+# Tuần 6 — Hoàn thiện quy trình demo
 
-> Xem [documentation hub](../README.md) để bắt đầu chạy demo và mở các bằng
-> chứng liên quan.
+> Bắt đầu từ [README](../README.md) để chạy demo và xem bằng chứng.
 
-## Tuần này làm gì?
+## Đã làm
 
-Tuần 6 nối các phần đã xây dựng thành một quy trình hoàn chỉnh:
+Tuần 6 nối các phần trước thành một quy trình:
 
-1. nhận kết quả quét bảo mật;
-2. gộp các cảnh báo giống nhau;
-3. tạo phần giải thích và đề xuất kiểm tra;
-4. hỏi người dùng khi cần phê duyệt;
-5. gửi yêu cầu an toàn qua cổng bảo vệ;
-6. lưu kết quả và tạo báo cáo cuối cùng.
+1. nhận kết quả quét;
+2. gộp cảnh báo giống nhau;
+3. tạo giải thích và đề xuất kiểm tra;
+4. hỏi người dùng khi cần;
+5. gửi yêu cầu qua cổng bảo vệ;
+6. lưu kết quả và tạo báo cáo.
 
-Dự án cũng có lệnh demo, bộ đánh giá 10 trường hợp và cách chạy bằng Docker.
-Mỗi lần chạy đều lưu mã nhận diện, thời gian và dấu kiểm tra file để có thể đối
-chiếu lại về sau.
+Có lệnh demo, 10 trường hợp đánh giá và cách chạy Docker. Mỗi lần chạy lưu mã,
+thời gian và dấu kiểm tra file.
 
 ## Kết quả
 
-- 41 cảnh báo mới được gộp thành 6 nhóm dễ theo dõi.
-- Bộ đánh giá đạt 10/10 trường hợp (5 case Agent, 5 case hành vi), với TP=6,
-  FP=0 và FN=0.
+- 41 cảnh báo được gộp thành 6 nhóm.
+- Đánh giá đạt 10/10: 5 trường hợp Agent, 5 trường hợp xử lý; TP=6, FP=0, FN=0.
 - 216 bài kiểm thử thông thường và 244 bài kiểm thử đầy đủ đã đạt.
-- Chọn `Reject` không gửi yêu cầu; chọn `Approve` gửi đúng một yêu cầu.
-- Nội dung cố hướng dẫn AI làm sai bị cách ly và đường dẫn quản trị bị chặn.
-- Báo cáo cuối phân biệt rõ dữ liệu từ công cụ quét, phần giải thích của AI,
-  quyết định của người dùng và kết quả gửi yêu cầu.
-- Giao diện có thể phát lại bốn tình huống E2E theo tám bước để dễ trình bày.
-- Demo thực thi thật trên terminal cũng hiển thị tám bước, panel phê duyệt và
-  kết quả ngay sau mỗi tình huống; JSON vẫn được giữ riêng cho script và CI.
+- `Reject` gửi 0 yêu cầu; `Approve` gửi đúng 1 yêu cầu.
+- Câu lệnh đáng ngờ bị cách ly; đường dẫn quản trị bị chặn.
+- Báo cáo tách dữ liệu quét, phần AI viết, quyết định và kết quả.
+- Giao diện và terminal trình bày bốn tình huống qua tám bước; JSON được giữ
+  riêng cho script và CI.
 
 ## Giao diện E2E
 
-Mục **E2E Week 6** cho xem lại các tình huống từ chối, phê duyệt, response chứa
-prompt injection và đề xuất truy cập đường dẫn quản trị. Có thể bấm từng bước
-để xem điều gì đã xảy ra và vì sao quy trình dừng hoặc tiếp tục.
+Mục **E2E Week 6** phát lại bốn tình huống: từ chối, phê duyệt, câu lệnh đáng
+ngờ và truy cập quản trị. Bấm từng bước để biết quy trình tiếp tục hay dừng.
 
-Đây là dữ liệu đã làm sạch từ lần chạy mẫu, không phải màn hình điều khiển hệ
-thống. Giao diện không nhận API key, không có nút phê duyệt thật và không gửi
-yêu cầu kiểm thử. Muốn chạy quy trình thật vẫn dùng lệnh trong `README.md`.
+Giao diện dùng dữ liệu mẫu sạch; không nhận API key, phê duyệt hoặc gửi yêu
+cầu thật. Muốn chạy thật, dùng lệnh trong `README.md`.
 
-## Trạng thái sản phẩm
+## Trạng thái
 
-Các chức năng chính của tuần 6 đã hoàn thành và có bằng chứng chạy thử. Tuy
-nhiên, đây vẫn là môi trường lab: ZAP mới kiểm tra thụ động đường dẫn `/health`,
-Keycloak dùng chế độ phát triển và giới hạn số yêu cầu được lưu trong từng tiến
-trình. Bản bàn giao cuối còn chờ commit sạch, hosted CI và peer chạy lại từ
-README; xem [phiếu nghiệm thu](release-acceptance.md).
+Các chức năng chính đã có bằng chứng local. Giới hạn của lab: ZAP chỉ quét thụ
+động `/health`, Keycloak chạy chế độ phát triển, số yêu cầu được nhớ riêng theo
+từng tiến trình.
 
+Bản cuối còn chờ commit sạch, CI trên GitHub và người khác chạy lại từ README.
+Xem [phiếu nghiệm thu](release-acceptance.md).

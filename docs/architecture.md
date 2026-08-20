@@ -1,138 +1,90 @@
 # Kiến trúc Project Sentinel
 
-## Mục tiêu thiết kế
+## Hệ thống làm gì?
 
-Project Sentinel nối artefact Week 1–5 thành một luồng đầu-cuối có thể kiểm
-chứng mà không tăng quyền cho model. Mỗi run xử lý đúng một proposal; Reject và
-Approve luôn là hai run. Output được append vào workspace mới, liên kết bằng ID
-và hash, không ghi đè baseline tốt.
+Project Sentinel gộp kết quả quét, giải thích cảnh báo, đề xuất phép kiểm tra an
+toàn và lưu báo cáo. Code quyết định đường dẫn và lúc cần người dùng đồng ý.
 
-## Data flow và trust boundary
+## Luồng xử lý
 
-| Stage | Input | Output | Chủ sở hữu quyết định |
+| Bước | Việc thực hiện | Kết quả |
+|---|---|---|
+| 1. Nhận dữ liệu | Đọc JSON mới từ Bandit hoặc ZAP | Bản sao và mã SHA-256 |
+| 2. Chuẩn hóa | Đưa các công cụ quét về cùng một mẫu | `normalized-findings.json` |
+| 3. Phân tích | Gộp cảnh báo giống nhau và tra kho kiến thức | Báo cáo JSONL có nguồn |
+| 4. Đề xuất | Chọn một phép kiểm tra có sẵn | Mã chức năng và mẫu thử |
+| 5. Kiểm tra | Xác nhận loại yêu cầu HTTP, đường dẫn và dữ liệu gửi | Cho phép, cần duyệt hoặc chặn |
+| 6. Phê duyệt | Hiện đầy đủ yêu cầu để người dùng chọn | Approve hoặc Reject |
+| 7. Gửi yêu cầu | Gửi qua Envoy, không gọi thẳng ứng dụng | Biên nhận đã làm sạch |
+| 8. Lập báo cáo | Gộp kết quả từng bước | Báo cáo cuối và số liệu |
+
+Phản hồi HTTP không thể tạo yêu cầu mới. AI không nhận API key, địa chỉ gốc hay
+dữ liệu gửi tùy ý.
+
+Code chọn sẵn địa chỉ chạy:
+
+- chạy trên máy: `http://localhost:8080`;
+- chạy trong Compose: `http://envoy:8080`.
+
+## Các đường dẫn API hiện hành
+
+Envoy là cổng vào duy nhất của API thử nghiệm. Keycloak chỉ mở cổng `8081` trên
+máy để cấp token trong lab.
+
+| Loại | Đường dẫn | Quyền truy cập | Mục đích |
 |---|---|---|---|
-| Scanner input | Bandit/ZAP JSON của run hiện tại | Bản retained + SHA-256 | Scanner/code |
-| Normalize | Raw scanner facts | `normalized-findings.json` | Code/schema |
-| Analysis | Facts + curated KB | Grounded JSONL | Model viết narrative; code giữ facts |
-| Proposal | Một analysis group | Capability/test-case IDs | Deterministic planner |
-| Policy/risk | IDs, header names | Materialized request/risk | Code/policy |
-| Approval | Canonical request view | Approve/Reject contract | Con người |
-| Request | Approval + policy re-check | Receipt | Client → Envoy only |
-| Response guard | Bounded untrusted bytes | Quarantine/redacted excerpt | Code |
-| Final report | Các contract riêng | Linked report + manifest/events | Code/schema |
+| `GET`, `HEAD` | `/`, `/ui`, `/ui/*` | Công khai | Mở giao diện. |
+| `GET` | `/health` | Công khai | Kiểm tra sẵn sàng. |
+| `GET` | `/.well-known/oauth-protected-resource` | Công khai | Mô tả OAuth. |
+| `GET` | `/api/users` | Token có `users:read` | Đọc dữ liệu mẫu. |
+| `GET` | `/api/admin` | Token có `admin:read` | API quản trị mẫu; công cụ kiểm thử không được gọi. |
+| `GET` | `/api/test/status` | API key của công cụ | Kiểm tra trạng thái. |
+| `GET` | `/api/test/prompt-injection` | API key của công cụ | Trả nội dung giả lập để thử bộ lọc. |
+| `POST` | `/api/test/validate` | API key và phê duyệt khi cần | Kiểm dữ liệu mẫu, không lưu dữ liệu. |
 
-HTTP response không được đưa trở lại planner, không thể sinh follow-up action
-và không thể approve. Model không nhận raw URL/payload/credential, không được
-quyết định runtime origin. Trusted origin chỉ có hai code-owned profile:
-`host=http://localhost:8080` và `compose=http://envoy:8080`.
+Ba đường dẫn `/api/test/*` chỉ nhận mẫu có sẵn; yêu cầu khác bị chặn. Envoy bỏ
+API key trước khi chuyển đến ứng dụng.
 
-## Endpoint hiện hành
+## Quy tắc an toàn
 
-Envoy là cổng vào duy nhất của staging API. Keycloak chỉ mở riêng token endpoint
-trên loopback `127.0.0.1:8081` cho môi trường lab.
+- Reject, phê duyệt hết hạn hoặc không khớp đều dừng trước khi gửi.
+- Sau Approve, danh sách cho phép được kiểm lại.
+- Yêu cầu không tự chuyển hướng và bị giới hạn thời gian, tốc độ, kích thước.
+- Dữ liệu nhạy cảm được che trước khi gửi AI hoặc ghi nhật ký.
+- Phản hồi đáng ngờ bị cách ly, không lưu bản thô.
+- Lỗi được đổi thành mã ngắn, không lưu chi tiết hệ thống.
+- HTTP 200 chỉ cho biết đường dẫn đã trả lời, không chứng minh có lỗ hổng.
 
-| Method | Path | Ai được gọi | Mục đích |
-|---|---|---|---|
-| `GET`, `HEAD` | `/`, `/ui`, `/ui/*` | Công khai | Mở dashboard hoặc static asset. |
-| `GET` | `/health` | Công khai | Kiểm tra Gateway/API sẵn sàng. |
-| `GET` | `/.well-known/oauth-protected-resource` | Công khai | Công bố OAuth resource metadata. |
-| `GET` | `/api/users` | Bearer token có `users:read` | Đọc dữ liệu người dùng mẫu. |
-| `GET` | `/api/admin` | Bearer token có `admin:read` | Endpoint quản trị mẫu; Safe API Tool không được phép gọi. |
-| `GET` | `/api/test/status` | API key của Safe API Tool | Kiểm tra endpoint thử nghiệm stateless. |
-| `GET` | `/api/test/prompt-injection` | API key của Safe API Tool | Trả fixture độc hại cố định để kiểm response guard. |
-| `POST` | `/api/test/validate` | API key của Safe API Tool và approval khi có rủi ro | Kiểm bốn payload đã curate, không lưu dữ liệu. |
+Phê duyệt gắn với `run_id`, nội dung, quy tắc và thời hạn nên không dùng lại được.
 
-Ba `/api/test/*` chỉ được materialize từ capability/test-case ID trong policy;
-model hoặc người dùng không được nhập URL hay payload tùy ý. Mọi method/path
-khác bị deny mặc định. API key được authz-service kiểm tra và yêu cầu Envoy loại
-bỏ trước khi request tới ứng dụng.
+## Kết quả được lưu
 
-## State machine
+Mỗi lần chạy có một thư mục riêng. Các file chính gồm:
 
-```text
-created -> inputs_retained -> normalized -> analyzed
-                                      ├─ no findings -> reported
-                                      └─ proposed
-                                           ├─ dry/blocked -> reported
-                                           ├─ pending_approval -> rejected -> reported
-                                           └─ approved/GET -> executed -> reported
+- `pipeline-events.jsonl`: từng bước và thời gian chạy;
+- `security-analysis.jsonl`: các nhóm cảnh báo có nguồn;
+- `final-report.json`: kết quả cuối;
+- `manifest.json`: mã SHA-256 của các file.
 
-Mọi state chưa terminal -> failed -> reported
-```
+`run_id` nối các file. Trước khi làm bằng chứng, file được kiểm định dạng và dữ
+liệu nhạy cảm. Báo cáo tách dữ liệu quét, phần AI, quyết định và kết quả gửi.
 
-Execution boundary bên trong Safe API Tool chi tiết hơn:
+## Docker, CI và giao diện
 
-```text
-proposed -> validated -> ready_to_execute -> executed
-                   └-> pending_approval -> approved -> ready_to_execute
-                                          └-> rejected (terminal)
-```
+Compose chạy Keycloak, API, `authz-service`, Envoy và `runner`. Runner không
+chạy bằng root, không mở cổng và chỉ đọc file cần thiết.
 
-Approval gắn với `run_id`, proposal ID, policy hash, trusted origin, canonical
-request fingerprint, expiry và single-use nonce. Sau Approve, policy được tính
-lại; thay đổi proposal/policy/origin làm approval mất hiệu lực.
+CI dùng Bandit Low làm dữ liệu, Bandit High để chặn phát hành và ZAP quét thụ
+động từ `/health`. Kết quả được kiểm định dạng và SHA-256 trước khi tải lên.
 
-## Contract và tính toàn vẹn
+Giao diện chỉ phát lại dữ liệu sạch; không giữ API key hay Approve thật.
 
-- `project-sentinel-event.schema.json`: event từng stage, duration, counter,
-  safe error code và related IDs.
-- `project-sentinel-final-report.schema.json`: phân biệt scanner evidence, AI
-  narrative, human decision, request fact và guarded response.
-- `manifest.json`: hash mọi file trong workspace; raw scanner input được giữ
-  trong `scanner-inputs/` với hash riêng.
-- Approval, receipt v1 và guarded response vẫn là contract độc lập, tránh biến
-  các trục `outcome`, `decision`, `injection flag`, `redaction count` thành một
-  enum loại trừ nhau.
+## Giới hạn hiện tại
 
-Status 200 chỉ được ghi là `verification_signal_not_exploit_proof`, không phải
-bằng chứng khai thác hoặc xác nhận vulnerability. Narrative có
-`analysis_method`; facts/provenance đến từ scanner và schema validation.
-
-## Fail-closed và data minimization
-
-- Invalid/empty input không gọi provider/tool; empty tạo output hợp lệ.
-- Gateway preflight retry có deadline và không fallback sang backend.
-- POST thiếu/reject/expired approval tạo 0 network call.
-- Redirect bị tắt; request/response có timeout, size cap và rate cap.
-- Redaction chạy trước model/log; response injection bị quarantine trước
-  persist. Runtime response-guard failure không persist raw excerpt, không gọi
-  model/follow-up và kết thúc run failed dù request đầu đã xảy ra.
-- Exception được đổi thành stable safe code; không serialize raw exception.
-
-## Compose và CI
-
-`sentinel-runner` là one-shot profile, non-root, dùng runtime dependencies riêng
-và mount policy/data/schema read-only; chỉ output Week 6 được ghi. Container
-không nhận `.env` file và không publish port. TTY được giữ cho approval thật;
-non-interactive EOF trở thành Reject.
-
-CI chạy Bandit Low/full làm data scan và Bandit High làm release gate riêng.
-ZAP passive `/health` là artefact DAST riêng, không được Safe API receipt thay
-thế. Job Week 6 tải đúng Bandit/ZAP của cùng workflow, chạy deterministic
-dry-run/evaluation, kiểm schema/hash/sentinel rồi upload artefact 14 ngày.
-
-## Logging và metrics
-
-Final report/event ghi total và stage duration, raw/normalized finding,
-analysis group, request attempted/sent, Approve, Reject, injection flag,
-redaction và error count. Provider/config version cùng policy/schema hash cho
-phép so sánh run mà không ghi prompt hoặc credential.
-
-## Giới hạn và rủi ro còn lại
-
-- Keycloak dùng `start-dev`, HTTP local và secret trong environment: chỉ phù
-  hợp lab, không phải production.
-- Rate limiter client/authz là process-local, reset khi restart và không chia
-  sẻ khi scale.
-- Request-size/rate được lặp giữa policy/authz/Envoy; contract test bắt drift,
-  nhưng chưa có distributed single source runtime.
-- ZAP chỉ passive unauthenticated `/health`; chưa bao phủ protected API.
-- Bandit chỉ quét `src/` và `scripts/`; chưa có dependency/container/config
-  scanner.
-- Regex prompt-injection/PII có false positive và false negative; chỉ cam kết
-  các lớp fixture đã công bố, không phải DLP tổng quát.
-- Gemini là tùy chọn ngoài release path; network/quota/cost không có SLO. CI và
-  demo fallback dùng deterministic provider.
-- Docker image/action pin version nhưng chưa pin digest/SHA ở mọi nơi.
-- Dashboard là snapshot presentation, không phải observability backend hoặc
-  credentialed API client.
+- Keycloak dùng `start-dev` và HTTP local, chỉ phù hợp lab.
+- Bộ giới hạn số yêu cầu lưu trong từng tiến trình và mất khi khởi động lại.
+- ZAP chưa quét các API cần đăng nhập; Bandit chưa kiểm tra thư viện và image Docker.
+- Bộ lọc dựa vào mẫu chữ nên có thể nhận nhầm hoặc bỏ sót.
+- Gemini là tùy chọn; release mặc định dùng kết quả cố định để dễ lặp lại.
+- Một số image/action mới ghim theo phiên bản, chưa ghim SHA hoặc digest.
+- Bản cuối cần commit sạch, CI GitHub đạt và một người khác chạy lại.

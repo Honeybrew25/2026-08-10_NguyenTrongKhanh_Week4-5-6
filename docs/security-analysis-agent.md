@@ -1,73 +1,45 @@
-# Security Analysis Agent
+# Công cụ phân tích cảnh báo bảo mật
 
-> Week 3 · Xem [documentation hub](../README.md),
+> Week 3 · Xem [hướng dẫn chính](../README.md),
 > [báo cáo tuần](../reports/week-3.md) và
-> [live run Gemini](../reports/week-3/gemini-live-run-2026-08-03.md).
+> [lần chạy Gemini](../reports/week-3/gemini-live-run-2026-08-03.md).
 
-## Mục tiêu và phạm vi
+## Mục đích
 
-Security Analysis Agent đọc kết quả Bandit/ZAP đã chuẩn hóa ở Week 2, đối
-chiếu với kho tri thức và tạo báo cáo JSONL dễ đọc. Agent hỗ trợ triage: một
-cảnh báo của scanner vẫn cần được xác minh thủ công và không phải bằng chứng
-rằng lỗ hổng có thể khai thác.
+Công cụ đọc kết quả Bandit/ZAP, ghép tài liệu liên quan và tạo báo cáo JSONL.
+Nó chỉ giúp sắp xếp, giải thích cảnh báo; người đọc vẫn phải xác minh vì kết
+quả quét chưa chứng minh lỗ hổng có thể bị khai thác.
 
-Hai nguồn đầu vào hiện tại là:
+Dữ liệu mẫu gồm
+[`normalized-findings.json`](../security-results/normalized-findings.json) với
+27 cảnh báo Week 1 và
+[`vulnerabilities.json`](../data/vulnerabilities.json) với 17 tài liệu Week 2.
 
-- [`normalized-findings.json`](../security-results/normalized-findings.json):
-  27 finding được chuẩn hóa từ kết quả quét Week 1.
-- [`vulnerabilities.json`](../data/vulnerabilities.json): 17 tài liệu trong kho
-  tri thức Week 2.
+## Cách xử lý
 
-## Luồng xử lý
+[`SecurityAnalysisAgent`](../src/security_pipeline/analysis/agent.py):
 
-```text
-normalized findings + knowledge base
-        |
-        v
- validate input --> group by tool/rule --> exact-rule retrieval
-        |                                      |
-        +------------> narrative provider <----+
-                              |
-                              v
-              grounding + provenance checks
-                              |
-                              v
-                  atomic UTF-8 JSONL output
-```
+1. Kiểm tra định dạng, phần tổng kết và số bản ghi.
+2. Gom theo `(tool, rule_id)`, giữ mức nghiêm trọng cao nhất và độ tin cậy thấp
+   nhất để không làm nhẹ rủi ro.
+3. Chỉ ghép tài liệu khi `related_scanner_rules` khớp chính xác công cụ và mã. B101
+   và ZAP 10049 chưa có tài liệu vẫn được báo cáo, không bị gán gần đúng.
+4. Tạo phần giải thích, cách kiểm tra và hướng khắc phục.
+5. Ghép dữ liệu gốc, kiểm tra không thiếu/lặp cảnh báo rồi mới thay file kết quả.
 
-[`SecurityAnalysisAgent`](../src/security_pipeline/analysis/agent.py) thực hiện
-các bước sau:
+Kết quả hiện tại là 27 cảnh báo → 9 nhóm. Mỗi ID nguồn xuất hiện đúng một lần
+trong `source_finding_ids`, nên vẫn truy được vị trí và bằng chứng ban đầu.
 
-1. Kiểm tra schema, summary và số record nguồn trước khi phân tích.
-2. Nhóm các finding theo cặp `(tool, rule_id)`. Nhóm lấy severity cao nhất và
-   confidence thấp nhất của các record thành viên để không làm nhẹ cảnh báo.
-3. Ghép tri thức chỉ khi `related_scanner_rules` khớp chính xác tool và rule.
-   Rule chưa có tài liệu, như Bandit B101 hoặc ZAP 10049, vẫn được báo cáo bằng
-   dữ liệu scanner thay vì bị ép vào một loại lỗ hổng gần giống.
-4. Yêu cầu provider viết phần giải thích, bước kiểm tra và bước khắc phục.
-5. Ghép lại các trường do source quản lý, kiểm tra coverage và ghi file bằng
-   atomic replace.
+Các file bàn giao: `security-results/security-analysis.jsonl` (9 nhóm offline),
+`schemas/security-analysis-finding.schema.json` (định dạng mỗi dòng),
+`src/security_pipeline/analysis/prompts/security_analysis_system.md` (quyền
+viết của AI), `security-results/runs/week-3/gemini-live-2026-08-03.jsonl` (bản
+Gemini để so sánh) và `reports/week-3.md` (lịch sử tuần). JSONL dành cho chương
+trình; Markdown chỉ để đọc, không đưa ngược vào pipeline.
 
-Với baseline hiện tại, 27 finding tạo thành 9 nhóm. Mọi finding nguồn xuất hiện
-đúng một lần trong `source_finding_ids`; vị trí và bằng chứng vẫn được giữ để
-người review truy ngược.
+### Chi tiết 9 nhóm
 
-## Đầu ra bàn giao
-
-| Artifact | Vai trò | Consumer |
-|---|---|---|
-| `security-results/security-analysis.jsonl` | Baseline deterministic, 9 record có grounding | Reviewer, CI và planner Week 4 |
-| `schemas/security-analysis-finding.schema.json` | Hợp đồng machine-readable của từng dòng JSONL | Test, integration hoặc consumer mới |
-| `src/security_pipeline/analysis/prompts/security_analysis_system.md` | Ranh giới narrative và dữ liệu không tin cậy | Gemini provider và security review |
-| `security-results/runs/week-3/gemini-live-2026-08-03.jsonl` | Một live run tách khỏi baseline | Đối chiếu chất lượng narrative |
-| `reports/week-3.md` | Snapshot ngắn tại thời điểm chốt tuần | Mentor và lịch sử project |
-
-Artifact JSONL là source cho máy; report Markdown chỉ tóm tắt kết quả. Không
-dùng report làm input ngược lại cho pipeline.
-
-### Inventory baseline 27 → 9
-
-| Rule | Severity nhóm | Occurrence | Knowledge |
+| Rule | Mức | Số cảnh báo | Tài liệu ghép |
 |---|---:|---:|---|
 | Bandit `B310` | Medium | 2 | `ssrf` |
 | Bandit `B101` | Low | 14 | Không gán cố ý |
@@ -79,63 +51,48 @@ dùng report làm input ngược lại cho pipeline.
 | ZAP `10049-1` | Informational | 3 | Không gán cố ý |
 | ZAP `10049-3` | Informational | 1 | Không gán cố ý |
 
-Tổng cộng có 1 nhóm Medium, 6 Low, 2 Informational; 6 nhóm exact-match được
-knowledge và 3 nhóm cố ý giữ scanner context mà không suy đoán mapping.
+Tổng: 1 Medium, 6 Low, 2 Informational; 6 nhóm khớp tài liệu chính xác, 3 nhóm
+giữ nguyên dữ liệu quét và không đoán.
 
-### Phân biệt các mốc kiểm thử
+### Mốc kiểm thử
 
-| Mốc | Số liệu | Ý nghĩa |
+| Mốc | Số liệu | Ghi chú |
 |---|---|---|
-| Snapshot `reports/week-3.md` | 15 test case Week 3; 53 full project | Lịch sử tại lúc viết report, giữ bất biến |
-| Baseline Week 3 `c8b2eb9` | 50 non-integration; 60 full | [CI cuối Week 3](https://github.com/Honeybrew25/2026-08-07_NguyenTrongKhanh_Week3/actions/runs/31138335407) |
-| Working copy hiện hành | Chạy lại lệnh test bên dưới | Suite tiếp tục tăng ở Week 4/UI, không dùng để sửa ngược report |
+| `reports/week-3.md` | 15 test Week 3; 53 toàn project | Lịch sử, không sửa lại |
+| Week 3 `c8b2eb9` | 50 test không Docker; 60 test đầy đủ | [CI cuối Week 3](https://github.com/Honeybrew25/2026-08-07_NguyenTrongKhanh_Week3/actions/runs/31138335407) |
+| Bản hiện tại | Chạy lại lệnh bên dưới | Suite tiếp tục tăng từ Week 4/UI |
 
-## Hợp đồng JSONL
+## Kết quả và cách ngăn AI bịa dữ liệu
 
-Mỗi dòng là một JSON object độc lập theo
+Mỗi dòng theo
 [`security-analysis-finding.schema.json`](../schemas/security-analysis-finding.schema.json).
-Các trường chính gồm:
+Kết quả quét sở hữu `name`, `severity`, `locations`, `scanner_evidence`,
+`confidence`, `occurrence_count` và `source_finding_ids`; kho tài liệu sở hữu
+`knowledge_ids`. AI chỉ viết `explanation`, `verification_steps` và
+`remediation_steps`; `analysis_method` ghi model đã dùng.
 
-| Trường | Ý nghĩa |
-|---|---|
-| `name`, `severity` | Tên cảnh báo và mức nghiêm trọng lấy từ scanner |
-| `locations` | Danh sách file/URL, dòng và HTTP method có trong input |
-| `scanner_evidence` | Bằng chứng cùng tool, rule, source file và finding ID |
-| `explanation` | Giải thích ngắn bằng ngôn ngữ đơn giản |
-| `verification_steps` | Cách kiểm tra không phá hoại trước khi kết luận |
-| `remediation_steps` | Các bước khắc phục đề xuất, chưa khẳng định đã áp dụng |
-| `confidence` | Confidence bảo thủ từ các finding nguồn |
-| `occurrence_count` | Số cảnh báo đã được gom vào nhóm |
-| `source_finding_ids`, `knowledge_ids` | Provenance để truy ngược dữ liệu |
-| `analysis_method` | Provider và model thực sự đã tạo phần diễn giải |
-
-JSONL không có code fence hoặc record tổng kết. Thứ tự nhóm, thứ tự field và ID
-ổn định để chế độ deterministic tạo cùng nội dung logic khi input không đổi.
-SHA-256 trên byte có thể khác giữa checkout LF và CRLF; chỉ so sánh hash khi
-đã cố định cùng newline convention.
-
-## Ranh giới chống bịa dữ liệu
+JSONL không có khối Markdown hay dòng tổng kết. Thứ tự nhóm, trường và ID ổn
+định khi đầu vào không đổi. SHA-256 có thể khác giữa LF/CRLF, nên chỉ so mã sau
+khi thống nhất kiểu xuống dòng.
 
 [`System Prompt`](../src/security_pipeline/analysis/prompts/security_analysis_system.md)
-coi toàn bộ scanner evidence và kho tri thức là dữ liệu không tin cậy, không
-phải chỉ dẫn. Provider không được tạo `name`, severity, location, evidence hoặc
-provenance; các trường này luôn do chương trình dựng từ input.
+coi cảnh báo và kho tài liệu là dữ liệu, không phải câu lệnh. Trước khi gửi cho
+AI, chương trình che email, số điện thoại lab, token, API key, mật khẩu và các
+trường định danh; nội dung gửi cũng bị giới hạn độ dài. Sau khi nhận kết quả,
+chương trình:
 
-Trước khi gọi provider, sanitizer dùng chung che email, số điện thoại lab,
-token, API key, password và trường định danh đã biết; context dài được giới
-hạn. Sau khi nhận diễn giải, Agent luôn từ chối full URL và Windows
-path. Endpoint tương đối, repository path, CWE/CVE hoặc Bandit rule chỉ được
-chấp nhận khi đã có trong source của nhóm. Agent cũng từ chối output thiếu/thừa
-group và kiểm tra rằng không finding nguồn nào bị mất hoặc lặp. Tên và alias
-của loại lỗ hổng thuộc một tài liệu tri thức không exact-match với nhóm cũng bị
-từ chối. Raw scanner artifact được giữ riêng theo retention policy; payload gửi
-provider và scanner evidence/location nhúng trong JSONL phân tích đều được
-sanitize. Báo cáo không giữ raw secret chỉ vì raw scanner artifact còn tồn tại.
+- từ chối URL đầy đủ, đường dẫn Windows, thiếu/thừa nhóm và ID bị mất/lặp;
+- chỉ nhận đường dẫn API tương đối, đường dẫn trong kho mã, CWE/CVE hoặc mã Bandit
+  đã có trong nguồn của nhóm;
+- từ chối tên/alias lỗ hổng từ tài liệu không khớp chính xác rule.
 
-## Chạy không cần API key
+File quét thô được giữ riêng theo thời hạn. Dữ liệu gửi AI và bằng chứng/vị trí
+trong JSONL đều được che; báo cáo không giữ thông tin bí mật chỉ vì file gốc còn có.
 
-Provider `deterministic` là baseline offline dùng cho demo, test và CI. Nó
-không được xem là phép đánh giá chất lượng của LLM.
+## Chạy offline
+
+Chế độ `deterministic` chạy theo quy tắc cố định, không cần API key và dùng cho
+demo, kiểm thử, CI; nó không đánh giá chất lượng AI.
 
 ```powershell
 python -m security_pipeline analyze `
@@ -145,9 +102,8 @@ python -m security_pipeline analyze `
     --output security-results/security-analysis.jsonl
 ```
 
-Kết quả bàn giao nằm tại
-[`security-analysis.jsonl`](../security-results/security-analysis.jsonl).
-Chạy lại lệnh rồi dùng lệnh sau để kiểm tra output được commit không thay đổi:
+Kết quả: [`security-analysis.jsonl`](../security-results/security-analysis.jsonl).
+Kiểm tra file đã lưu không đổi:
 
 ```powershell
 git diff --exit-code -- security-results/security-analysis.jsonl
@@ -155,9 +111,9 @@ git diff --exit-code -- security-results/security-analysis.jsonl
 
 ## Chạy với Gemini
 
-Gemini là provider tùy chọn. Cài extra `agent`, copy `.env.example` thành file
-`.env` đã được ignore và chỉ điền `GEMINI_API_KEY` cùng cấu hình `GEMINI_*` ở
-máy local. Không commit khóa API hoặc dán khóa vào báo cáo/log.
+Gemini không bắt buộc. Cài phần `agent`, tạo `.env` từ `.env.example`, chỉ điền
+`GEMINI_API_KEY` và `GEMINI_*` trên máy cá nhân. `.env` đã bị Git bỏ qua; không
+đưa khóa vào commit, báo cáo hoặc log.
 
 ```powershell
 python -m pip install --editable ".[agent]"
@@ -169,82 +125,53 @@ python -m security_pipeline analyze `
     --output "$env:TEMP\security-analysis-gemini.jsonl"
 ```
 
-Provider dùng Google Gen AI SDK và Pydantic Structured Output. Model chính là
-`gemini-3.5-flash-lite` với thinking `minimal`; có thể truyền `--model` để ghi
-đè `GEMINI_MODEL`. Provider không bật Google Search, URL context, code
-execution hoặc tool bên ngoài vì scanner data và kho tri thức nội bộ là nguồn
-grounding duy nhất. Mỗi nhóm chỉ gửi tối đa ba scanner context đại diện và mỗi
-request bị giới hạn 4.096 output token; JSONL local vẫn giữ đủ bằng chứng nguồn.
+Model chính: `gemini-3.5-flash-lite`, thinking `minimal`; `--model` ghi đè
+`GEMINI_MODEL`. Google Search, URL context, chạy code và tool ngoài đều tắt.
+Mỗi nhóm gửi tối đa ba đoạn cảnh báo; mỗi lần gọi nhận tối đa 4.096 token;
+JSONL trên máy vẫn giữ đủ bằng chứng. Thư viện Google Gen AI yêu cầu kết quả
+đúng định dạng Pydantic.
 
-Nếu kết quả model chính trống, sai schema hoặc bị Agent từ chối bởi kiểm tra
-grounding, Agent thử lại **đúng một lần** bằng `gemini-3.6-flash` với thinking
-`low`. Fallback không chạy cho lỗi API key, quota hoặc mạng, tránh retry tốn
-chi phí nhưng không thể cải thiện output. `analysis_method` ghi model thực sự
-đã tạo record; nếu cả hai lần đều không hợp lệ, lệnh trả exit code `3` và không
-ghi đè output tốt trước đó.
+Nếu kết quả trống, sai định dạng hoặc không bám nguồn, chương trình thử đúng một
+lần bằng `gemini-3.6-flash` với mức suy luận `low`. Không thử lại khi sai API
+key, hết hạn mức hay lỗi mạng. `analysis_method` ghi model thực tế. Nếu cả hai
+lần sai, mã trả về là `3` và file tốt trước đó không bị ghi đè.
 
-Scanner data vẫn rời máy khi dùng provider này; chỉ sử dụng với dữ liệu đã
-được phép gửi tới dịch vụ bên ngoài. Với dữ liệu bảo mật thật, nên dùng paid
-tier thay vì free tier theo chính sách sử dụng dữ liệu trên trang giá.
+Dữ liệu scanner rời máy khi dùng Gemini. Chỉ dùng khi được phép; với dữ liệu
+bảo mật thật, nên dùng paid tier thay vì free tier theo chính sách dữ liệu.
+Xem [model mới nhất](https://ai.google.dev/gemini-api/docs/latest-model),
+[Structured Outputs](https://ai.google.dev/gemini-api/docs/structured-output)
+và [bảng giá](https://ai.google.dev/gemini-api/docs/pricing).
 
-Tham khảo tài liệu chính thức: [model Gemini mới
-nhất](https://ai.google.dev/gemini-api/docs/latest-model), [Structured Outputs
-với Pydantic](https://ai.google.dev/gemini-api/docs/structured-output) và
-[Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing).
+## Lỗi và kiểm thử
 
-## Dữ liệu lỗi và kiểm thử
-
-- Input hợp lệ có `findings: []` tạo file JSONL 0 byte, exit code `0` và không
-  gọi provider.
-- File trống, JSON lỗi, sai schema hoặc summary không nhất quán trả exit code
-  `2`; output tốt trước đó không bị thay thế.
-- Provider lỗi, bịa endpoint hoặc trả sai tập group trả exit code `3`; không
-  ghi output dở dang.
-
-Chạy bộ test riêng:
+- `findings: []` hợp lệ tạo JSONL 0 byte, trả mã `0`, không gọi bộ tạo nội dung.
+- File trống, JSON lỗi, sai định dạng hoặc tổng kết lệch trả mã `2`; file tốt
+  không bị thay.
+- Bộ tạo nội dung lỗi, bịa đường dẫn hoặc trả sai nhóm trả mã `3`; không ghi
+  file dở dang.
 
 ```powershell
 python -m pytest -q tests/test_security_analysis_agent.py
 ```
 
-Test bao phủ dữ liệu thật Week 1/2, grouping, mapping tri thức chính xác,
-JSONL ổn định trong cùng môi trường/newline convention, input rỗng/lỗi, prompt
-injection, redact secret, provider bịa endpoint/loại lỗ hổng, Gemini Structured
-Output, fallback đúng một lần và nội dung bắt buộc của System Prompt.
-
-Checklist review Week 3:
-
-- 27 finding nguồn phải được phủ đúng một lần trong 9 group hiện tại.
-- `name`, severity, location, evidence và provenance phải truy ngược được về
-  normalized input; provider không được sở hữu các field này.
-- Knowledge chỉ được gắn bằng exact `(tool, rule_id)`; rule không khớp vẫn
-  phải xuất hiện mà không bị gán nhãn gần đúng.
-- Chế độ deterministic phải chạy offline, giữ ổn định record/thứ tự và không
-  cần secret; không dùng SHA byte giữa LF/CRLF làm phép so sánh duy nhất.
-- Provider lỗi hoặc output không grounded không được ghi đè file tốt trước đó.
-- Gemini chỉ được bật khi dữ liệu có quyền rời máy và output phải được lưu tách
-  khỏi deterministic baseline.
+Kiểm thử dùng dữ liệu Week 1/2 và xác nhận gom nhóm, ghép đúng mã, thứ tự JSONL
+trong cùng môi trường, dữ liệu lỗi, chỉ dẫn độc hại, che thông tin bí mật, nội dung bịa,
+Gemini đúng định dạng, một lần thử lại và System Prompt.
 
 ## Bàn giao sang Week 4
 
-Week 4 không đọc narrative để tự tạo URL hoặc payload. Planner chỉ lấy finding
-đã grounded cùng `source_finding_ids`, sau đó chọn capability/test case hữu
-hạn. Policy code tiếp tục sở hữu origin, method, path, request body và
-credential. Vì vậy provenance của Week 3 được giữ tới receipt Week 4 mà không
-mở rộng quyền cho model.
-
-Xem flow end-to-end và lệnh demo tại [documentation hub](../README.md), sau đó
-đọc [Safe API Testing Tool](safe-api-testing-tool.md) để xem enforcement tại
-Gateway.
+Week 4 chỉ dùng nhóm có nguồn và `source_finding_ids` để chọn bài kiểm tra có
+sẵn. Phần AI viết không thể tạo địa chỉ, dữ liệu gửi, phương thức, đường dẫn,
+API key hay trường HTTP; danh sách cho phép trong code vẫn giữ các quyền này.
+Xem [hướng dẫn chính](../README.md) và
+[Safe API Testing Tool](safe-api-testing-tool.md).
 
 ## Giới hạn
 
-Agent hiện chỉ hỗ trợ schema chuẩn hóa `1.0` và hai scanner Bandit/ZAP. Việc
-gom theo rule làm báo cáo ngắn hơn nhưng không chứng minh các occurrence có
-cùng nguyên nhân gốc. Agent không chạy exploit, không sửa code và không thay
-thế security review thủ công.
-
-Gemini provider hiện gửi toàn bộ group trong một batch với budget chung 4.096
-output token; chưa có chunking cho dataset lớn. Atomic writer dùng một đường
-dẫn `.tmp` cố định và không có multi-writer lock, vì vậy chỉ chạy một process
-ghi vào mỗi output path tại một thời điểm.
+- Chỉ hỗ trợ định dạng chuẩn hóa `1.0` và Bandit/ZAP.
+- Gom theo rule không chứng minh mọi cảnh báo trong nhóm có cùng nguyên nhân.
+- Công cụ không khai thác, không sửa code và không thay người kiểm tra.
+- Gemini gửi mọi nhóm trong một lượt với tổng 4.096 token; chưa chia
+  nhỏ dữ liệu lớn.
+- Trình ghi dùng một file `.tmp`, chưa khóa nhiều tiến trình. Chỉ chạy một tiến
+  trình cho mỗi đường dẫn kết quả tại một thời điểm.

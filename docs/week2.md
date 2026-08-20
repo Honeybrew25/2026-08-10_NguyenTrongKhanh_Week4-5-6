@@ -1,58 +1,29 @@
-# Week 2 — Chuẩn hóa kết quả quét và kho tri thức
+# Tuần 2 — Gộp kết quả quét và tạo kho tra cứu
 
 ## Mục tiêu
 
-Week 2 chuyển JSON của Bandit và OWASP ZAP từ Week 1 thành một schema chung để
-AI Agent hoặc chương trình khác có thể đọc thống nhất. Project đồng thời cung
-cấp kho tri thức nhỏ và tìm kiếm theo tên lỗ hổng/từ khóa.
-
-## Kiến trúc
+Tuần 2 đưa JSON của Bandit và ZAP về cùng một mẫu để chương trình hoặc AI đọc
+thống nhất. Dự án cũng có kho tra cứu lỗi.
 
 ```text
-Bandit JSON ---\
-                +--> scanner adapter --> common schema --> normalized-findings.json
+Bandit JSON --\
+               +--> bộ chuyển đổi --> một mẫu chung --> normalized-findings.json
 ZAP JSON ------/
 
-Query --> weighted keyword search --> data/vulnerabilities.json
+Từ khóa --> tìm kiếm --> data/vulnerabilities.json
 ```
 
-Mỗi scanner có một adapter riêng. Orchestrator tự nhận diện định dạng, gọi
-adapter và tổng hợp record. Cách tách này giữ schema/output ổn định khi bổ sung
-scanner mới.
+Mỗi công cụ có bộ chuyển đổi riêng, nên có thể thêm nguồn mới mà không đổi đầu
+ra.
 
-## Schema finding chung
+## Mẫu dữ liệu chung
 
-Một record có cấu trúc:
+Mỗi cảnh báo có ID, công cụ, mức độ, vị trí, mô tả, cách sửa, nguồn và bằng
+chứng. Mức độ gồm `informational`, `low`, `medium`, `high`, `critical` và
+`unknown`. ID giữ ổn định giữa các lần chạy. Mẫu đầy đủ nằm tại
+[`normalized-findings.schema.json`](../schemas/normalized-findings.schema.json).
 
-```json
-{
-  "id": "bandit-c38035a2a6e76870",
-  "tool": "bandit",
-  "tool_version": null,
-  "severity": "medium",
-  "confidence": "high",
-  "file_or_url": "scripts/run_all_tests.py",
-  "line": 43,
-  "method": null,
-  "title": "B310: Audit url open for permitted schemes...",
-  "description": "Audit url open for permitted schemes...",
-  "rule_id": "B310",
-  "cwe": "CWE-22",
-  "remediation": "Review the flagged code...",
-  "references": ["https://bandit.readthedocs.io/..."],
-  "evidence": "with urlopen(...)",
-  "source_file": "security-results/bandit-baseline.json",
-  "metadata": {}
-}
-```
-
-Severity chung gồm `informational`, `low`, `medium`, `high`, `critical` và
-`unknown`. ID được tạo ổn định từ thuộc tính finding, giúp Agent so sánh giữa
-các lần chạy. Với ZAP, mỗi URL instance trở thành một record cụ thể.
-Schema đầy đủ nằm tại
-[`schemas/normalized-findings.schema.json`](../schemas/normalized-findings.schema.json).
-
-## Chuẩn hóa dữ liệu Week 1
+## Chuyển dữ liệu tuần 1
 
 ```powershell
 python -m security_pipeline normalize `
@@ -61,58 +32,40 @@ python -m security_pipeline normalize `
     --output security-results/normalized-findings.json
 ```
 
-Kết quả hiện tại:
-
-| Chỉ số | Số lượng |
+| Kết quả | Số lượng |
 |---|---:|
-| Tổng record | 27 |
+| Tổng | 27 |
 | Bandit | 21 |
 | ZAP | 6 |
 | Medium | 2 |
 | Low | 21 |
 | Informational | 4 |
 
-File bàn giao:
+File đầu ra:
 [`security-results/normalized-findings.json`](../security-results/normalized-findings.json).
 
-## Kho tri thức và tìm kiếm
+## Kho tra cứu
 
-[`data/vulnerabilities.json`](../data/vulnerabilities.json)
-gồm 17 tài liệu ngắn dựa trên OWASP Top 10:2025, OWASP Web Security Community,
-Bandit và ZAP. Mỗi tài liệu có tên, alias, nhóm OWASP, mô tả, ví dụ, dấu hiệu,
-khuyến nghị, scanner rule liên quan, tag và nguồn tham khảo.
-
-Tìm kiếm dạng đọc nhanh:
+[`data/vulnerabilities.json`](../data/vulnerabilities.json) có 17 mục từ OWASP,
+Bandit và ZAP, gồm dấu hiệu, ví dụ, cách xử lý và nguồn.
 
 ```powershell
 python -m security_pipeline search "SQL Injection"
 python -m security_pipeline search "XSS"
-```
-
-Kết quả dành cho chương trình/AI Agent:
-
-```powershell
 python -m security_pipeline search "SQL Injection" --json
 ```
 
-Search chuẩn hóa chữ hoa/thường và dấu tiếng Việt, sau đó xếp hạng có trọng số
-cho title, alias, OWASP category, tag và nội dung. Module
-`security_pipeline.knowledge` là ranh giới riêng nên có thể thay bộ xếp hạng
-bằng embedding/vector database mà không thay normalizer.
+Tìm kiếm không phân biệt hoa/thường hoặc dấu tiếng Việt. Hai truy vấn đầu phải
+trả `SQL Injection` và `Cross-Site Scripting (XSS)` ở vị trí đầu.
 
-## Mở rộng scanner mới
+## Thêm công cụ quét
 
-1. Tạo adapter kế thừa `ReportNormalizer` trong
-   `src/security_pipeline/normalizers/`.
-2. Cài đặt `supports()` để nhận diện JSON và `normalize()` để trả
-   `NormalizedFinding`.
-3. Đăng ký adapter trong `DEFAULT_NORMALIZERS`.
-4. Thêm fixture/test cho scanner mới.
+1. Tạo bộ chuyển đổi trong `src/security_pipeline/normalizers/`.
+2. Thêm cách nhận diện file và chuyển cảnh báo sang mẫu chung.
+3. Đăng ký vào `DEFAULT_NORMALIZERS`.
+4. Thêm dữ liệu mẫu và bài kiểm thử.
 
-Không đưa logic riêng của scanner vào `pipeline.py`; file này chỉ điều phối,
-deduplicate, sort và tổng hợp thống kê.
-
-## Kiểm tra tiêu chí hoàn thành
+## Kiểm tra
 
 ```powershell
 python -m pytest -q -m "not integration"
@@ -120,12 +73,7 @@ python -m security_pipeline search "SQL Injection" --limit 1
 python -m security_pipeline search "XSS" --limit 1
 ```
 
-Hai truy vấn bắt buộc trả lần lượt `SQL Injection` và
-`Cross-Site Scripting (XSS)` ở vị trí đầu.
-
-## Nguồn chính
-
-- [OWASP Top 10:2025](https://owasp.org/Top10/2025/0x00_2025-Introduction/)
-- [OWASP Web Security Community](https://owasp.org/www-community/attacks/)
-- [Bandit 1.9.4 documentation](https://bandit.readthedocs.io/en/1.9.4/)
-- [ZAP alert documentation](https://www.zaproxy.org/docs/alerts/)
+Nguồn chính: [OWASP Top 10:2025](https://owasp.org/Top10/2025/0x00_2025-Introduction/),
+[OWASP Web Security Community](https://owasp.org/www-community/attacks/),
+[Bandit 1.9.4](https://bandit.readthedocs.io/en/1.9.4/) và
+[ZAP](https://www.zaproxy.org/docs/alerts/).
