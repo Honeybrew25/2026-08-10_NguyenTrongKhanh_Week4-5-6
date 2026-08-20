@@ -21,3 +21,4 @@ security-results/runs/week-4/*
 !/security-results/runs/week-6/golden/**
 /docs/project-handoff.md
 /docs/todo
+/docs/todo-checklist.md
