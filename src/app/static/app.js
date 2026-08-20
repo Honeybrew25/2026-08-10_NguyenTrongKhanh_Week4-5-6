@@ -36,6 +36,9 @@ const E2E_STATE_LABELS = {
   quarantined: "QUARANTINED",
   not_required: "NOT REQUIRED",
   skipped: "SKIPPED",
+  not_run: "NOT RUN",
+  pending: "PENDING",
+  failed: "FAILED",
 };
 
 function refreshOverallRuntimeState() {
@@ -209,7 +212,7 @@ function renderRoadmap(items) {
 
 function e2eStateTone(value) {
   if (["success", "approved"].includes(value)) return "allow";
-  if (["rejected", "blocked", "quarantined"].includes(value)) return "warn";
+  if (["rejected", "blocked", "quarantined", "failed"].includes(value)) return "warn";
   return "muted";
 }
 
@@ -297,20 +300,32 @@ function renderE2eScenario(replay, scenarioId) {
   byId("e2e-scenario-summary").textContent = scenario.summary;
 
   const status = byId("e2e-scenario-status");
-  status.textContent = scenario.status.toUpperCase();
+  const scenarioStateLabel = E2E_STATE_LABELS[scenario.status]
+    || scenario.status.toUpperCase();
+  status.textContent = scenarioStateLabel;
   status.dataset.state = scenario.tone;
 
   byId("e2e-result-headline").textContent = scenario.result.headline;
-  byId("e2e-run-status").textContent = scenario.status;
+  byId("e2e-run-status").textContent = scenarioStateLabel;
   byId("e2e-network-mode").textContent = replay.networkExecutionEnabled
     ? "Không hợp lệ"
     : "Tắt trên UI";
   byId("e2e-proposal-cardinality").textContent = replay.oneProposalPerRun ? "1" : "—";
+  byId("e2e-source-label").textContent = scenario.sourceLabel || "Không rõ";
   byId("e2e-request-line").textContent = `${scenario.request.method} ${scenario.request.path}`;
+  byId("e2e-test-case").textContent = scenario.request.testCase || "Không có";
   byId("e2e-request-risk").textContent = scenario.request.risk;
   byId("e2e-human-decision").textContent = scenario.request.humanDecision;
   byId("e2e-credential-boundary").textContent = scenario.request.credentialBoundary;
   byId("e2e-requests-sent").textContent = String(scenario.result.requestsSent);
+  const actualStatus = scenario.result.httpStatus ?? "—";
+  const expectedStatus = scenario.result.expectedStatus ?? "—";
+  const statusMatch = scenario.result.expectedStatusMatched === true
+    ? " · Đúng kỳ vọng"
+    : scenario.result.expectedStatusMatched === false
+      ? " · Không khớp"
+      : "";
+  byId("e2e-http-status").textContent = `${actualStatus} / ${expectedStatus}${statusMatch}`;
   byId("e2e-guard-result").textContent = scenario.result.guard;
   byId("e2e-interpretation").textContent = scenario.result.interpretation;
   byId("e2e-safe-code").textContent = scenario.result.safeCode;
@@ -675,7 +690,7 @@ function wireInteractions() {
 
 async function initialize() {
   try {
-    const response = await fetch("./dashboard-data.json?v=e2e-replay-4", { cache: "no-store", credentials: "omit" });
+    const response = await fetch("./dashboard-data.json?v=control-scenarios-5", { cache: "no-store", credentials: "omit" });
     if (!response.ok) throw new Error(`dashboard_data_${response.status}`);
     state.data = await response.json();
     renderMetrics(state.data.metrics);

@@ -1,16 +1,18 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 import json
 from pathlib import Path
 import shutil
 import subprocess
 import sys
-from typing import Callable, Sequence
+from typing import Callable, Mapping, Sequence
 
 from rich.console import Console
 
 from project_sentinel.evaluation import evaluate
+from project_sentinel.contracts import FinalReport
 from project_sentinel.presentation import TerminalDemoPresenter, resolve_human_output
 from project_sentinel.runner import (
     DEFAULT_OUTPUT_ROOT,
@@ -26,6 +28,69 @@ from safe_api_tool.client import ClientConfigurationError, load_api_key
 from safe_api_tool.models import RequestProposal
 from safe_api_tool.policy import PolicyEngine, ROOT
 from security_pipeline.analysis.models import AnalysisFinding
+
+
+@dataclass(frozen=True, slots=True)
+class _DemoScenario:
+    scenario_id: str
+    run_suffix: str
+    title: str
+    description: str
+
+
+_CORE_DEMO_SCENARIOS = (
+    _DemoScenario(
+        "reject",
+        "reject",
+        "Người dùng từ chối",
+        "Nhập REJECT để chứng minh pipeline dừng trước transport.",
+    ),
+    _DemoScenario(
+        "approve",
+        "approve",
+        "Người dùng phê duyệt",
+        "Nhập APPROVE để gửi đúng một request an toàn qua Gateway.",
+    ),
+    _DemoScenario(
+        "injection",
+        "injection",
+        "Prompt injection trong response",
+        "Request hợp lệ được gửi; response độc hại phải bị cách ly.",
+    ),
+    _DemoScenario(
+        "admin",
+        "admin-negative",
+        "Đường dẫn quản trị bị chặn",
+        "Policy phải chặn /api/admin trước khi mở transport.",
+    ),
+)
+
+_EXTENDED_DEMO_SCENARIOS = _CORE_DEMO_SCENARIOS + (
+    _DemoScenario(
+        "status",
+        "status",
+        "GET trạng thái không cần phê duyệt",
+        "Gửi một GET an toàn và xác nhận HTTP 200 mà không hỏi phê duyệt.",
+    ),
+    _DemoScenario(
+        "wrong-type",
+        "wrong-type",
+        "Sai kiểu dữ liệu có kiểm soát",
+        "Phê duyệt POST với dữ liệu sai kiểu; HTTP 422 là kết quả mong đợi.",
+    ),
+    _DemoScenario(
+        "test-case-denied",
+        "test-case-denied",
+        "Test case không được phép",
+        "Policy phải chặn test case không thuộc endpoint trước transport.",
+    ),
+    _DemoScenario(
+        "header-denied",
+        "header-denied",
+        "Header không được phép",
+        "Policy phải chặn header ngoài allowlist trước transport.",
+    ),
+)
 
 
 def _add_presentation_options(command: argparse.ArgumentParser) -> None:
@@ -62,6 +127,12 @@ def _parser() -> argparse.ArgumentParser:
     demo.add_argument("--provider", choices=("deterministic", "gemini"), default="deterministic")
     demo.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
     demo.add_argument("--execute", action="store_true")
+    demo.add_argument(
+        "--scenario-set",
+        choices=("core", "extended"),
+        default="core",
+        help="Run the four core controls or all eight extended controls.",
+    )
     demo.add_argument("--runtime-profile", choices=("host", "compose"), default="host")
     demo.add_argument("--approval-timeout", type=float, default=60.0)
     _add_presentation_options(demo)
@@ -175,19 +246,252 @@ def _print_safe_error(arguments: argparse.Namespace, code: str) -> None:
 
 def _proposal_factory(
     endpoint_id: str,
+    test_case_id: str = "empty",
+    requested_headers: Mapping[str, str] | None = None,
     *,
     rationale: str,
 ) -> Callable[[AnalysisFinding], RequestProposal]:
     def build(finding: AnalysisFinding) -> RequestProposal:
         return RequestProposal(
             endpoint_id=endpoint_id,
-            test_case_id="empty",
+            test_case_id=test_case_id,
             rationale=rationale,
             source_finding_ids=list(finding.source_finding_ids),
-            requested_headers={},
+            requested_headers=dict(requested_headers or {}),
         )
 
     return build
+
+
+def _scenario_plan(scenario_set: str) -> tuple[_DemoScenario, ...]:
+    if scenario_set == "core":
+        return _CORE_DEMO_SCENARIOS
+    if scenario_set == "extended":
+        return _EXTENDED_DEMO_SCENARIOS
+    raise ValueError("scenario_set_must_be_core_or_extended")
+
+
+def _demo_run_record(scenario_id: str, report: FinalReport) -> dict[str, object]:
+    proposal = report.proposal
+    receipt = report.execution_receipt
+    guarded = report.guarded_response
+    safe_code = (
+        receipt.reason
+        if receipt is not None and receipt.reason
+        else report.safe_error_codes[-1]
+        if report.safe_error_codes
+        else None
+    )
+    guard_state = (
+        "not_run"
+        if guarded is None
+        else "quarantined"
+        if guarded.injection_detected
+        else "sanitized"
+    )
+    return {
+        "scenario_id": scenario_id,
+        "run_id": report.run_id,
+        "status": report.status,
+        "endpoint_id": (
+            proposal.endpoint_id
+            if proposal is not None
+            else receipt.endpoint_id
+            if receipt is not None
+            else None
+        ),
+        "test_case_id": (
+            proposal.test_case_id
+            if proposal is not None
+            else receipt.test_case_id
+            if receipt is not None
+            else None
+        ),
+        "method": receipt.method if receipt is not None else None,
+        "path": receipt.path if receipt is not None else None,
+        "human_decision": report.human_decision,
+        "requests_sent": report.metrics.requests_sent,
+        "approvals": report.metrics.approvals,
+        "rejections": report.metrics.rejections,
+        "injection_flags": report.metrics.injection_flags,
+        "redactions": report.metrics.redactions,
+        "errors": report.metrics.errors,
+        "receipt_outcome": receipt.outcome if receipt is not None else None,
+        "http_status": receipt.status_code if receipt is not None else None,
+        "expected_status": receipt.expected_status if receipt is not None else None,
+        "expected_status_matched": (
+            receipt.expected_status_matched if receipt is not None else None
+        ),
+        "safe_code": safe_code,
+        "guard_state": guard_state,
+    }
+
+
+def _demo_expectations_met(
+    scenario_set: str,
+    runs: Sequence[dict[str, object]],
+) -> bool:
+    expected_ids = [item.scenario_id for item in _scenario_plan(scenario_set)]
+    if [item.get("scenario_id") for item in runs] != expected_ids:
+        return False
+
+    expected_by_id: dict[str, dict[str, object]] = {
+        "reject": {
+            "status": "rejected",
+            "endpoint_id": "input-validation",
+            "test_case_id": "empty",
+            "method": "POST",
+            "path": "/api/test/validate",
+            "human_decision": "reject",
+            "requests_sent": 0,
+            "approvals": 0,
+            "rejections": 1,
+            "injection_flags": 0,
+            "errors": 0,
+            "receipt_outcome": "policy_denied",
+            "http_status": None,
+            "expected_status": 200,
+            "expected_status_matched": None,
+            "safe_code": "approval_rejected",
+            "guard_state": "not_run",
+        },
+        "approve": {
+            "status": "completed",
+            "endpoint_id": "input-validation",
+            "test_case_id": "empty",
+            "method": "POST",
+            "path": "/api/test/validate",
+            "human_decision": "approve",
+            "requests_sent": 1,
+            "approvals": 1,
+            "rejections": 0,
+            "injection_flags": 0,
+            "errors": 0,
+            "receipt_outcome": "success",
+            "http_status": 200,
+            "expected_status": 200,
+            "expected_status_matched": True,
+            "safe_code": None,
+            "guard_state": "sanitized",
+        },
+        "injection": {
+            "status": "completed",
+            "endpoint_id": "prompt-injection-fixture",
+            "test_case_id": "empty",
+            "method": "GET",
+            "path": "/api/test/prompt-injection",
+            "human_decision": "not_required",
+            "requests_sent": 1,
+            "approvals": 0,
+            "rejections": 0,
+            "injection_flags": 1,
+            "errors": 0,
+            "receipt_outcome": "success",
+            "http_status": 200,
+            "expected_status": 200,
+            "expected_status_matched": True,
+            "safe_code": None,
+            "guard_state": "quarantined",
+        },
+        "admin": {
+            "status": "blocked",
+            "endpoint_id": "admin",
+            "test_case_id": "empty",
+            "method": None,
+            "path": None,
+            "human_decision": "not_required",
+            "requests_sent": 0,
+            "approvals": 0,
+            "rejections": 0,
+            "errors": 0,
+            "receipt_outcome": "policy_denied",
+            "http_status": None,
+            "expected_status": None,
+            "expected_status_matched": None,
+            "safe_code": "endpoint_not_allowed",
+            "guard_state": "not_run",
+        },
+        "status": {
+            "status": "completed",
+            "endpoint_id": "test-status",
+            "test_case_id": "empty",
+            "method": "GET",
+            "path": "/api/test/status",
+            "human_decision": "not_required",
+            "requests_sent": 1,
+            "approvals": 0,
+            "rejections": 0,
+            "injection_flags": 0,
+            "errors": 0,
+            "receipt_outcome": "success",
+            "http_status": 200,
+            "expected_status": 200,
+            "expected_status_matched": True,
+            "safe_code": None,
+            "guard_state": "sanitized",
+        },
+        "wrong-type": {
+            "status": "completed",
+            "endpoint_id": "input-validation",
+            "test_case_id": "wrong-type",
+            "method": "POST",
+            "path": "/api/test/validate",
+            "human_decision": "approve",
+            "requests_sent": 1,
+            "approvals": 1,
+            "rejections": 0,
+            "injection_flags": 0,
+            "errors": 0,
+            "receipt_outcome": "success",
+            "http_status": 422,
+            "expected_status": 422,
+            "expected_status_matched": True,
+            "safe_code": None,
+            "guard_state": "sanitized",
+        },
+        "test-case-denied": {
+            "status": "blocked",
+            "endpoint_id": "test-status",
+            "test_case_id": "wrong-type",
+            "method": None,
+            "path": None,
+            "human_decision": "not_required",
+            "requests_sent": 0,
+            "approvals": 0,
+            "rejections": 0,
+            "injection_flags": 0,
+            "errors": 0,
+            "receipt_outcome": "policy_denied",
+            "http_status": None,
+            "expected_status": None,
+            "expected_status_matched": None,
+            "safe_code": "test_case_not_allowed",
+            "guard_state": "not_run",
+        },
+        "header-denied": {
+            "status": "blocked",
+            "endpoint_id": "input-validation",
+            "test_case_id": "empty",
+            "method": None,
+            "path": None,
+            "human_decision": "not_required",
+            "requests_sent": 0,
+            "approvals": 0,
+            "rejections": 0,
+            "injection_flags": 0,
+            "errors": 0,
+            "receipt_outcome": "policy_denied",
+            "http_status": None,
+            "expected_status": None,
+            "expected_status_matched": None,
+            "safe_code": "header_not_allowed",
+            "guard_state": "not_run",
+        },
+    }
+    return all(
+        all(run.get(key) == value for key, value in expected_by_id[scenario_id].items())
+        for scenario_id, run in zip(expected_ids, runs, strict=True)
+    )
 
 
 def _print_report(report, workspace: Path) -> None:
@@ -255,13 +559,9 @@ def _demo_command(arguments: argparse.Namespace) -> int:
     session_id = generate_run_id("demo")
     presenter = _presenter(arguments)
     key = _api_key() if arguments.execute else None
+    scenario_plan = _scenario_plan(arguments.scenario_set)
     scenarios = (
-        [
-            "Người dùng từ chối",
-            "Người dùng phê duyệt",
-            "Prompt injection trong response",
-            "Đường dẫn quản trị bị chặn",
-        ]
+        [item.title for item in scenario_plan]
         if arguments.execute
         else ["Dry-run không gửi request"]
     )
@@ -298,7 +598,8 @@ def _demo_command(arguments: argparse.Namespace) -> int:
         output_root=arguments.output_root,
         event_sink=presenter.event if presenter is not None else None,
     )
-    reports = []
+    reports: list[FinalReport] = []
+    scenario_reports: list[tuple[str, FinalReport]] = []
     if not arguments.execute:
         if presenter is not None:
             presenter.scenario_header(
@@ -313,131 +614,105 @@ def _demo_command(arguments: argparse.Namespace) -> int:
             provider_name=arguments.provider,
         )
         reports.append(report)
+        scenario_reports.append(("dry", report))
         if presenter is not None:
             presenter.scenario_result(
                 report,
                 arguments.output_root / report.run_id / "final-report.json",
             )
-        expectations_met = reports[0].status in {"dry_run", "completed_no_findings"}
     else:
         approval = _interactive(arguments.approval_timeout, presenter)
-        if presenter is not None:
-            presenter.scenario_header(
-                1,
-                4,
-                "Người dùng từ chối",
-                "Nhập REJECT để chứng minh pipeline dừng trước transport.",
-            )
-        else:
-            print(
-                "Control 1/2: enter Reject for the first bounded POST proposal.",
-                file=sys.stderr,
-            )
-        report = runner.run(
-            scanners,
-            run_id=f"{session_id}-reject",
-            provider_name=arguments.provider,
-            execute=True,
-            api_key=key,
-            approval_provider=approval,
-            runtime_profile=arguments.runtime_profile,
-        )
-        reports.append(report)
-        if presenter is not None:
-            presenter.scenario_result(
-                report,
-                arguments.output_root / report.run_id / "final-report.json",
-            )
-
-        if presenter is not None:
-            presenter.scenario_header(
-                2,
-                4,
-                "Người dùng phê duyệt",
-                "Nhập APPROVE để gửi đúng một request an toàn qua Gateway.",
-            )
-        else:
-            print(
-                "Control 2/2: enter Approve for the second bounded POST proposal.",
-                file=sys.stderr,
-            )
-        report = runner.run(
-            scanners,
-            run_id=f"{session_id}-approve",
-            provider_name=arguments.provider,
-            execute=True,
-            api_key=key,
-            approval_provider=approval,
-            runtime_profile=arguments.runtime_profile,
-        )
-        reports.append(report)
-        if presenter is not None:
-            presenter.scenario_result(
-                report,
-                arguments.output_root / report.run_id / "final-report.json",
-            )
-
-        if presenter is not None:
-            presenter.scenario_header(
-                3,
-                4,
-                "Prompt injection trong response",
-                "Request hợp lệ được gửi; response độc hại phải bị cách ly.",
-            )
-        report = runner.run(
-            scanners,
-            run_id=f"{session_id}-injection",
-            provider_name=arguments.provider,
-            execute=True,
-            api_key=key,
-            runtime_profile=arguments.runtime_profile,
-            proposal_factory=_proposal_factory(
-                "prompt-injection-fixture",
-                rationale="Read the fixed hostile-response fixture through the Gateway.",
+        approval_controls = 3 if arguments.scenario_set == "extended" else 2
+        control_prompts = {
+            "reject": (
+                f"Control 1/{approval_controls}: enter Reject for the first "
+                "bounded POST proposal."
             ),
-        )
-        reports.append(report)
-        if presenter is not None:
-            presenter.scenario_result(
-                report,
-                arguments.output_root / report.run_id / "final-report.json",
-            )
-
-        if presenter is not None:
-            presenter.scenario_header(
-                4,
-                4,
-                "Đường dẫn quản trị bị chặn",
-                "Policy phải chặn /api/admin trước khi mở transport.",
-            )
-        report = runner.run(
-            scanners,
-            run_id=f"{session_id}-admin-negative",
-            provider_name=arguments.provider,
-            execute=True,
-            api_key=key,
-            approval_provider=approval,
-            runtime_profile=arguments.runtime_profile,
-            proposal_factory=_proposal_factory(
-                "admin",
-                rationale="Negative control: admin must remain outside the allowlist.",
+            "approve": (
+                f"Control 2/{approval_controls}: enter Approve for the second "
+                "bounded POST proposal."
             ),
-        )
-        reports.append(report)
-        if presenter is not None:
-            presenter.scenario_result(
-                report,
-                arguments.output_root / report.run_id / "final-report.json",
-            )
-        expectations_met = (
-            reports[0].status == "rejected"
-            and reports[0].metrics.requests_sent == 0
-            and reports[1].status == "completed"
-            and reports[1].metrics.requests_sent == 1
-            and reports[2].metrics.injection_flags == 1
-            and reports[3].status == "blocked"
-            and reports[3].metrics.requests_sent == 0
-        )
+            "wrong-type": (
+                f"Control 3/{approval_controls}: enter Approve for the bounded "
+                "wrong-type POST proposal."
+            ),
+        }
+        for index, scenario in enumerate(scenario_plan, start=1):
+            if presenter is not None:
+                presenter.scenario_header(
+                    index,
+                    len(scenario_plan),
+                    scenario.title,
+                    scenario.description,
+                )
+            elif scenario.scenario_id in control_prompts:
+                print(control_prompts[scenario.scenario_id], file=sys.stderr)
+
+            run_options: dict[str, object] = {
+                "run_id": f"{session_id}-{scenario.run_suffix}",
+                "provider_name": arguments.provider,
+                "execute": True,
+                "api_key": key,
+                "runtime_profile": arguments.runtime_profile,
+            }
+            if scenario.scenario_id in {"reject", "approve", "admin", "wrong-type"}:
+                run_options["approval_provider"] = approval
+            if scenario.scenario_id == "injection":
+                run_options["proposal_factory"] = _proposal_factory(
+                    "prompt-injection-fixture",
+                    rationale=(
+                        "Read the fixed hostile-response fixture through the Gateway."
+                    ),
+                )
+            elif scenario.scenario_id == "admin":
+                run_options["proposal_factory"] = _proposal_factory(
+                    "admin",
+                    rationale=(
+                        "Negative control: admin must remain outside the allowlist."
+                    ),
+                )
+            elif scenario.scenario_id == "status":
+                run_options["proposal_factory"] = _proposal_factory(
+                    "test-status",
+                    rationale="Read the bounded status endpoint through the Gateway.",
+                )
+            elif scenario.scenario_id == "wrong-type":
+                run_options["proposal_factory"] = _proposal_factory(
+                    "input-validation",
+                    test_case_id="wrong-type",
+                    rationale="Send the curated wrong-type validation fixture.",
+                )
+            elif scenario.scenario_id == "test-case-denied":
+                run_options["proposal_factory"] = _proposal_factory(
+                    "test-status",
+                    test_case_id="wrong-type",
+                    rationale="Confirm that an endpoint cannot use a disallowed test case.",
+                )
+            elif scenario.scenario_id == "header-denied":
+                run_options["proposal_factory"] = _proposal_factory(
+                    "input-validation",
+                    requested_headers={"authorization": "blocked-fixture"},
+                    rationale="Confirm that policy blocks a header outside the allowlist.",
+                )
+
+            report = runner.run(scanners, **run_options)
+            reports.append(report)
+            scenario_reports.append((scenario.scenario_id, report))
+            if presenter is not None:
+                presenter.scenario_result(
+                    report,
+                    arguments.output_root / report.run_id / "final-report.json",
+                )
+
+    run_records = [
+        _demo_run_record(scenario_id, report)
+        for scenario_id, report in scenario_reports
+    ]
+    expectations_met = (
+        reports[0].status in {"dry_run", "completed_no_findings"}
+        if not arguments.execute
+        else _demo_expectations_met(arguments.scenario_set, run_records)
+    )
 
     summary_path = arguments.output_root / f"{session_id}-summary.json"
     atomic_json(
@@ -446,27 +721,19 @@ def _demo_command(arguments: argparse.Namespace) -> int:
             "schema_version": "1.0",
             "demo_id": session_id,
             "mode": "interactive" if arguments.execute else "dry_run",
+            "scenario_set": arguments.scenario_set,
             "scan_source": scan_source,
             "one_proposal_per_run": True,
             "expectations_met": expectations_met,
-            "runs": [
-                {
-                    "run_id": report.run_id,
-                    "status": report.status,
-                    "requests_sent": report.metrics.requests_sent,
-                    "approvals": report.metrics.approvals,
-                    "rejections": report.metrics.rejections,
-                    "injection_flags": report.metrics.injection_flags,
-                    "errors": report.metrics.errors,
-                }
-                for report in reports
-            ],
+            "runs": run_records,
             "totals": {
                 "runs": len(reports),
                 "requests_sent": sum(item.metrics.requests_sent for item in reports),
                 "approvals": sum(item.metrics.approvals for item in reports),
                 "rejections": sum(item.metrics.rejections for item in reports),
                 "injection_flags": sum(item.metrics.injection_flags for item in reports),
+                "redactions": sum(item.metrics.redactions for item in reports),
+                "errors": sum(item.metrics.errors for item in reports),
                 "duration_ms": round(
                     sum(item.metrics.total_duration_ms for item in reports), 3
                 ),
@@ -483,6 +750,7 @@ def _demo_command(arguments: argparse.Namespace) -> int:
                 {
                     "demo_summary": str(summary_path),
                     "expectations_met": expectations_met,
+                    "scenario_set": arguments.scenario_set,
                 }
             )
         )

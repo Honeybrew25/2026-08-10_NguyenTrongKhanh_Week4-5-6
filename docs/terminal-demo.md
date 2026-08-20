@@ -20,6 +20,46 @@ Chỉ dùng `--verbose` khi cần xem mã của quy tắc và yêu cầu.
 Mỗi tình huống có tám bước: nhận kết quả quét, chuẩn hóa, phân tích, tạo đề
 xuất, phê duyệt, gửi qua cổng Envoy, kiểm tra phản hồi và tạo báo cáo.
 
+## Chọn bốn hoặc tám tình huống
+
+Lệnh ở phần khởi động dùng bộ mặc định gồm bốn tình huống đã có bằng chứng:
+Reject, Approve, phản hồi đáng ngờ và đường dẫn quản trị bị chặn.
+
+Muốn kiểm tra thêm sự thay đổi trên dashboard, chạy bộ mở rộng:
+
+```bash
+python -m project_sentinel demo --provider deterministic --execute --scenario-set extended --format human
+```
+
+Bộ này có tám tình huống. Bốn tình huống thêm vào là:
+
+1. `GET /api/test/status` trả kết quả bình thường.
+2. `POST /api/test/validate` dùng `wrong-type`; HTTP 422 là kết quả mong đợi.
+3. `wrong-type` bị từ chối khi ghép với endpoint trạng thái.
+4. Proposal yêu cầu header `Authorization` bị policy từ chối.
+
+Terminal sẽ hỏi ba lần. Nhập theo thứ tự `Reject`, `Approve`, `Approve`. Lần
+Approve cuối dành cho tình huống `wrong-type`. Hai tình huống bị policy từ chối
+không mở bước phê duyệt và không gửi request.
+
+Khi demo kết thúc, dùng đường dẫn file tổng kết mà terminal vừa in:
+
+```bash
+python scripts/build_dashboard_replay.py "<demo-summary>"
+```
+
+Lệnh này chỉ nhận bản tổng kết `extended` đủ tám tình huống rồi cập nhật dữ
+liệu phát lại đã làm sạch. Nếu giao diện đang chạy trong Docker, build lại
+container rồi nhấn `Ctrl+F5`:
+
+```bash
+docker compose up --build --detach --wait --wait-timeout 180
+```
+
+Để trang GitHub Pages thay đổi, cần commit file dashboard, đưa commit vào
+`main` và chờ workflow deploy chạy xong. Thay đổi local không tự xuất hiện trên
+trang công khai.
+
 ## Chọn kiểu hiển thị
 
 `--format auto` tự chọn kiểu phù hợp: terminal dùng bản dễ đọc, còn kết quả

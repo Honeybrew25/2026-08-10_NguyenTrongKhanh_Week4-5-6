@@ -385,6 +385,8 @@ h3 { font-size: 1.05rem; }
 .replay-status[data-state="rejected"] { color: var(--amber); background: rgba(255,189,102,.1); }
 .replay-status[data-state="quarantined"] { color: var(--violet); background: rgba(182,152,255,.12); }
 .replay-status[data-state="blocked"] { color: var(--red); background: rgba(255,114,127,.1); }
+.replay-status[data-state="failed"] { color: var(--red); background: rgba(255,114,127,.1); }
+.replay-status[data-state="pending"] { color: var(--muted); background: rgba(147,170,181,.08); }
 .replay-stage-flow { display: grid; grid-template-columns: repeat(8, minmax(0,1fr)); gap: 7px; margin: 0; padding: 0; list-style: none; }
 .replay-stage-flow li { min-width: 0; }
 .replay-stage { width: 100%; min-height: 108px; display: grid; align-content: space-between; gap: 5px; padding: 12px; color: var(--muted); text-align: left; background: rgba(5,13,19,.58); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
@@ -395,8 +397,10 @@ h3 { font-size: 1.05rem; }
 .replay-stage[data-state="success"] small, .replay-stage[data-state="approved"] small { color: var(--lime); }
 .replay-stage[data-state="rejected"] small, .replay-stage[data-state="quarantined"] small { color: var(--amber); }
 .replay-stage[data-state="blocked"] small { color: var(--red); }
+.replay-stage[data-state="failed"] small { color: var(--red); }
 .replay-stage[data-state="not_required"] small { color: var(--cyan); }
-.replay-stage[data-state="skipped"] { opacity: .66; }
+.replay-stage[data-state="not_run"] small, .replay-stage[data-state="pending"] small { color: var(--muted); }
+.replay-stage[data-state="skipped"], .replay-stage[data-state="not_run"] { opacity: .66; }
 .replay-stage.is-active { border-color: var(--cyan); background: var(--cyan-soft); box-shadow: inset 0 0 0 1px rgba(86,220,234,.13); }
 .replay-stage-detail { min-height: 82px; display: flex; align-items: center; gap: 14px; margin: 14px 0 18px; padding: 14px 16px; border-left: 2px solid var(--cyan); border-radius: 0 10px 10px 0; background: rgba(86,220,234,.06); }
 .replay-stage-detail strong { display: block; font-size: .8rem; }

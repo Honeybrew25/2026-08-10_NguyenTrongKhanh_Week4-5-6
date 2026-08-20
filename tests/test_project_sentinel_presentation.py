@@ -237,6 +237,19 @@ def test_output_mode_auto_uses_human_only_for_an_interactive_terminal() -> None:
     assert resolve_human_output("auto", stream=_Stream(False)) is False
 
 
+@pytest.mark.parametrize(
+    ("suffix", "label"),
+    [
+        ("status", "GET trạng thái không cần phê duyệt"),
+        ("wrong-type", "Sai kiểu dữ liệu có kiểm soát"),
+        ("test-case-denied", "Test case không được phép"),
+        ("header-denied", "Header không được phép"),
+    ],
+)
+def test_extended_run_suffixes_have_readable_labels(suffix: str, label: str) -> None:
+    assert TerminalDemoPresenter._run_label(f"demo-contract-{suffix}") == label
+
+
 def test_approval_panel_is_readable_but_does_not_disclose_values_or_full_hashes(
     approval_request_view: ApprovalRequestView,
 ) -> None:

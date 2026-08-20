@@ -44,14 +44,18 @@ def _empty_bandit(path: Path) -> Path:
     return path
 
 
-def _factory(endpoint_id: str):
+def _factory(
+    endpoint_id: str,
+    test_case_id: str = "empty",
+    requested_headers: dict[str, str] | None = None,
+):
     def build(finding):
         return RequestProposal(
             endpoint_id=endpoint_id,
-            test_case_id="empty",
+            test_case_id=test_case_id,
             rationale="Controlled Project Sentinel test proposal.",
             source_finding_ids=list(finding.source_finding_ids),
-            requested_headers={},
+            requested_headers=requested_headers or {},
         )
 
     return build
@@ -291,6 +295,129 @@ def test_allowlist_negative_control_never_calls_preflight_or_transport(
     assert report.metrics.requests_sent == 0
     assert calls == 0
     assert preflight_calls == 0
+
+
+def test_status_control_sends_one_get_without_approval(tmp_path: Path) -> None:
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        assert request.method == "GET"
+        assert request.url.path == "/api/test/status"
+        return httpx.Response(200, stream=httpx.ByteStream(b'{"status":"ok"}'))
+
+    report = _runner(tmp_path, httpx.MockTransport(handler)).run(
+        [BASELINE],
+        run_id="status-control",
+        execute=True,
+        api_key=API_KEY,
+        proposal_factory=_factory("test-status"),
+    )
+
+    assert report.status == "completed"
+    assert report.human_decision == "not_required"
+    assert report.metrics.requests_sent == 1
+    assert report.execution_receipt is not None
+    assert report.execution_receipt.status_code == 200
+    assert report.execution_receipt.expected_status_matched is True
+    assert calls == 1
+
+
+def test_wrong_type_control_treats_expected_422_as_success(tmp_path: Path) -> None:
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        assert request.method == "POST"
+        assert request.url.path == "/api/test/validate"
+        assert json.loads(request.content) == {"value": 42}
+        return httpx.Response(
+            422,
+            stream=httpx.ByteStream(b'{"detail":"value must be a string"}'),
+        )
+
+    report = _runner(tmp_path, httpx.MockTransport(handler)).run(
+        [BASELINE],
+        run_id="wrong-type-control",
+        execute=True,
+        api_key=API_KEY,
+        approval_provider=StaticApprovalProvider("approve"),
+        proposal_factory=_factory("input-validation", "wrong-type"),
+    )
+
+    assert report.status == "completed"
+    assert report.human_decision == "approve"
+    assert report.metrics.requests_sent == 1
+    assert report.execution_receipt is not None
+    assert report.execution_receipt.outcome == "success"
+    assert report.execution_receipt.status_code == 422
+    assert report.execution_receipt.expected_status == 422
+    assert report.execution_receipt.expected_status_matched is True
+    assert calls == 1
+
+
+@pytest.mark.parametrize(
+    ("run_id", "factory", "expected_reason"),
+    [
+        (
+            "test-case-denied-control",
+            _factory("test-status", "wrong-type"),
+            "test_case_not_allowed",
+        ),
+        (
+            "header-denied-control",
+            _factory(
+                "input-validation",
+                "empty",
+                {"authorization": "blocked-fixture"},
+            ),
+            "header_not_allowed",
+        ),
+    ],
+)
+def test_extended_policy_controls_stop_before_preflight_and_transport(
+    tmp_path: Path,
+    run_id: str,
+    factory,
+    expected_reason: str,
+) -> None:
+    transport_calls = 0
+    preflight_calls = 0
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal transport_calls
+        transport_calls += 1
+        return httpx.Response(200, stream=httpx.ByteStream(b""))
+
+    def preflight(_: str) -> None:
+        nonlocal preflight_calls
+        preflight_calls += 1
+
+    report = _runner(
+        tmp_path,
+        httpx.MockTransport(handler),
+        preflight=preflight,
+    ).run(
+        [BASELINE],
+        run_id=run_id,
+        execute=True,
+        api_key=API_KEY,
+        approval_provider=StaticApprovalProvider("approve"),
+        proposal_factory=factory,
+    )
+
+    assert report.status == "blocked"
+    assert report.metrics.requests_sent == 0
+    assert report.execution_receipt is not None
+    assert report.execution_receipt.reason == expected_reason
+    assert transport_calls == 0
+    assert preflight_calls == 0
+    final_text = (
+        tmp_path / "runs" / run_id / "final-report.json"
+    ).read_text(encoding="utf-8")
+    assert "blocked-fixture" not in final_text
 
 
 def test_gateway_preflight_failure_is_safe_and_sends_nothing(tmp_path: Path) -> None:

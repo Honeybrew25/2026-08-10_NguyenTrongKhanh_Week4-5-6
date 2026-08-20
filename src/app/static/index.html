@@ -8,8 +8,8 @@
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; connect-src 'self'; font-src 'self'; form-action 'none'; frame-src 'none'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self'">
   <title>Project Sentinel · Week 6</title>
-  <link rel="stylesheet" href="./styles.css?v=e2e-replay-4">
-  <script src="./app.js?v=e2e-replay-4" defer></script>
+  <link rel="stylesheet" href="./styles.css?v=control-scenarios-5">
+  <script src="./app.js?v=control-scenarios-5" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main-content">Bỏ qua đến nội dung chính</a>
@@ -151,18 +151,22 @@
       <div class="section-heading">
         <div>
           <p class="eyebrow">02 · E2E RUN VIEWER</p>
-          <h2 id="e2e-title">Một pipeline, bốn tình huống kiểm soát</h2>
+          <h2 id="e2e-title">Một pipeline, nhiều tình huống kiểm soát</h2>
         </div>
         <div class="offline-pill"><span aria-hidden="true"></span> BẢN PHÁT LẠI · KHÔNG GỬI REQUEST</div>
       </div>
 
       <div class="replay-shell panel">
         <div class="replay-toolbar">
-          <div class="replay-scenarios" id="e2e-scenario-tabs" role="tablist" aria-label="Kịch bản E2E Week 6">
+          <div class="replay-scenarios" id="e2e-scenario-tabs" role="tablist" aria-label="Các tình huống E2E Week 6">
             <button class="replay-scenario-tab is-active" id="e2e-tab-reject" type="button" role="tab" aria-selected="true" aria-controls="e2e-scenario-panel" data-e2e-scenario="reject">Xem Reject</button>
             <button class="replay-scenario-tab" id="e2e-tab-approve" type="button" role="tab" aria-selected="false" aria-controls="e2e-scenario-panel" data-e2e-scenario="approve" tabindex="-1">Xem Approve</button>
             <button class="replay-scenario-tab" id="e2e-tab-injection" type="button" role="tab" aria-selected="false" aria-controls="e2e-scenario-panel" data-e2e-scenario="injection" tabindex="-1">Xem Injection</button>
             <button class="replay-scenario-tab" id="e2e-tab-admin" type="button" role="tab" aria-selected="false" aria-controls="e2e-scenario-panel" data-e2e-scenario="admin" tabindex="-1">Xem Admin bị chặn</button>
+            <button class="replay-scenario-tab" id="e2e-tab-status" type="button" role="tab" aria-selected="false" aria-controls="e2e-scenario-panel" data-e2e-scenario="status" tabindex="-1">Xem trạng thái</button>
+            <button class="replay-scenario-tab" id="e2e-tab-wrong-type" type="button" role="tab" aria-selected="false" aria-controls="e2e-scenario-panel" data-e2e-scenario="wrong-type" tabindex="-1">Xem sai kiểu</button>
+            <button class="replay-scenario-tab" id="e2e-tab-test-case-denied" type="button" role="tab" aria-selected="false" aria-controls="e2e-scenario-panel" data-e2e-scenario="test-case-denied" tabindex="-1">Xem test case bị chặn</button>
+            <button class="replay-scenario-tab" id="e2e-tab-header-denied" type="button" role="tab" aria-selected="false" aria-controls="e2e-scenario-panel" data-e2e-scenario="header-denied" tabindex="-1">Xem header bị chặn</button>
           </div>
           <p class="replay-notice" id="e2e-replay-notice">Dữ liệu đã làm sạch; approval thật vẫn chạy trong CLI.</p>
         </div>
@@ -209,12 +213,14 @@
               <dl>
                 <div><dt>Network</dt><dd id="e2e-network-mode">Tắt trên UI</dd></div>
                 <div><dt>Proposal/run</dt><dd id="e2e-proposal-cardinality">1</dd></div>
+                <div><dt>Nguồn</dt><dd id="e2e-source-label">Bằng chứng Week 6</dd></div>
               </dl>
             </article>
             <article class="replay-card">
               <span class="panel-label">REQUEST</span>
               <h3><code id="e2e-request-line">POST /api/test/validate</code></h3>
               <dl>
+                <div><dt>Test case</dt><dd id="e2e-test-case">empty</dd></div>
                 <div><dt>Risk</dt><dd id="e2e-request-risk">Cần phê duyệt</dd></div>
                 <div><dt>Credential</dt><dd id="e2e-credential-boundary">Runtime nội bộ</dd></div>
               </dl>
@@ -232,6 +238,7 @@
               <h3 id="e2e-result-headline">0 request được gửi</h3>
               <dl>
                 <div><dt>Request đã gửi</dt><dd id="e2e-requests-sent">0</dd></div>
+                <div><dt>HTTP thực tế / mong đợi</dt><dd id="e2e-http-status">— / —</dd></div>
                 <div><dt>Response guard</dt><dd id="e2e-guard-result">Không chạy</dd></div>
                 <div><dt>Diễn giải</dt><dd id="e2e-interpretation">Bị chặn trước transport</dd></div>
                 <div><dt>Safe code</dt><dd id="e2e-safe-code">approval_rejected</dd></div>

@@ -1,225 +1,220 @@
 {
-  "project": {
-    "name": "Project Sentinel",
-    "week": 6,
-    "updated": "2026-08-20",
-    "policyVersion": "1.0",
-    "policySha256": "0181e74d35ced610750e1ced2e42f0e1733439d3ce830b6cb62cf2cfee7562a8",
-    "gatewayOrigin": "http://localhost:8080"
+  "schema_version": "1.0",
+  "source_summary_sha256": "340761b3ef2dfb017686ea3eaf88ae5f898317dd2f29821da7c9f14933142ba9",
+  "demo_id": "demo-20260820-095312-52e9fe74",
+  "scenario_set": "extended",
+  "scenario_ids": [
+    "reject",
+    "approve",
+    "injection",
+    "admin",
+    "status",
+    "wrong-type",
+    "test-case-denied",
+    "header-denied"
+  ],
+  "validated_summary_sha256": "dbb714e5cd8d0b61ae7b7d966d760832da54f59117eecb56157e336865923930",
+  "validated_summary": {
+    "schema_version": "1.0",
+    "demo_id": "demo-20260820-095312-52e9fe74",
+    "one_proposal_per_run": true,
+    "expectations_met": true,
+    "scenario_set": "extended",
+    "runs": [
+      {
+        "scenario_id": "reject",
+        "run_id": "demo-20260820-095312-52e9fe74-reject",
+        "status": "rejected",
+        "endpoint_id": "input-validation",
+        "test_case_id": "empty",
+        "method": "POST",
+        "path": "/api/test/validate",
+        "human_decision": "reject",
+        "requests_sent": 0,
+        "approvals": 0,
+        "rejections": 1,
+        "injection_flags": 0,
+        "redactions": 0,
+        "errors": 0,
+        "receipt_outcome": "policy_denied",
+        "http_status": null,
+        "expected_status": 200,
+        "expected_status_matched": null,
+        "safe_code": "approval_rejected",
+        "guard_state": "not_run"
+      },
+      {
+        "scenario_id": "approve",
+        "run_id": "demo-20260820-095312-52e9fe74-approve",
+        "status": "completed",
+        "endpoint_id": "input-validation",
+        "test_case_id": "empty",
+        "method": "POST",
+        "path": "/api/test/validate",
+        "human_decision": "approve",
+        "requests_sent": 1,
+        "approvals": 1,
+        "rejections": 0,
+        "injection_flags": 0,
+        "redactions": 0,
+        "errors": 0,
+        "receipt_outcome": "success",
+        "http_status": 200,
+        "expected_status": 200,
+        "expected_status_matched": true,
+        "safe_code": null,
+        "guard_state": "sanitized"
+      },
+      {
+        "scenario_id": "injection",
+        "run_id": "demo-20260820-095312-52e9fe74-injection",
+        "status": "completed",
+        "endpoint_id": "prompt-injection-fixture",
+        "test_case_id": "empty",
+        "method": "GET",
+        "path": "/api/test/prompt-injection",
+        "human_decision": "not_required",
+        "requests_sent": 1,
+        "approvals": 0,
+        "rejections": 0,
+        "injection_flags": 1,
+        "redactions": 0,
+        "errors": 0,
+        "receipt_outcome": "success",
+        "http_status": 200,
+        "expected_status": 200,
+        "expected_status_matched": true,
+        "safe_code": null,
+        "guard_state": "quarantined"
+      },
+      {
+        "scenario_id": "admin",
+        "run_id": "demo-20260820-095312-52e9fe74-admin-negative",
+        "status": "blocked",
+        "endpoint_id": "admin",
+        "test_case_id": "empty",
+        "method": null,
+        "path": null,
+        "human_decision": "not_required",
+        "requests_sent": 0,
+        "approvals": 0,
+        "rejections": 0,
+        "injection_flags": 0,
+        "redactions": 0,
+        "errors": 0,
+        "receipt_outcome": "policy_denied",
+        "http_status": null,
+        "expected_status": null,
+        "expected_status_matched": null,
+        "safe_code": "endpoint_not_allowed",
+        "guard_state": "not_run"
+      },
+      {
+        "scenario_id": "status",
+        "run_id": "demo-20260820-095312-52e9fe74-status",
+        "status": "completed",
+        "endpoint_id": "test-status",
+        "test_case_id": "empty",
+        "method": "GET",
+        "path": "/api/test/status",
+        "human_decision": "not_required",
+        "requests_sent": 1,
+        "approvals": 0,
+        "rejections": 0,
+        "injection_flags": 0,
+        "redactions": 0,
+        "errors": 0,
+        "receipt_outcome": "success",
+        "http_status": 200,
+        "expected_status": 200,
+        "expected_status_matched": true,
+        "safe_code": null,
+        "guard_state": "sanitized"
+      },
+      {
+        "scenario_id": "wrong-type",
+        "run_id": "demo-20260820-095312-52e9fe74-wrong-type",
+        "status": "completed",
+        "endpoint_id": "input-validation",
+        "test_case_id": "wrong-type",
+        "method": "POST",
+        "path": "/api/test/validate",
+        "human_decision": "approve",
+        "requests_sent": 1,
+        "approvals": 1,
+        "rejections": 0,
+        "injection_flags": 0,
+        "redactions": 0,
+        "errors": 0,
+        "receipt_outcome": "success",
+        "http_status": 422,
+        "expected_status": 422,
+        "expected_status_matched": true,
+        "safe_code": null,
+        "guard_state": "sanitized"
+      },
+      {
+        "scenario_id": "test-case-denied",
+        "run_id": "demo-20260820-095312-52e9fe74-test-case-denied",
+        "status": "blocked",
+        "endpoint_id": "test-status",
+        "test_case_id": "wrong-type",
+        "method": null,
+        "path": null,
+        "human_decision": "not_required",
+        "requests_sent": 0,
+        "approvals": 0,
+        "rejections": 0,
+        "injection_flags": 0,
+        "redactions": 0,
+        "errors": 0,
+        "receipt_outcome": "policy_denied",
+        "http_status": null,
+        "expected_status": null,
+        "expected_status_matched": null,
+        "safe_code": "test_case_not_allowed",
+        "guard_state": "not_run"
+      },
+      {
+        "scenario_id": "header-denied",
+        "run_id": "demo-20260820-095312-52e9fe74-header-denied",
+        "status": "blocked",
+        "endpoint_id": "input-validation",
+        "test_case_id": "empty",
+        "method": null,
+        "path": null,
+        "human_decision": "not_required",
+        "requests_sent": 0,
+        "approvals": 0,
+        "rejections": 0,
+        "injection_flags": 0,
+        "redactions": 0,
+        "errors": 0,
+        "receipt_outcome": "policy_denied",
+        "http_status": null,
+        "expected_status": null,
+        "expected_status_matched": null,
+        "safe_code": "header_not_allowed",
+        "guard_state": "not_run"
+      }
+    ]
   },
-  "verification": {
-    "snapshot": "week-6-release",
-    "sourceRevision": "ea98afa2d9c03cb5ff00c82aeebd18ed5ce3b0c1",
-    "verifiedAt": "2026-08-20",
-    "evidence": "evidence/week-6/pre-release-verification-2026-08-20.log",
-    "scannerEvidence": "evidence/week-6/pre-release-verification-2026-08-20.log"
-  },
-  "runtimeRadar": {
-    "gateway": {
-      "layer": "outer",
-      "initialState": "unchecked",
-      "origin": "http://localhost:8080",
-      "healthPath": "/health",
-      "title": "Gateway connectivity",
-      "description": "Kiểm tra same-origin GET /health mà không gửi credential hoặc gọi protected endpoint."
-    },
-    "policy": {
-      "layer": "middle",
-      "initialState": "verified",
-      "version": "1.0",
-      "sha256": "0181e74d35ced610750e1ced2e42f0e1733439d3ce830b6cb62cf2cfee7562a8",
-      "capabilityCount": 3,
-      "testCaseCount": 4,
-      "title": "Policy integrity",
-      "description": "Policy SHA, capability và test-case contract được đối chiếu với source; dry-run cập nhật ALLOW hoặc DENY."
-    },
-    "evidence": {
-      "layer": "inner",
-      "initialState": "snapshot",
-      "source": "security-results/runs/week-4/safe-api-demo.jsonl",
-      "verifiedAt": "2026-08-10",
-      "reverifiedAt": "2026-08-20",
-      "sourceWeek": 4,
-      "successCount": 2,
-      "deniedCount": 1,
-      "title": "Execution evidence",
-      "description": "Durable receipt Week 4 được tái xác minh trong baseline Week 5; receipt mới trên giao diện vẫn là dry-run và không mở network."
+  "expectations": {
+    "allScenariosMet": true,
+    "maximumRequestsPerRun": 1,
+    "oneProposalPerRun": true,
+    "scenarios": {
+      "reject": true,
+      "approve": true,
+      "injection": true,
+      "admin": true,
+      "status": true,
+      "wrong-type": true,
+      "test-case-denied": true,
+      "header-denied": true
     }
   },
-  "metrics": [
-    {
-      "label": "Findings",
-      "value": 41,
-      "detail": "Fresh Week 6 · Bandit Low",
-      "tone": "cyan"
-    },
-    {
-      "label": "Grounded groups",
-      "value": 6,
-      "detail": "Deterministic · grounded",
-      "tone": "violet"
-    },
-    {
-      "label": "Unit tests",
-      "value": 216,
-      "detail": "Pre-release · no warnings",
-      "tone": "lime"
-    },
-    {
-      "label": "Full stack",
-      "value": 244,
-      "detail": "Docker verified locally",
-      "tone": "amber"
-    }
-  ],
-  "architecture": [
-    {
-      "step": "01",
-      "title": "Scan",
-      "detail": "Bandit + ZAP"
-    },
-    {
-      "step": "02",
-      "title": "Normalize",
-      "detail": "Schema 1.0"
-    },
-    {
-      "step": "03",
-      "title": "Analyze",
-      "detail": "41 → 6 groups"
-    },
-    {
-      "step": "04",
-      "title": "Propose",
-      "detail": "Capability IDs"
-    },
-    {
-      "step": "05",
-      "title": "Approve",
-      "detail": "HITL for POST"
-    },
-    {
-      "step": "06",
-      "title": "Enforce",
-      "detail": "Gateway policy"
-    },
-    {
-      "step": "07",
-      "title": "Guard",
-      "detail": "Injection + redaction"
-    },
-    {
-      "step": "08",
-      "title": "Evidence",
-      "detail": "Separate contracts"
-    }
-  ],
-  "endpoints": [
-    {
-      "id": "test-status",
-      "label": "Trạng thái test surface",
-      "method": "GET",
-      "path": "/api/test/status",
-      "allowedTestCases": [
-        "empty"
-      ]
-    },
-    {
-      "id": "prompt-injection-fixture",
-      "label": "Response guard fixture",
-      "method": "GET",
-      "path": "/api/test/prompt-injection",
-      "allowedTestCases": [
-        "empty"
-      ]
-    },
-    {
-      "id": "input-validation",
-      "label": "Kiểm tra input stateless",
-      "method": "POST",
-      "path": "/api/test/validate",
-      "allowedTestCases": [
-        "long-string",
-        "special-characters",
-        "empty",
-        "wrong-type"
-      ]
-    }
-  ],
-  "testCases": [
-    {
-      "id": "empty",
-      "label": "Giá trị rỗng",
-      "description": "Chuỗi rỗng hợp lệ, không thay đổi trạng thái.",
-      "kind": "literal",
-      "value": "",
-      "expectedStatus": 200
-    },
-    {
-      "id": "long-string",
-      "label": "Chuỗi dài có giới hạn",
-      "description": "Chuỗi 1.216 ký tự; response chỉ giữ preview đã giới hạn.",
-      "kind": "repeated-string",
-      "character": "x",
-      "length": 1216,
-      "expectedStatus": 200
-    },
-    {
-      "id": "special-characters",
-      "label": "Ký tự đặc biệt",
-      "description": "Dấu câu, whitespace và Unicode an toàn để kiểm tra encoding.",
-      "kind": "literal",
-      "value": "<tag>&\"'\\/\n\t[]{}!?@#$%^*() — tiếng Việt",
-      "expectedStatus": 200
-    },
-    {
-      "id": "wrong-type",
-      "label": "Sai kiểu dữ liệu",
-      "description": "Số nguyên tại field yêu cầu chuỗi; lỗi 422 có kiểm soát.",
-      "kind": "number",
-      "value": 42,
-      "expectedStatus": 422
-    }
-  ],
-  "controls": [
-    {
-      "index": "01",
-      "title": "Fixed origin",
-      "description": "Chỉ gateway nội bộ được phép nhận request.",
-      "tag": "EGRESS BOUNDARY"
-    },
-    {
-      "index": "02",
-      "title": "Exact allowlist",
-      "description": "Method, path và test case đều phải khớp policy.",
-      "tag": "CAPABILITY MODEL"
-    },
-    {
-      "index": "03",
-      "title": "Bounded I/O",
-      "description": "Request, response, timeout và RPM có giới hạn cứng.",
-      "tag": "RESOURCE CONTROL"
-    },
-    {
-      "index": "04",
-      "title": "Human approval",
-      "description": "POST cần approval còn hạn, đúng fingerprint và chỉ dùng một lần.",
-      "tag": "HITL BOUNDARY"
-    },
-    {
-      "index": "05",
-      "title": "Untrusted response",
-      "description": "Response bị cap, quarantine và redact trước khi persist.",
-      "tag": "PROMPT GUARD"
-    },
-    {
-      "index": "06",
-      "title": "Sanitized evidence",
-      "description": "Chỉ tên header, hash, safe reason và marker; không lưu giá trị nhạy cảm.",
-      "tag": "DATA MINIMIZATION"
-    }
-  ],
-  "e2eReplay": {
+  "replay": {
     "mode": "sanitized_replay",
     "networkExecutionEnabled": false,
     "oneProposalPerRun": true,
@@ -921,48 +916,5 @@
         ]
       }
     ]
-  },
-  "evidence": [
-    {
-      "state": "ALLOW",
-      "tone": "allow",
-      "requestId": "ecbe7e3e-d8e5-4ed8-b53f-0f654de78e17",
-      "summary": "GET /api/test/status",
-      "result": "200 · 2,047 ms"
-    },
-    {
-      "state": "ALLOW",
-      "tone": "allow",
-      "requestId": "81cb0be9-6347-40a0-bf34-533fc1e934e3",
-      "summary": "POST /api/test/validate",
-      "result": "200 · <1 ms"
-    },
-    {
-      "state": "DENY",
-      "tone": "deny",
-      "requestId": "b1b76abf-4d1e-4537-a899-f4f774b22c25",
-      "summary": "endpoint_not_allowed",
-      "result": "pre-transport"
-    }
-  ],
-  "roadmap": [
-    {
-      "week": "W4",
-      "title": "Safe request boundary",
-      "detail": "Gateway · policy · audit",
-      "current": false
-    },
-    {
-      "week": "W5",
-      "title": "AI guardrails",
-      "detail": "Hoàn tất · HITL · redaction · response guard",
-      "current": false
-    },
-    {
-      "week": "W6",
-      "title": "End-to-end evidence",
-      "detail": "Hoàn tất · 10/10 evaluation · final report",
-      "current": true
-    }
-  ]
+  }
 }

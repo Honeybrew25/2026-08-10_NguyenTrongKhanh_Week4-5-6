@@ -137,8 +137,18 @@ def test_dashboard_metrics_match_one_durable_verification_snapshot() -> None:
 def test_e2e_replay_is_grounded_in_sanitized_week6_snapshot() -> None:
     data = load_dashboard_data()
     replay = data["e2eReplay"]
-    golden_path = ROOT / replay["sourceSnapshot"]
-    golden = json.loads(golden_path.read_text(encoding="utf-8"))
+    snapshot_path = ROOT / replay["sourceSnapshot"]
+    snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
+    release_golden = json.loads(
+        (
+            ROOT
+            / "security-results"
+            / "runs"
+            / "week-6"
+            / "golden"
+            / "release-summary.json"
+        ).read_text(encoding="utf-8")
+    )
     verification = (ROOT / data["verification"]["evidence"]).read_text(
         encoding="utf-8"
     )
@@ -147,9 +157,15 @@ def test_e2e_replay_is_grounded_in_sanitized_week6_snapshot() -> None:
     assert replay["networkExecutionEnabled"] is False
     assert replay["oneProposalPerRun"] is True
     assert replay["sourceSnapshot"] == (
-        "security-results/runs/week-6/golden/release-summary.json"
+        "security-results/runs/week-6/golden/dashboard-replay.json"
     )
-    assert golden_path.is_file()
+    assert snapshot_path.is_file()
+    assert snapshot["schema_version"] == "1.0"
+    assert snapshot["scenario_set"] == "extended"
+    assert re.fullmatch(r"[0-9a-f]{64}", snapshot["source_summary_sha256"])
+    assert snapshot["replay"] == replay
+    assert snapshot["expectations"]["allScenariosMet"] is True
+    assert snapshot["expectations"]["maximumRequestsPerRun"] == 1
 
     expected_stages = [
         "scanner_input",
@@ -164,7 +180,17 @@ def test_e2e_replay_is_grounded_in_sanitized_week6_snapshot() -> None:
     assert [item["id"] for item in replay["stageOrder"]] == expected_stages
 
     scenario_ids = [item["id"] for item in replay["scenarios"]]
-    assert scenario_ids == ["reject", "approve", "injection", "admin"]
+    assert scenario_ids == [
+        "reject",
+        "approve",
+        "injection",
+        "admin",
+        "status",
+        "wrong-type",
+        "test-case-denied",
+        "header-denied",
+    ]
+    assert len(scenario_ids) == 8
     assert len(scenario_ids) == len(set(scenario_ids))
     scenarios = {item["id"]: item for item in replay["scenarios"]}
     for scenario in scenarios.values():
@@ -173,7 +199,7 @@ def test_e2e_replay_is_grounded_in_sanitized_week6_snapshot() -> None:
         assert len(stage_ids) == len(set(stage_ids))
         assert scenario["focusStage"] in stage_ids
 
-    controls = golden["live_controls"]
+    controls = release_golden["live_controls"]
     assert scenarios["reject"]["result"]["requestsSent"] == controls[
         "reject_requests_sent"
     ]
@@ -212,12 +238,54 @@ def test_e2e_replay_is_grounded_in_sanitized_week6_snapshot() -> None:
             "success", "success", "success", "blocked", "not_required",
             "blocked", "skipped", "success",
         ],
+        "status": [
+            "success", "success", "success", "success", "not_required",
+            "success", "success", "success",
+        ],
+        "wrong-type": [
+            "success", "success", "success", "success", "approved",
+            "success", "success", "success",
+        ],
+        "test-case-denied": [
+            "success", "success", "success", "blocked", "not_required",
+            "blocked", "skipped", "success",
+        ],
+        "header-denied": [
+            "success", "success", "success", "blocked", "not_required",
+            "blocked", "skipped", "success",
+        ],
     }
     for scenario_id, states in expected_states.items():
         assert [item["state"] for item in scenarios[scenario_id]["stages"]] == states
 
+    assert all(item["expectationMet"] is True for item in scenarios.values())
+    assert all(
+        item["sourceLabel"] == f"Demo {snapshot['demo_id']}"
+        for item in scenarios.values()
+    )
+
+    expected_extended_facts = {
+        "status": ("GET", "/api/test/status", "Không có"),
+        "wrong-type": ("POST", "/api/test/validate", "Không có"),
+        "test-case-denied": (
+            "GET", "/api/test/status", "test_case_not_allowed",
+        ),
+        "header-denied": (
+            "POST", "/api/test/validate", "header_not_allowed",
+        ),
+    }
+    for scenario_id, (method, path, safe_code) in expected_extended_facts.items():
+        scenario = scenarios[scenario_id]
+        assert scenario["request"]["method"] == method
+        assert scenario["request"]["path"] == path
+        assert scenario["result"]["safeCode"] == safe_code
+    assert scenarios["wrong-type"]["request"]["testCase"] == "wrong-type"
+    assert "422" in scenarios["wrong-type"]["result"]["interpretation"]
+    assert scenarios["test-case-denied"]["request"]["testCase"] == "wrong-type"
+    assert scenarios["header-denied"]["request"]["testCase"] == "empty"
+
     evaluation = replay["evaluation"]
-    golden_evaluation = golden["evaluation"]
+    golden_evaluation = release_golden["evaluation"]
     assert evaluation == {
         "cases": golden_evaluation["cases"],
         "passed": golden_evaluation["passed"],
@@ -255,8 +323,8 @@ def test_dashboard_is_self_contained_and_main_deploy_is_gated() -> None:
         ROOT / ".github" / "workflows" / "deploy-ui-pages.yml"
     ).read_text(encoding="utf-8")
 
-    assert 'href="./styles.css?v=e2e-replay-4"' in index
-    assert 'src="./app.js?v=e2e-replay-4"' in index
+    assert 'href="./styles.css?v=control-scenarios-5"' in index
+    assert 'src="./app.js?v=control-scenarios-5"' in index
     assert "Content-Security-Policy" in index
     assert 'role="tabpanel"' in index
     assert 'aria-controls="proposal-output"' in index
@@ -268,7 +336,12 @@ def test_dashboard_is_self_contained_and_main_deploy_is_gated() -> None:
     assert 'id="e2e-scenario-panel" role="tabpanel"' in index
     assert 'id="e2e-stage-detail" role="status" aria-live="polite"' in index
     assert "BẢN PHÁT LẠI · KHÔNG GỬI REQUEST" in index
+    assert "Một pipeline, nhiều tình huống kiểm soát" in index
+    assert index.count('data-e2e-scenario="') == 8
     assert index.count('class="replay-card"') == 4
+    assert 'id="e2e-source-label"' in index
+    assert 'id="e2e-test-case"' in index
+    assert 'id="e2e-http-status"' in index
     for layer in ("gateway", "policy", "evidence"):
         assert f'id="radar-{layer}-layer"' in index
         assert f'id="{layer}-runtime-state"' in index
@@ -293,12 +366,14 @@ def test_dashboard_is_self_contained_and_main_deploy_is_gated() -> None:
     assert "initializeRuntimeRadar" in script
     assert "selectRuntimeLayer" in script
     assert 'document.querySelectorAll(".radar-hotspot")' in script
-    assert 'dashboard-data.json?v=e2e-replay-4' in script
+    assert 'dashboard-data.json?v=control-scenarios-5' in script
     assert script.count("fetch(") == 2
     assert script.count('credentials: "omit"') == 2
     assert "renderE2eReplay" in script
     assert "renderE2eScenario" in script
     assert "renderE2eStageDetail" in script
+    assert "Đúng kỳ vọng" in script
+    assert 'failed: "FAILED"' in script
     e2e_script = script[
         script.index("function e2eStateTone") : script.index(
             "function populateEndpoints"
