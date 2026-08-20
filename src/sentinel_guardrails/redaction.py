@@ -25,6 +25,10 @@ MARKERS = frozenset(
 )
 
 _EMAIL = re.compile(r"(?<![\w.+-])[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}(?![\w.-])", re.I)
+_UUID = re.compile(
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",
+    re.I,
+)
 _PHONE = re.compile(
     r"(?<!\w)(?:\+?84|0)(?:[ .-]?\d){9,10}(?!\w)",
     re.I,
@@ -119,6 +123,11 @@ def sanitize_text(
     secrets: Sequence[str] = (),
 ) -> RedactionResult:
     """Return a redacted copy and marker counts without retaining source values."""
+    # UUIDs are machine identifiers. A final group that begins with ``84`` or
+    # ``0`` can otherwise look like a Vietnamese phone number by chance.
+    if _UUID.fullmatch(value):
+        return RedactionResult(value=value, counts={})
+
     redacted = value
     counts: Counter[str] = Counter()
 

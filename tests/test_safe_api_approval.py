@@ -293,6 +293,26 @@ def test_interactive_timeout_defaults_to_reject() -> None:
     assert choice.reason == "approval_timeout"
 
 
+def test_interactive_provider_can_delegate_only_the_request_presentation() -> None:
+    engine = PolicyEngine.from_files()
+    proposal = post_proposal()
+    _, view = matching_approval(engine, proposal)
+    rendered: list[tuple[object, float]] = []
+    legacy_output: list[str] = []
+
+    choice = InteractiveApprovalProvider(
+        timeout_seconds=12.0,
+        input_fn=lambda: "",
+        output_fn=legacy_output.append,
+        request_output_fn=lambda request, timeout: rendered.append((request, timeout)),
+    ).request(view)
+
+    assert rendered == [(view, 12.0)]
+    assert legacy_output == []
+    assert choice.decision == "reject"
+    assert choice.reason == "approval_invalid_input"
+
+
 @pytest.mark.parametrize(
     ("provider", "expected_reason"),
     [
@@ -539,7 +559,10 @@ def test_http_injection_fixture_is_quarantined_without_follow_up_call(
         transport=httpx.MockTransport(handler),
         wall_clock=lambda: NOW,
     ) as client:
-        receipt = client.execute(fixture_proposal())
+        receipt = client.execute(
+            fixture_proposal(),
+            run_id="approval-injection-run",
+        )
         guarded = client.last_guarded_response
 
     assert calls == 1

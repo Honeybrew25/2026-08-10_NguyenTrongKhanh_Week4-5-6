@@ -9,17 +9,21 @@ Hệ thống có thể:
 - chặn đường dẫn ngoài phạm vi và che thông tin nhạy cảm;
 - lưu báo cáo để kiểm tra lại sau này.
 
-Giao diện web chỉ dùng để trình bày. Việc phê duyệt và gửi yêu cầu kiểm thử
-được thực hiện bằng dòng lệnh.
+Giao diện web cho phép xem lại bốn tình huống mẫu của quy trình Week 6 theo
+từng bước. Việc phê duyệt và gửi yêu cầu thật vẫn được thực hiện bằng dòng lệnh.
 
 ## Kết quả hiện tại
 
 - 41 cảnh báo được gộp thành 6 nhóm.
-- Bộ đánh giá đạt 10/10 trường hợp.
-- 200 bài kiểm thử thông thường và 228 bài kiểm thử đầy đủ đã đạt.
+- Bộ đánh giá đạt 10/10 trường hợp, gồm 5 case Agent và 5 case hành vi.
+- 216 bài kiểm thử thông thường và 244 bài kiểm thử đầy đủ đã đạt.
 
 Xem số liệu chi tiết tại
-[`evidence/week-6/verification.log`](evidence/week-6/verification.log).
+[`evidence/week-6/pre-release-verification-2026-08-20.log`](evidence/week-6/pre-release-verification-2026-08-20.log).
+Đây là kết quả trên working tree hiện tại; phiếu nghiệm thu cuối vẫn chờ commit
+sạch, hosted CI và một người khác chạy lại từ README.
+`reports/week-6.md` được giữ như snapshot của lúc kết thúc tuần, nên số test cũ
+trong đó không thay thế kết quả pre-release ở trên.
 
 ## Cài đặt lần đầu
 
@@ -72,7 +76,7 @@ python -m project_sentinel preflight
 ### Demo nhanh, không gửi yêu cầu mạng
 
 ```bash
-python -m project_sentinel demo --provider deterministic
+python -m project_sentinel demo --provider deterministic --format human
 ```
 
 Lệnh này quét, phân tích và tạo báo cáo trong
@@ -85,13 +89,17 @@ không cần dịch vụ AI bên ngoài.
 docker compose down --remove-orphans
 docker compose up --build --detach --wait --wait-timeout 180
 python -m project_sentinel preflight --execute
-python -m project_sentinel demo --provider deterministic --execute
+python -m project_sentinel demo --provider deterministic --execute --format human
 ```
 
 Khi được hỏi:
 
 1. Nhập `Reject` ở lần đầu để chứng minh không có yêu cầu nào được gửi.
 2. Nhập `Approve` ở lần sau để gửi đúng một yêu cầu kiểm thử an toàn.
+
+Terminal hiển thị đủ tám bước, kết quả ngay sau từng tình huống và bảng tổng
+kết cuối. Xem [hướng dẫn terminal](docs/terminal-demo.md) để biết cách
+đọc từng trạng thái.
 
 ### Chạy bộ đánh giá
 
@@ -104,8 +112,6 @@ Kết quả đúng sẽ có `passed: 10`, `failed: 0` và `thresholds_met: true`
 ### Mở giao diện
 
 Khi Docker đang chạy, mở <http://localhost:8080/ui/>.
-
-Giao diện không lưu API key và không tự gửi yêu cầu kiểm thử.
 
 ## Kiểm thử và dọn hệ thống
 
@@ -130,8 +136,12 @@ docker compose ps --all
 
 ## Lỗi thường gặp
 
-- `gateway_preflight_timeout`: chạy `docker compose ps`, sau đó xem log bằng
-  `docker compose logs --no-color --tail 200`.
+- `gateway_preflight_timeout`: demo đã dừng trước khi gửi request kiểm thử. Chạy
+  `docker compose ps`, kiểm tra `curl http://127.0.0.1:8080/health`, rồi xem log
+  bằng `docker compose logs --no-color --tail 200 envoy authz-service api`.
+- Nếu cần dừng lúc chương trình đang chờ, nhấn `Ctrl+C`. Terminal sẽ báo
+  `interrupted` thay vì in traceback; hãy chạy lại lệnh `preflight` trước khi
+  thử lại.
 - Báo lỗi API key: kiểm tra lại `SAFE_API_TOOL_API_KEY` trong `.env`.
 - `FileExistsError`: lần chạy đó đã tồn tại; hãy dùng tên mới hoặc bỏ
   `--run-id`.
@@ -140,12 +150,13 @@ docker compose ps --all
 
 ## Tài liệu thêm
 
-- [Kiến trúc](docs/project-sentinel-architecture.md)
-- [Bộ đánh giá 10 trường hợp](docs/evaluation.md)
-- [Báo cáo Week 6](reports/week-6.md)
+- [Kiến trúc](docs/architecture.md)
+- [Kết quả đánh giá](docs/evaluation.md)
+- [Báo cáo Week 6 (snapshot lịch sử)](reports/week-6.md)
 - [Kịch bản demo 10–15 phút](docs/demo-script.md)
-- [Bằng chứng kiểm thử](evidence/week-6/verification.log)
-- [Các bước còn cần xác nhận](docs/release-acceptance.md)
+- [Hướng dẫn demo terminal](docs/terminal-demo.md)
+- [Bằng chứng kiểm thử hiện tại](evidence/week-6/pre-release-verification-2026-08-20.log)
+- [Phiếu nghiệm thu còn chờ](docs/release-acceptance.md)
 
 Dashboard công khai:
 <https://honeybrew25.github.io/2026-08-10_NguyenTrongKhanh_Week4-5-6/>.

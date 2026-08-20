@@ -26,6 +26,27 @@ và không thể approve. Model không nhận raw URL/payload/credential, không
 quyết định runtime origin. Trusted origin chỉ có hai code-owned profile:
 `host=http://localhost:8080` và `compose=http://envoy:8080`.
 
+## Endpoint hiện hành
+
+Envoy là cổng vào duy nhất của staging API. Keycloak chỉ mở riêng token endpoint
+trên loopback `127.0.0.1:8081` cho môi trường lab.
+
+| Method | Path | Ai được gọi | Mục đích |
+|---|---|---|---|
+| `GET`, `HEAD` | `/`, `/ui`, `/ui/*` | Công khai | Mở dashboard hoặc static asset. |
+| `GET` | `/health` | Công khai | Kiểm tra Gateway/API sẵn sàng. |
+| `GET` | `/.well-known/oauth-protected-resource` | Công khai | Công bố OAuth resource metadata. |
+| `GET` | `/api/users` | Bearer token có `users:read` | Đọc dữ liệu người dùng mẫu. |
+| `GET` | `/api/admin` | Bearer token có `admin:read` | Endpoint quản trị mẫu; Safe API Tool không được phép gọi. |
+| `GET` | `/api/test/status` | API key của Safe API Tool | Kiểm tra endpoint thử nghiệm stateless. |
+| `GET` | `/api/test/prompt-injection` | API key của Safe API Tool | Trả fixture độc hại cố định để kiểm response guard. |
+| `POST` | `/api/test/validate` | API key của Safe API Tool và approval khi có rủi ro | Kiểm bốn payload đã curate, không lưu dữ liệu. |
+
+Ba `/api/test/*` chỉ được materialize từ capability/test-case ID trong policy;
+model hoặc người dùng không được nhập URL hay payload tùy ý. Mọi method/path
+khác bị deny mặc định. API key được authz-service kiểm tra và yêu cầu Envoy loại
+bỏ trước khi request tới ứng dụng.
+
 ## State machine
 
 ```text

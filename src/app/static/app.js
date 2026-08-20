@@ -5,6 +5,8 @@ const state = {
   lastDecision: null,
   runtime: {},
   selectedRuntimeLayer: "policy",
+  selectedE2eScenario: "reject",
+  selectedE2eStage: "approval",
 };
 
 const byId = (id) => document.getElementById(id);
@@ -24,6 +26,16 @@ const RUNTIME_LAYER_TITLES = {
   gateway: "Gateway",
   policy: "Policy",
   evidence: "Evidence",
+};
+
+const E2E_STATE_LABELS = {
+  success: "SUCCESS",
+  approved: "APPROVED",
+  rejected: "REJECTED",
+  blocked: "BLOCKED",
+  quarantined: "QUARANTINED",
+  not_required: "NOT REQUIRED",
+  skipped: "SKIPPED",
 };
 
 function refreshOverallRuntimeState() {
@@ -193,6 +205,165 @@ function renderRoadmap(items) {
     return row;
   });
   replaceChildren(byId("roadmap-list"), rows);
+}
+
+function e2eStateTone(value) {
+  if (["success", "approved"].includes(value)) return "allow";
+  if (["rejected", "blocked", "quarantined"].includes(value)) return "warn";
+  return "muted";
+}
+
+function currentE2eScenario() {
+  return state.data.e2eReplay.scenarios.find(
+    (item) => item.id === state.selectedE2eScenario,
+  );
+}
+
+function renderE2eEvaluation(evaluation) {
+  byId("e2e-eval-cases").textContent = String(evaluation.cases);
+  byId("e2e-eval-passed").textContent = String(evaluation.passed);
+  byId("e2e-eval-tp").textContent = String(evaluation.tp);
+  byId("e2e-eval-fp").textContent = String(evaluation.fp);
+  byId("e2e-eval-fn").textContent = String(evaluation.fn);
+  byId("e2e-eval-safety").textContent = `${evaluation.secretPiiLeakCount} / ${evaluation.policyBypassCount}`;
+}
+
+function renderE2eStageDetail(stageId) {
+  const scenario = currentE2eScenario();
+  const stage = scenario?.stages.find((item) => item.id === stageId);
+  if (!stage) return;
+
+  state.selectedE2eStage = stage.id;
+  document.querySelectorAll("[data-e2e-stage]").forEach((button) => {
+    const active = button.dataset.e2eStage === stage.id;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+
+  const stateLabel = E2E_STATE_LABELS[stage.state] || stage.state.toUpperCase();
+  const badge = byId("e2e-stage-state");
+  badge.textContent = stateLabel;
+  badge.className = `event-state ${e2eStateTone(stage.state)}`;
+  byId("e2e-stage-title").textContent = stage.title;
+  byId("e2e-stage-description").textContent = stage.detail;
+}
+
+function renderE2eStages(replay, scenario) {
+  const stages = replay.stageOrder.map((definition) => {
+    const stage = scenario.stages.find((item) => item.id === definition.id);
+    if (!stage) return null;
+
+    const item = document.createElement("li");
+    const button = createElement("button", "replay-stage");
+    button.type = "button";
+    button.dataset.state = stage.state;
+    button.dataset.e2eStage = stage.id;
+    button.setAttribute("aria-pressed", "false");
+    button.setAttribute("aria-controls", "e2e-stage-detail");
+    button.append(
+      createElement("span", "", definition.step),
+      createElement("strong", "", definition.label),
+      createElement("small", "", E2E_STATE_LABELS[stage.state] || stage.state.toUpperCase()),
+    );
+    button.addEventListener("click", () => renderE2eStageDetail(stage.id));
+    item.append(button);
+    return item;
+  }).filter(Boolean);
+
+  replaceChildren(byId("e2e-stage-flow"), stages);
+  byId("e2e-stage-flow").setAttribute(
+    "aria-label",
+    `Các bước của kịch bản ${scenario.label.replace(/^Xem /, "")}`,
+  );
+}
+
+function renderE2eScenario(replay, scenarioId) {
+  const scenario = replay.scenarios.find((item) => item.id === scenarioId);
+  if (!scenario) return;
+
+  state.selectedE2eScenario = scenario.id;
+  state.selectedE2eStage = scenario.focusStage;
+  document.querySelectorAll("[data-e2e-scenario]").forEach((button) => {
+    const active = button.dataset.e2eScenario === scenario.id;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-selected", String(active));
+    button.tabIndex = active ? 0 : -1;
+  });
+
+  const activeTab = byId(`e2e-tab-${scenario.id}`);
+  byId("e2e-scenario-panel").setAttribute("aria-labelledby", activeTab.id);
+  byId("e2e-scenario-tag").textContent = scenario.tag;
+  byId("e2e-scenario-title").textContent = `${scenario.label.replace(/^Xem /, "")} — ${scenario.result.headline}`;
+  byId("e2e-scenario-summary").textContent = scenario.summary;
+
+  const status = byId("e2e-scenario-status");
+  status.textContent = scenario.status.toUpperCase();
+  status.dataset.state = scenario.tone;
+
+  byId("e2e-result-headline").textContent = scenario.result.headline;
+  byId("e2e-run-status").textContent = scenario.status;
+  byId("e2e-network-mode").textContent = replay.networkExecutionEnabled
+    ? "Không hợp lệ"
+    : "Tắt trên UI";
+  byId("e2e-proposal-cardinality").textContent = replay.oneProposalPerRun ? "1" : "—";
+  byId("e2e-request-line").textContent = `${scenario.request.method} ${scenario.request.path}`;
+  byId("e2e-request-risk").textContent = scenario.request.risk;
+  byId("e2e-human-decision").textContent = scenario.request.humanDecision;
+  byId("e2e-credential-boundary").textContent = scenario.request.credentialBoundary;
+  byId("e2e-requests-sent").textContent = String(scenario.result.requestsSent);
+  byId("e2e-guard-result").textContent = scenario.result.guard;
+  byId("e2e-interpretation").textContent = scenario.result.interpretation;
+  byId("e2e-safe-code").textContent = scenario.result.safeCode;
+
+  renderE2eStages(replay, scenario);
+  renderE2eStageDetail(scenario.focusStage);
+}
+
+function handleE2eScenarioKeydown(event) {
+  if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+  const tabs = [...event.currentTarget.closest('[role="tablist"]').querySelectorAll('[role="tab"]')];
+  const current = tabs.indexOf(event.currentTarget);
+  let target = current;
+  if (event.key === "ArrowLeft") target = (current - 1 + tabs.length) % tabs.length;
+  if (event.key === "ArrowRight") target = (current + 1) % tabs.length;
+  if (event.key === "Home") target = 0;
+  if (event.key === "End") target = tabs.length - 1;
+  event.preventDefault();
+  tabs[target].focus();
+  renderE2eScenario(state.data.e2eReplay, tabs[target].dataset.e2eScenario);
+}
+
+function renderE2eReplay(replay) {
+  if (!replay || replay.mode !== "sanitized_replay" || replay.networkExecutionEnabled !== false) {
+    byId("e2e-replay-notice").textContent = "Không có bản replay an toàn để hiển thị.";
+    byId("e2e-scenario-panel").hidden = true;
+    document.querySelector(".replay-evaluation").hidden = true;
+    byId("e2e-scenario-tabs").querySelectorAll("button").forEach((button) => {
+      button.disabled = true;
+    });
+    return;
+  }
+
+  byId("e2e-scenario-panel").hidden = false;
+  document.querySelector(".replay-evaluation").hidden = false;
+  byId("e2e-replay-notice").textContent = replay.notice;
+  renderE2eEvaluation(replay.evaluation);
+
+  const tabs = replay.scenarios.map((scenario, index) => {
+    const button = createElement("button", "replay-scenario-tab", scenario.label);
+    button.id = `e2e-tab-${scenario.id}`;
+    button.type = "button";
+    button.setAttribute("role", "tab");
+    button.dataset.e2eScenario = scenario.id;
+    button.setAttribute("aria-controls", "e2e-scenario-panel");
+    button.setAttribute("aria-selected", "false");
+    button.tabIndex = index === 0 ? 0 : -1;
+    button.addEventListener("click", () => renderE2eScenario(replay, scenario.id));
+    button.addEventListener("keydown", handleE2eScenarioKeydown);
+    return button;
+  });
+  replaceChildren(byId("e2e-scenario-tabs"), tabs);
+  renderE2eScenario(replay, replay.scenarios[0].id);
 }
 
 function populateEndpoints() {
@@ -504,7 +675,7 @@ function wireInteractions() {
 
 async function initialize() {
   try {
-    const response = await fetch("./dashboard-data.json?v=verification-snapshot-3", { cache: "no-store", credentials: "same-origin" });
+    const response = await fetch("./dashboard-data.json?v=e2e-replay-4", { cache: "no-store", credentials: "omit" });
     if (!response.ok) throw new Error(`dashboard_data_${response.status}`);
     state.data = await response.json();
     renderMetrics(state.data.metrics);
@@ -512,6 +683,7 @@ async function initialize() {
     renderControls(state.data.controls);
     renderEvidence(state.data.evidence);
     renderRoadmap(state.data.roadmap);
+    renderE2eReplay(state.data.e2eReplay);
     initializeRuntimeRadar();
     populateEndpoints();
     wireInteractions();

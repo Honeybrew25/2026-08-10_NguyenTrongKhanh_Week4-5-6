@@ -12,7 +12,7 @@ import sys
 import time
 from typing import Callable, Literal, Sequence
 from urllib.error import URLError
-from urllib.request import Request, urlopen
+from urllib.request import ProxyHandler, Request, build_opener
 import uuid
 
 import httpx
@@ -90,6 +90,15 @@ class GatewayPreflightError(RuntimeError):
     pass
 
 
+_GATEWAY_OPENER = build_opener(ProxyHandler({}))
+
+
+def _open_gateway_health(request: Request, *, timeout: float):
+    """Open the trusted local health URL without using environment proxies."""
+
+    return _GATEWAY_OPENER.open(request, timeout=timeout)
+
+
 class PipelineStateMachine:
     def __init__(self) -> None:
         self.state: PipelineState = "created"
@@ -152,14 +161,24 @@ def wait_for_gateway(
     origin = TRUSTED_RUNTIME_ORIGINS[runtime_profile]
     deadline = time.monotonic() + max(0.1, deadline_seconds)
     request = Request(f"{origin}/health", method="GET")
-    while time.monotonic() < deadline:
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
         try:
-            with urlopen(request, timeout=2) as response:
+            with _open_gateway_health(
+                request,
+                timeout=min(2.0, max(0.05, remaining)),
+            ) as response:
                 if response.status == 200:
                     return
         except (OSError, URLError):
-            time.sleep(0.25)
-    raise GatewayPreflightError("gateway_preflight_timeout")
+            pass
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        time.sleep(min(0.25, remaining))
+    raise GatewayPreflightError("gateway_preflight_timeout") from None
 
 
 def run_fresh_bandit(output_path: Path) -> int:
@@ -226,6 +245,7 @@ class SentinelRunner:
         wall_clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
         gateway_preflight: Callable[[Literal["host", "compose"]], None] | None = None,
         transport: httpx.BaseTransport | None = None,
+        event_sink: Callable[[PipelineEvent], None] | None = None,
     ) -> None:
         self.output_root = output_root
         self.knowledge_base = knowledge_base
@@ -234,6 +254,7 @@ class SentinelRunner:
         self._wall_clock = wall_clock
         self._gateway_preflight = gateway_preflight or wait_for_gateway
         self._transport = transport
+        self._event_sink = event_sink
 
     def _workspace(self, run_id: str) -> Path:
         if RUN_ID.fullmatch(run_id) is None:
@@ -269,6 +290,12 @@ class SentinelRunner:
             related_ids=related_ids or [],
         )
         writer.write(event)
+        if self._event_sink is not None:
+            try:
+                self._event_sink(event)
+            except Exception:
+                # Presentation is observational and must not alter pipeline results.
+                self._event_sink = None
         return event
 
     def _retain_inputs(
@@ -398,9 +425,7 @@ class SentinelRunner:
                     provider=narrative_provider,
                     knowledge_base=self.knowledge_base,
                 ).analyze(report_input)
-            analysis_path = write_jsonl(
-                analysis, workspace / "security-analysis.jsonl"
-            )
+            write_jsonl(analysis, workspace / "security-analysis.jsonl")
             duration = (self._clock() - stage_started) * 1000
             durations["analysis"] = duration
             state.transition("analyzed")

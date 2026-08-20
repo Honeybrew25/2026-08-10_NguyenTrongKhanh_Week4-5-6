@@ -56,6 +56,18 @@ def test_text_sanitizer_redacts_email_phone_query_json_and_is_idempotent() -> No
         assert secret not in first.value
 
 
+def test_text_sanitizer_does_not_mistake_uuid_for_phone_number() -> None:
+    event_id = "ad88452d-9a9d-46d7-a9ae-846152006515"
+
+    result = sanitize_data({"event_id": event_id, "phone": "0912-345-678"})
+
+    assert result.value == {
+        "event_id": event_id,
+        "phone": REDACTED_PHONE,
+    }
+    assert result.counts == {REDACTED_PHONE: 1}
+
+
 def test_nested_sanitizer_has_stable_markers_counters_and_does_not_mutate() -> None:
     source = {
         "contact": ["owner@example.test", "0912-345-678"],

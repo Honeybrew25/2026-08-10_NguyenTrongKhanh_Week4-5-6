@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import re
 
 import yaml
@@ -53,6 +52,7 @@ def test_runner_image_has_minimal_runtime_contract_and_no_secret_copy() -> None:
     requirements = (
         ROOT / "src" / "project_sentinel" / "requirements.txt"
     ).read_text(encoding="utf-8")
+    project = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     assert "requirements-dev.txt" not in dockerfile
     assert "COPY .env" not in dockerfile
     assert "USER sentinel" in dockerfile
@@ -60,6 +60,8 @@ def test_runner_image_has_minimal_runtime_contract_and_no_secret_copy() -> None:
     assert "fastapi" not in requirements
     assert "bandit==" in requirements
     assert "jsonschema==" in requirements
+    assert "rich==14.3.3" in requirements
+    assert '"rich==14.3.3"' in project
 
 
 def test_generated_week6_outputs_are_ignored_but_golden_can_be_tracked() -> None:
@@ -82,6 +84,14 @@ def test_week6_golden_fallback_is_sanitized_and_honest() -> None:
         "admin_requests_sent": 0,
         "raw_http_response_retained": False,
     }
-    assert document["working_tree_claim"] == "reviewed_week5_week6_changes_not_yet_committed"
+    assert document["working_tree_claim"] == (
+        "verified_dirty_worktree_not_final_release_commit"
+    )
+    assert document["evaluation"]["tp"] == 6
+    assert document["tests"] == {
+        "non_integration_passed": 216,
+        "non_integration_deselected": 28,
+        "full_stack_passed": 244,
+    }
     assert "@" not in text
     assert "Bearer " not in text

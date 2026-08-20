@@ -19,14 +19,16 @@ backend.
 
 ### 0:00–2:00 — Bài toán và ranh giới
 
-Mở README/sơ đồ kiến trúc. Nêu: scanner facts thuộc code, model chỉ viết
-narrative, con người giữ approval, mọi request qua Envoy, response luôn
-untrusted. Dashboard chỉ presentation/dry-run.
+Mở README/sơ đồ kiến trúc và mục **E2E Week 6** trên dashboard. Chuyển qua bốn
+tình huống rồi bấm một vài bước để giải thích luồng. Nhấn mạnh đây là bản phát
+lại đã làm sạch, không phải lần chạy live. Scanner facts thuộc code, model chỉ
+viết narrative, con người giữ approval, mọi request qua Envoy và response luôn
+untrusted.
 
 ### 2:00–4:00 — Fresh scan, normalize và Agent
 
 ```powershell
-python -m project_sentinel demo --provider deterministic
+python -m project_sentinel demo --provider deterministic --format human
 ```
 
 Mở `demo-inputs/*-bandit.json`, `normalized-findings.json`,
@@ -37,19 +39,23 @@ capability/test-case. Dry-run phải có `requests_sent: 0`.
 ### 4:00–8:00 — HITL và Gateway
 
 ```powershell
-python -m project_sentinel demo --provider deterministic --execute
+python -m project_sentinel demo --provider deterministic --execute --format human
 ```
 
-1. Gõ `Reject` ở prompt đầu: mở final report, chứng minh `rejections=1`,
-   `requests_sent=0`.
-2. Gõ `Approve` ở prompt thứ hai: view hiển thị exact endpoint, curated payload,
-   purpose, source IDs và fingerprint; final report phải có `approvals=1`,
-   `requests_sent=1` và receipt status 200 được ghi là verification signal,
+1. Gõ `Reject` ở prompt đầu: terminal phải báo `REJECTED` và
+   `requests_sent=0` ngay sau tình huống.
+2. Gõ `Approve` ở prompt thứ hai: panel phải hiển thị endpoint, curated payload,
+   purpose, source IDs và fingerprint trước khi gửi. Kết quả phải có
+   `approvals=1`, `requests_sent=1`; status 200 chỉ là verification signal,
    không phải exploit proof.
-3. Mở admin-negative final report: `endpoint_not_allowed`, 0 request dù có
-   approval provider. Backend không publish host port.
+3. Theo dõi tình huống prompt injection: terminal phải báo response đã bị cách
+   ly và không lưu nội dung thô.
+4. Theo dõi admin-negative: `endpoint_not_allowed`, 0 request và bước Gateway
+   được ghi rõ là bị chặn hoặc không chạy. Backend không publish host port.
 
-Mỗi control có run ID riêng; demo summary mới tổng hợp cả hai.
+Mỗi tình huống có run ID riêng; bảng cuối tổng hợp đủ bốn run. Có thể mở
+`final-report.json` để kiểm tra sâu hơn nhưng không cần đọc JSON trong lúc trình
+bày.
 
 ### 8:00–10:00 — Prompt injection và redaction
 
@@ -93,7 +99,8 @@ giữ để review; baseline không bị xóa hoặc ghi đè.
 - Gemini/mạng ngoài lỗi: dùng deterministic provider; CI không gọi Gemini.
 - Nếu live stack không phục hồi trong khung demo, mở sanitized fallback tại
   `security-results/runs/week-6/golden/release-summary.json` và đối chiếu hash
-  với `evidence/week-6/verification.log`; không trình bày snapshot như live run.
+  với `evidence/week-6/pre-release-verification-2026-08-20.log`; không trình bày
+  snapshot như live run.
 - Fresh scan lỗi nhưng có JSON: nêu exit semantics và mở raw artefact; không
   gọi Pass giả. Nếu JSON hỏng, run phải failed và output tốt trước đó giữ nguyên.
 - Gateway lỗi: trình bày dry-run + verified evidence; không gọi thẳng backend.

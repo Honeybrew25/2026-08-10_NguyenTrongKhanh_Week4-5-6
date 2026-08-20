@@ -1,9 +1,9 @@
 {
   "schema_version": "1.0",
   "snapshot": "week-6-deterministic-fallback",
-  "reviewed_at": "2026-08-15",
-  "base_revision": "b32cd0d35f405d6bed216be1a6534caf24c5860e",
-  "working_tree_claim": "reviewed_week5_week6_changes_not_yet_committed",
+  "reviewed_at": "2026-08-20",
+  "base_revision": "ea98afa2d9c03cb5ff00c82aeebd18ed5ce3b0c1",
+  "working_tree_claim": "verified_dirty_worktree_not_final_release_commit",
   "provider": "deterministic-v1",
   "fresh_scan": {
     "tool": "bandit",
@@ -11,13 +11,13 @@
     "findings": 41,
     "grounded_groups": 6,
     "high_gate_findings": 0,
-    "input_sha256": "142d80ecae44d775e4c0c70bbab27f1e9126fd5c0ad0b4b484f9fd1dc5b9fc44",
-    "final_report_sha256": "c137b893ebc812224c230f3a118dbb94cddfc2bb3c56b628b282e974b7aecbc1"
+    "input_sha256": "3adc0e9bb1636ee9b875c3a9f40413e9bf1b591028c85fde48bb9d99f5b4f5ee",
+    "final_report_sha256": "0664b3d29e61b14db6aa6b75c315bcf5531a24fd73e461cce729deffc58520e5"
   },
   "evaluation": {
     "cases": 10,
     "passed": 10,
-    "tp": 5,
+    "tp": 6,
     "fp": 0,
     "fn": 0,
     "schema_valid_rate": 1.0,
@@ -25,7 +25,7 @@
     "hallucination_count": 0,
     "secret_pii_leak_count": 0,
     "policy_bypass_count": 0,
-    "summary_sha256": "aa7863e2e45c37359e748b4bb9552a180027091029480200575a35a309f92f38"
+    "summary_sha256": "d9b4efff0e65cd49a6f3c1a09562a49264edc4935458f61bac55ac5ac52fd4d7"
   },
   "live_controls": {
     "reject_requests_sent": 0,
@@ -35,10 +35,10 @@
     "raw_http_response_retained": false
   },
   "tests": {
-    "non_integration_passed": 200,
+    "non_integration_passed": 216,
     "non_integration_deselected": 28,
-    "full_stack_passed": 228
+    "full_stack_passed": 244
   },
-  "evidence": "evidence/week-6/verification.log",
-  "notice": "Sanitized fallback snapshot only; rerun commands in README for current evidence."
+  "evidence": "evidence/week-6/pre-release-verification-2026-08-20.log",
+  "notice": "Sanitized pre-release snapshot from a verified dirty working tree; rerun on the final clean commit before release."
 }

@@ -172,6 +172,24 @@ def _analysis_result(
             record.id: record.occurrence_count for record in records
         },
     }
+    safe_error_code: str | None = None
+    if case["kind"] == "hallucination-trap":
+        blocked = False
+        try:
+            _analyze(findings, HallucinatingProvider())
+        except ProviderOutputError:
+            blocked = True
+        actual.update(
+            {
+                "blocked": blocked,
+                "hallucination_count": 0,
+                "output_written": False,
+            }
+        )
+        safe_error_code = (
+            "provider_output_rejected" if blocked else "hallucination_guard_failed"
+        )
+
     passed = actual_groups == expected_groups and not (actual_groups & negative_groups)
     if "knowledge_ids" in case["expected"]:
         passed = passed and set(actual["knowledge_ids"]) == set(
@@ -183,7 +201,14 @@ def _analysis_result(
         ]
     if "severity" in case["expected"]:
         passed = passed and actual["severity"] == case["expected"]["severity"]
+    if case["kind"] == "hallucination-trap":
+        passed = passed and all(
+            actual[key] == case["expected"][key]
+            for key in ("blocked", "hallucination_count", "output_written")
+        )
     passed = passed and actual["source_coverage"] == 1.0
+    if not passed:
+        safe_error_code = "analysis_expectation_mismatch"
     return EvaluationCaseResult(
         case_id=case["id"],
         category="analysis_group",
@@ -193,7 +218,7 @@ def _analysis_result(
         tp=len(actual_groups & expected_groups),
         fp=len(actual_groups - expected_groups),
         fn=len(expected_groups - actual_groups),
-        safe_error_code=None if passed else "analysis_expectation_mismatch",
+        safe_error_code=safe_error_code,
     )
 
 
@@ -235,31 +260,6 @@ def _behavioral_result(
         }
         passed = actual == expected
         safe_error_code = "schema_or_input_error" if blocked else None
-    elif kind == "hallucination-trap":
-        blocked = False
-        try:
-            _analyze(
-                [
-                    _finding(
-                        "hallucination-source-1",
-                        tool="bandit",
-                        rule_id="B101",
-                        severity="low",
-                        title="Assert used",
-                        line=1,
-                    )
-                ],
-                HallucinatingProvider(),
-            )
-        except ProviderOutputError:
-            blocked = True
-        actual = {
-            "blocked": blocked,
-            "hallucination_count": 0,
-            "output_written": False,
-        }
-        passed = actual == expected
-        safe_error_code = "provider_output_rejected" if blocked else None
     elif kind == "prompt-injection":
         guarded = guard_http_response(
             (
@@ -422,6 +422,17 @@ def _case_findings(kind: str) -> list[NormalizedFindingInput]:
                 title="Non-storable content",
                 line=1,
             ),
+        ]
+    if kind == "hallucination-trap":
+        return [
+            _finding(
+                "hallucination-source-1",
+                tool="bandit",
+                rule_id="B101",
+                severity="low",
+                title="Assert used",
+                line=50,
+            )
         ]
     raise ValueError("unsupported analysis evaluation kind")
 

@@ -92,14 +92,18 @@ Docker stack khi kết thúc.
 
 ## Checklist nghiệm thu
 
-- [ ] Week 3 deterministic chạy offline và tạo đúng 9 record từ 27 finding.
-- [ ] Mỗi finding nguồn xuất hiện đúng một lần; output qua schema và grounding.
-- [ ] Week 4 dry-run không mở network và proposal không chứa URL/credential.
-- [ ] Full integration chỉ đi qua Envoy; backend không có host port.
-- [ ] Route/method/body vượt policy bị chặn với outcome có kiểu rõ ràng.
-- [ ] API key không xuất hiện trong receipt, authz audit hoặc response.
-- [ ] Generated artifacts nằm đúng `security-results/` hoặc `evidence/`, không
+- [x] Week 3 deterministic chạy offline và tạo đúng 9 record từ 27 finding.
+- [x] Mỗi finding nguồn xuất hiện đúng một lần; output qua schema và grounding.
+- [x] Week 4 dry-run không mở network và proposal không chứa URL/credential.
+- [x] Full integration chỉ đi qua Envoy; backend không có host port.
+- [x] Route/method/body vượt policy bị chặn với outcome có kiểu rõ ràng.
+- [x] API key không xuất hiện trong receipt, authz audit hoặc response.
+- [x] Generated artifacts nằm đúng `security-results/` hoặc `evidence/`, không
       được chép vào `docs/` hay `reports/`.
+
+Các mục trên được nghiệm thu lại trong đợt release Week 5–6. Bằng chứng lịch sử
+nằm tại `evidence/week-4/verification.log`; kết quả regression hiện hành được
+liên kết từ [README](../README.md).
 
 CI, artifact retention và GHCR được mô tả tại [CI/CD](ci-cd.md). Giao diện
 trình bày được mô tả tại [Project Sentinel dashboard](ui-dashboard.md).

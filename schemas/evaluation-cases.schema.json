@@ -11,6 +11,26 @@
     "truth_unit": {"const": "expected_tool_rule_group_per_analysis_case"},
     "cases": {
       "type": "array", "minItems": 10, "maxItems": 10,
+      "allOf": [
+        {
+          "contains": {
+            "type": "object",
+            "required": ["category"],
+            "properties": {"category": {"const": "analysis_group"}}
+          },
+          "minContains": 5,
+          "maxContains": 5
+        },
+        {
+          "contains": {
+            "type": "object",
+            "required": ["category"],
+            "properties": {"category": {"const": "behavioral"}}
+          },
+          "minContains": 5,
+          "maxContains": 5
+        }
+      ],
       "items": {
         "type": "object", "additionalProperties": false,
         "required": ["id", "kind", "category", "description", "input", "expected", "allowed_variance", "pass_rule"],
@@ -23,7 +43,18 @@
           "expected": {"type": "object"},
           "allowed_variance": {"type": "array", "items": {"type": "string"}},
           "pass_rule": {"type": "string", "minLength": 1}
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "required": ["kind"],
+              "properties": {"kind": {"const": "hallucination-trap"}}
+            },
+            "then": {
+              "properties": {"category": {"const": "analysis_group"}}
+            }
+          }
+        ]
       }
     }
   }

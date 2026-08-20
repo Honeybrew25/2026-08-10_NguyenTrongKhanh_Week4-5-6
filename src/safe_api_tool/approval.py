@@ -215,21 +215,26 @@ class InteractiveApprovalProvider:
         timeout_seconds: float = 60.0,
         input_fn: Callable[[], str] = input,
         output_fn: Callable[[str], None] = print,
+        request_output_fn: Callable[[ApprovalRequestView, float], None] | None = None,
     ) -> None:
         self.timeout_seconds = timeout_seconds
         self.input_fn = input_fn
         self.output_fn = output_fn
+        self.request_output_fn = request_output_fn
 
     def request(self, view: ApprovalRequestView) -> ApprovalChoice:
-        self.output_fn(
-            json.dumps(
-                view.model_dump(mode="json"),
-                ensure_ascii=False,
-                sort_keys=True,
-                indent=2,
+        if self.request_output_fn is not None:
+            self.request_output_fn(view, self.timeout_seconds)
+        else:
+            self.output_fn(
+                json.dumps(
+                    view.model_dump(mode="json"),
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    indent=2,
+                )
             )
-        )
-        self.output_fn("Decision required: type Approve or Reject")
+            self.output_fn("Decision required: type Approve or Reject")
         responses: Queue[tuple[bool, str]] = Queue(maxsize=1)
 
         def read() -> None:
