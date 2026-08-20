@@ -8,31 +8,30 @@ evaluation và lệnh demo tái hiện được.
 
 ## Quá trình
 
-- Tạo `project_sentinel` runner theo state machine, một proposal/run, workspace
-  immutable, scanner provenance/hash, event log, metrics, final report và
-  manifest.
-- Thêm dry-run, interactive demo và deterministic CI; đóng gói one-shot runner
-  non-root trong Compose với trusted origin nội bộ và mount read-only.
-- Tạo bộ evaluation 10 case có expected/actual, truth unit TP/FP/FN, các trap
-  empty/invalid/hallucination/injection/redaction/approval và release threshold.
+- Nối kết quả quét, phần giải thích, đề xuất kiểm tra, phê duyệt và báo cáo cuối
+  thành một luồng thống nhất.
+- Chỉ cho phép các mẫu kiểm tra đã chuẩn bị sẵn. AI không được tự chọn địa chỉ,
+  tự phê duyệt hoặc gửi yêu cầu.
+- Thêm bốn tình huống demo: từ chối, phê duyệt, phản hồi có chỉ dẫn xấu và truy
+  cập đường dẫn quản trị.
 - Thêm CI Week 6 dùng Bandit/ZAP artefact cùng workflow, schema/hash/sentinel
   gate, product brief, kiến trúc.
 
 ## Kết quả
 
-- Fresh Bandit Low: **41 findings → 6 grounded groups**; Bandit High: **0**.
-- Evaluation: **10/10 Pass**, **TP=5, FP=0, FN=0**, source coverage/schema-valid
-  100%, hallucination/leak/policy bypass đều 0 trên dataset curate.
-- Non-integration: **200 passed, 28 deselected**; full Docker: **228 passed**.
-- Live controls: Reject gửi 0 request; Approve gửi đúng 1 bounded POST; prompt
-  injection bị quarantine; admin bị deny trước transport; Compose cleanup sạch.
-- Final report phân biệt scanner fact, AI narrative, human decision và request
-  result; status 200 chỉ là verification signal, không phải exploit proof.
+- Bandit tìm 41 cảnh báo mức Low, được gộp thành 6 nhóm; không có cảnh báo High.
+- Bộ đánh giá đạt 10/10: 5 trường hợp phân tích và 5 trường hợp xử lý. Kết quả
+  TP=6, FP=0, FN=0; không thấy dữ kiện bịa, rò rỉ dữ liệu hoặc vượt quy tắc.
+- Kiểm thử trên máy đạt 216 bài. Bằng chứng Docker gần nhất ghi nhận 244 bài đạt
+  và môi trường được dọn sạch sau khi chạy.
+- Khi chọn `Reject`, hệ thống không gửi yêu cầu. Khi chọn `Approve`, hệ thống chỉ
+  gửi đúng một yêu cầu qua Envoy.
+- Phản hồi chứa chỉ dẫn xấu bị cách ly; đường dẫn `/api/admin` bị chặn trước khi
+  gửi.
 
 ## Kết luận
 
-Các P0 chức năng Week 6 đã có code và evidence thực thi. Sản phẩm vẫn là lab:
-ZAP passive `/health`, Keycloak dev/HTTP local, rate limiter process-local và
-regex guard có phạm vi hữu hạn. Bước quản trị còn lại là owner review/stage/
-commit toàn bộ file bàn giao rồi ghi lại clean release revision; báo cáo này
-không giả rằng working tree hiện tại đã được version-control.
+Sản phẩm hiện đủ để demo và bàn giao trong môi trường học tập. Tuy nhiên, ZAP
+mới quét thụ động, Keycloak còn chạy chế độ phát triển và giới hạn số yêu cầu
+chưa dùng chung khi mở rộng. Trước khi gọi là bản phát hành cuối, dự án vẫn cần
+CI đạt trên commit sạch và một người khác chạy lại theo README.
