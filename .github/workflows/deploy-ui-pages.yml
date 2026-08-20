@@ -1,11 +1,17 @@
-name: Deploy dashboard to GitHub Pages (manual)
+name: Deploy dashboard to GitHub Pages
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/app/static/**"
+      - ".github/workflows/deploy-ui-pages.yml"
   workflow_dispatch:
 
 concurrency:
-  group: github-pages-manual
-  cancel-in-progress: false
+  group: github-pages
+  cancel-in-progress: true
 
 permissions:
   contents: read

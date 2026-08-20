@@ -246,7 +246,7 @@ def test_e2e_replay_is_grounded_in_sanitized_week6_snapshot() -> None:
         assert raw_value not in serialized
 
 
-def test_dashboard_is_self_contained_and_manual_deploy_is_gated() -> None:
+def test_dashboard_is_self_contained_and_main_deploy_is_gated() -> None:
     data = load_dashboard_data()
     index = (STATIC / "index.html").read_text(encoding="utf-8")
     styles = (STATIC / "styles.css").read_text(encoding="utf-8")
@@ -321,9 +321,16 @@ def test_dashboard_is_self_contained_and_manual_deploy_is_gated() -> None:
     )
 
     assert "  workflow_dispatch:" in workflow
-    assert "\n  push:" not in workflow
+    assert "\n  push:" in workflow
+    assert "    branches:\n      - main" in workflow
+    assert '      - "src/app/static/**"' in workflow
+    assert (
+        '      - ".github/workflows/deploy-ui-pages.yml"'
+        in workflow
+    )
     assert "\n  pull_request:" not in workflow
     assert "if: github.ref == 'refs/heads/main'" in workflow
+    assert "  cancel-in-progress: true" in workflow
     assert "path: src/app/static" in workflow
     assert "find src/app/static -type l" in workflow
     assert "expected_files=" in workflow
