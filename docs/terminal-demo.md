@@ -42,15 +42,22 @@ Terminal sẽ hỏi ba lần. Nhập theo thứ tự `Reject`, `Approve`, `Appro
 Approve cuối dành cho tình huống `wrong-type`. Hai tình huống bị policy từ chối
 không mở bước phê duyệt và không gửi request.
 
-Khi demo kết thúc, dùng đường dẫn file tổng kết mà terminal vừa in:
+Nếu demo chưa đạt, terminal sẽ ghi rõ tình huống bị lệch, kết quả mong đợi,
+kết quả thực tế và cách chạy lại. Ví dụ, nếu nhập `Approve` ở câu hỏi đầu,
+terminal sẽ báo tình huống Reject đã gửi một request thay vì dừng lại. File
+tổng kết cũng lưu các chi tiết này trong trường `expectation_failures`.
+
+Khi demo kết thúc, terminal in sẵn lệnh đầy đủ với đường dẫn tương đối. Copy
+nguyên dòng `Lệnh cập nhật dashboard` để cập nhật dữ liệu trên giao diện:
 
 ```bash
 python scripts/build_dashboard_replay.py "<demo-summary>"
 ```
 
 Lệnh này chỉ nhận bản tổng kết `extended` đủ tám tình huống rồi cập nhật dữ
-liệu phát lại đã làm sạch. Nếu giao diện đang chạy trong Docker, build lại
-container rồi nhấn `Ctrl+F5`:
+liệu phát lại đã làm sạch. Khi thành công, terminal sẽ báo `DASHBOARD ĐÃ CẬP
+NHẬT`, tên demo, số tình huống, hai file đã thay đổi và lệnh mở lại giao diện.
+Nếu giao diện đang chạy trong Docker, build lại container rồi nhấn `Ctrl+F5`:
 
 ```bash
 docker compose up --build --detach --wait --wait-timeout 180

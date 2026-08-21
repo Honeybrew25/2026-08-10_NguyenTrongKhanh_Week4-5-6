@@ -327,15 +327,8 @@ def _demo_run_record(scenario_id: str, report: FinalReport) -> dict[str, object]
     }
 
 
-def _demo_expectations_met(
-    scenario_set: str,
-    runs: Sequence[dict[str, object]],
-) -> bool:
-    expected_ids = [item.scenario_id for item in _scenario_plan(scenario_set)]
-    if [item.get("scenario_id") for item in runs] != expected_ids:
-        return False
-
-    expected_by_id: dict[str, dict[str, object]] = {
+def _demo_expected_run_facts() -> dict[str, dict[str, object]]:
+    return {
         "reject": {
             "status": "rejected",
             "endpoint_id": "input-validation",
@@ -488,10 +481,109 @@ def _demo_expectations_met(
             "guard_state": "not_run",
         },
     }
-    return all(
-        all(run.get(key) == value for key, value in expected_by_id[scenario_id].items())
-        for scenario_id, run in zip(expected_ids, runs, strict=True)
-    )
+
+
+_DEMO_DIAGNOSTIC_FIELDS = (
+    "human_decision",
+    "status",
+    "requests_sent",
+    "http_status",
+    "expected_status_matched",
+    "injection_flags",
+    "safe_code",
+    "guard_state",
+)
+
+_DEMO_FIELD_LABELS = {
+    "human_decision": "Quyết định",
+    "status": "Trạng thái",
+    "requests_sent": "Request đã gửi",
+    "http_status": "HTTP thực tế",
+    "expected_status_matched": "HTTP khớp kỳ vọng",
+    "injection_flags": "Cảnh báo injection",
+    "safe_code": "Mã nguyên nhân",
+    "guard_state": "Kiểm tra phản hồi",
+}
+
+_DEMO_RETRY_GUIDANCE = {
+    "reject": "Chạy lại và nhập Reject ở lần phê duyệt đầu tiên.",
+    "approve": "Nhập Approve ở lần phê duyệt thứ hai; Gateway phải nhận đúng một request.",
+    "injection": "Kiểm tra response độc hại được cách ly và không tạo request tiếp theo.",
+    "admin": "Kiểm tra endpoint admin vẫn bị policy chặn trước khi gửi request.",
+    "status": "Kiểm tra Gateway sẵn sàng và GET trạng thái trả HTTP 200.",
+    "wrong-type": "Nhập Approve ở lần phê duyệt thứ ba; HTTP 422 phải đúng kỳ vọng.",
+    "test-case-denied": "Kiểm tra test case sai phạm vi vẫn bị policy chặn.",
+    "header-denied": "Kiểm tra header ngoài allowlist vẫn bị policy chặn.",
+}
+
+
+def _demo_fact_label(value: object) -> str:
+    if value is None:
+        return "Không có"
+    if value is True:
+        return "Có"
+    if value is False:
+        return "Không"
+    labels = {
+        "approve": "Approve",
+        "reject": "Reject",
+        "not_required": "Không cần phê duyệt",
+        "completed": "Hoàn tất",
+        "rejected": "Đã từ chối",
+        "blocked": "Đã chặn",
+        "not_run": "Không chạy",
+        "sanitized": "Đã kiểm tra và làm sạch",
+        "quarantined": "Đã cách ly",
+    }
+    return labels.get(value, str(value))
+
+
+def _demo_expectation_failures(
+    scenario_set: str,
+    runs: Sequence[dict[str, object]],
+) -> dict[str, tuple[str, ...]]:
+    expected_ids = [item.scenario_id for item in _scenario_plan(scenario_set)]
+    actual_ids = [item.get("scenario_id") for item in runs]
+    if actual_ids != expected_ids:
+        return {
+            "__demo__": (
+                "Danh sách hoặc thứ tự tình huống không khớp bộ demo đã chọn.",
+                "Chạy lại toàn bộ demo và không bỏ qua tình huống.",
+            )
+        }
+
+    expected_by_id = _demo_expected_run_facts()
+    failures: dict[str, tuple[str, ...]] = {}
+    for scenario_id, run in zip(expected_ids, runs, strict=True):
+        expected = expected_by_id[scenario_id]
+        mismatched = [
+            field
+            for field, expected_value in expected.items()
+            if run.get(field) != expected_value
+        ]
+        if not mismatched:
+            continue
+        visible = [field for field in _DEMO_DIAGNOSTIC_FIELDS if field in mismatched]
+        if not visible:
+            visible = mismatched[:3]
+        details = [
+            (
+                f"{_DEMO_FIELD_LABELS.get(field, field)}: mong đợi "
+                f"{_demo_fact_label(expected[field])}, thực tế "
+                f"{_demo_fact_label(run.get(field))}."
+            )
+            for field in visible
+        ]
+        details.append(_DEMO_RETRY_GUIDANCE[scenario_id])
+        failures[scenario_id] = tuple(details)
+    return failures
+
+
+def _demo_expectations_met(
+    scenario_set: str,
+    runs: Sequence[dict[str, object]],
+) -> bool:
+    return not _demo_expectation_failures(scenario_set, runs)
 
 
 def _print_report(report, workspace: Path) -> None:
@@ -708,11 +800,23 @@ def _demo_command(arguments: argparse.Namespace) -> int:
         _demo_run_record(scenario_id, report)
         for scenario_id, report in scenario_reports
     ]
+    expectation_failures = (
+        {}
+        if not arguments.execute
+        else _demo_expectation_failures(arguments.scenario_set, run_records)
+    )
     expectations_met = (
         reports[0].status in {"dry_run", "completed_no_findings"}
         if not arguments.execute
-        else _demo_expectations_met(arguments.scenario_set, run_records)
+        else not expectation_failures
     )
+    presentation_failures = {
+        report.run_id: expectation_failures[scenario_id]
+        for scenario_id, report in scenario_reports
+        if scenario_id in expectation_failures
+    }
+    if "__demo__" in expectation_failures:
+        presentation_failures["__demo__"] = expectation_failures["__demo__"]
 
     summary_path = arguments.output_root / f"{session_id}-summary.json"
     atomic_json(
@@ -725,6 +829,13 @@ def _demo_command(arguments: argparse.Namespace) -> int:
             "scan_source": scan_source,
             "one_proposal_per_run": True,
             "expectations_met": expectations_met,
+            "expectation_failures": [
+                {
+                    "scenario_id": scenario_id,
+                    "details": list(details),
+                }
+                for scenario_id, details in expectation_failures.items()
+            ],
             "runs": run_records,
             "totals": {
                 "runs": len(reports),
@@ -741,7 +852,12 @@ def _demo_command(arguments: argparse.Namespace) -> int:
         },
     )
     if presenter is not None:
-        presenter.demo_summary(reports, summary_path, expectations_met)
+        presenter.demo_summary(
+            reports,
+            summary_path,
+            expectations_met,
+            expectation_failures=presentation_failures,
+        )
     else:
         for report in reports:
             _print_report(report, arguments.output_root)

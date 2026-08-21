@@ -11,6 +11,12 @@ from project_sentinel.dashboard_replay import ReplayValidationError, update_dash
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _use_utf8_stdout() -> None:
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if callable(reconfigure):
+        reconfigure(encoding="utf-8")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
@@ -36,6 +42,13 @@ def main(argv: list[str] | None = None) -> int:
             / "dashboard-replay.json"
         ),
     )
+    parser.add_argument(
+        "--format",
+        dest="output_format",
+        choices=("human", "json"),
+        default="human",
+        help="Use human output for the terminal or json for automation.",
+    )
     arguments = parser.parse_args(argv)
     try:
         snapshot = update_dashboard_replay(
@@ -55,19 +68,26 @@ def main(argv: list[str] | None = None) -> int:
     except OSError:
         print("dashboard_replay_error:io_error", file=sys.stderr)
         return 1
-    print(
-        json.dumps(
-            {
-                "dashboard_replay": "updated",
-                "demo_id": snapshot["demo_id"],
-                "scenarios": len(snapshot["scenario_ids"]),
-                "dashboard_data": str(arguments.dashboard_data),
-                "snapshot": str(arguments.snapshot_output),
-            },
-            ensure_ascii=False,
-            sort_keys=True,
-        )
-    )
+    result = {
+        "dashboard_replay": "updated",
+        "demo_id": snapshot["demo_id"],
+        "scenarios": len(snapshot["scenario_ids"]),
+        "dashboard_data": str(arguments.dashboard_data),
+        "snapshot": str(arguments.snapshot_output),
+    }
+    if arguments.output_format == "json":
+        print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+    else:
+        _use_utf8_stdout()
+        print("DASHBOARD ĐÃ CẬP NHẬT")
+        print(f"Demo: {result['demo_id']}")
+        print(f"Tình huống: {result['scenarios']}/8")
+        print(f"Dữ liệu giao diện: {result['dashboard_data']}")
+        print(f"Bản kiểm chứng: {result['snapshot']}")
+        print()
+        print("Để xem dữ liệu mới:")
+        print("  docker compose up --build --detach --wait --wait-timeout 180")
+        print("  Mở http://localhost:8080/ui/ rồi nhấn Ctrl+F5")
     return 0
 
 

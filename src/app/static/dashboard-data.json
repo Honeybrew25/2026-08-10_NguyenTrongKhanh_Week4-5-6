@@ -282,8 +282,8 @@
     "scenarios": [
       {
         "id": "reject",
-        "runId": "demo-20260820-095312-52e9fe74-reject",
-        "sourceLabel": "Demo demo-20260820-095312-52e9fe74",
+        "runId": "demo-20260821-014708-cbe62d12-reject",
+        "sourceLabel": "Demo demo-20260821-014708-cbe62d12",
         "label": "Xem Reject",
         "tag": "HUMAN DECISION",
         "focusStage": "approval",
@@ -362,8 +362,8 @@
       },
       {
         "id": "approve",
-        "runId": "demo-20260820-095312-52e9fe74-approve",
-        "sourceLabel": "Demo demo-20260820-095312-52e9fe74",
+        "runId": "demo-20260821-014708-cbe62d12-approve",
+        "sourceLabel": "Demo demo-20260821-014708-cbe62d12",
         "label": "Xem Approve",
         "tag": "BOUNDED EXECUTION",
         "focusStage": "approval",
@@ -442,8 +442,8 @@
       },
       {
         "id": "injection",
-        "runId": "demo-20260820-095312-52e9fe74-injection",
-        "sourceLabel": "Demo demo-20260820-095312-52e9fe74",
+        "runId": "demo-20260821-014708-cbe62d12-injection",
+        "sourceLabel": "Demo demo-20260821-014708-cbe62d12",
         "label": "Xem Injection",
         "tag": "UNTRUSTED RESPONSE",
         "focusStage": "response_guard",
@@ -522,8 +522,8 @@
       },
       {
         "id": "admin",
-        "runId": "demo-20260820-095312-52e9fe74-admin-negative",
-        "sourceLabel": "Demo demo-20260820-095312-52e9fe74",
+        "runId": "demo-20260821-014708-cbe62d12-admin-negative",
+        "sourceLabel": "Demo demo-20260821-014708-cbe62d12",
         "label": "Xem Admin bị chặn",
         "tag": "NEGATIVE CONTROL",
         "focusStage": "proposal",
@@ -602,8 +602,8 @@
       },
       {
         "id": "status",
-        "runId": "demo-20260820-095312-52e9fe74-status",
-        "sourceLabel": "Demo demo-20260820-095312-52e9fe74",
+        "runId": "demo-20260821-014708-cbe62d12-status",
+        "sourceLabel": "Demo demo-20260821-014708-cbe62d12",
         "label": "Xem trạng thái",
         "tag": "SAFE GET",
         "focusStage": "request",
@@ -682,8 +682,8 @@
       },
       {
         "id": "wrong-type",
-        "runId": "demo-20260820-095312-52e9fe74-wrong-type",
-        "sourceLabel": "Demo demo-20260820-095312-52e9fe74",
+        "runId": "demo-20260821-014708-cbe62d12-wrong-type",
+        "sourceLabel": "Demo demo-20260821-014708-cbe62d12",
         "label": "Xem sai kiểu",
         "tag": "EXPECTED VALIDATION",
         "focusStage": "request",
@@ -762,8 +762,8 @@
       },
       {
         "id": "test-case-denied",
-        "runId": "demo-20260820-095312-52e9fe74-test-case-denied",
-        "sourceLabel": "Demo demo-20260820-095312-52e9fe74",
+        "runId": "demo-20260821-014708-cbe62d12-test-case-denied",
+        "sourceLabel": "Demo demo-20260821-014708-cbe62d12",
         "label": "Xem test case bị chặn",
         "tag": "POLICY DENY",
         "focusStage": "proposal",
@@ -842,8 +842,8 @@
       },
       {
         "id": "header-denied",
-        "runId": "demo-20260820-095312-52e9fe74-header-denied",
-        "sourceLabel": "Demo demo-20260820-095312-52e9fe74",
+        "runId": "demo-20260821-014708-cbe62d12-header-denied",
+        "sourceLabel": "Demo demo-20260821-014708-cbe62d12",
         "label": "Xem header bị chặn",
         "tag": "HEADER BOUNDARY",
         "focusStage": "proposal",
