@@ -56,11 +56,4 @@ python -m security_pipeline search "security headers"
 ## Điều em học được
 
 Qua công việc tuần này, em hiểu rằng mỗi công cụ bảo mật có định dạng kết quả
-khác nhau nên cần một lớp chuẩn hóa trước khi đưa dữ liệu cho AI Agent. Em cũng
-hiểu rõ hơn sự khác nhau giữa cảnh báo của công cụ và lỗ hổng thực tế: kết quả
-quét cần được kết hợp với kiến thức bảo mật và ngữ cảnh của source code trước
-khi đưa ra kết luận.
-
-Em thiết kế chương trình theo từng adapter riêng cho Bandit và ZAP. Nhờ đó, khi
-cần hỗ trợ thêm công cụ như Semgrep, phần tổng hợp và tìm kiếm hiện tại có thể
-được giữ nguyên, chỉ cần bổ sung adapter mới.
+khác nhau nên cần một lớp chuẩn hóa trước khi đưa dữ liệu cho AI Agent. Hiểu rõ hơn sự khác nhau giữa cảnh báo của công cụ và lỗ hổng thực tế: kết quả quét cần được kết hợp với kiến thức bảo mật và ngữ cảnh của source code trước khi đưa ra kết luận.
