@@ -13,7 +13,6 @@ Project đã thực hiện cả hai hình thức kiểm tra:
 | Có quy trình CI | GitHub Actions chạy unit test, Bandit, Docker integration và ZAP khi push/PR | [`security-scan.yml`](../.github/workflows/security-scan.yml) |
 | Công cụ quét tự động | Bandit chạy bằng một lệnh; Bandit và ZAP được chạy trong CI | [`run_security_scan.py`](../scripts/run_security_scan.py) |
 | Lưu kết quả JSON | Lưu baseline của Bandit và ZAP trong repository | [`bandit-baseline.json`](../security-results/bandit-baseline.json), [`zap-baseline-local.json`](../security-results/zap-baseline-local.json) |
-| Có hướng dẫn tái lập | README hướng dẫn cài dependency, chạy ứng dụng, test và scan | [`README.md`](../README.md) |
 
 ## 2. Kiến trúc
 
@@ -81,13 +80,7 @@ python scripts/run_security_scan.py `
     --severity-level low
 ```
 
-Lần xác minh local ngày 29/07/2026 đạt **29 test passed**. Lệnh Bandit ở ngưỡng
-`low` trả exit code `1` khi có finding nhưng vẫn tạo JSON thành công. Hướng dẫn
-chạy ZAP và cách đọc kết quả nằm trong [`docs/week1.md`](../docs/week1.md).
-
 ## 6. Kết luận
 
 Ứng dụng Docker chạy được, có CI
-quét tự động, có kết quả JSON, có danh sách endpoint và có tài liệu để thành
-viên khác tái lập. Bandit và ZAP Baseline chỉ cung cấp kiểm tra bảo mật cơ bản;
-kết quả không có High finding không có nghĩa hệ thống đã an toàn hoàn toàn.
+quét tự động, có kết quả JSON, có danh sách endpoint và tài liệu tái lập. Bandit và ZAP Baseline chỉ cung cấp kiểm tra bảo mật cơ bản; kết quả không có High finding không có nghĩa hệ thống đã an toàn hoàn toàn.

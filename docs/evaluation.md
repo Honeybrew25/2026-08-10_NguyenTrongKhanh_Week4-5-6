@@ -47,15 +47,4 @@ Bandit tìm 41 cảnh báo Low, được gộp thành sáu nhóm:
 | `B603` | low | 7 | Dùng tham số cố định và `shell=False`. |
 | `B607` | low | 4 | Gọi `git`/`docker` bằng tên; môi trường thật nên dùng đường dẫn rõ. |
 
-Đây là danh sách cần xem lại, không phải bằng chứng khai thác. ZAP chỉ quét thụ
-động từ `/health`.
 
-## Nên làm tiếp
-
-1. Thay `assert` vận hành bằng lỗi rõ ràng.
-2. Chỉ bỏ qua cảnh báo Bandit theo từng dòng và ghi lý do.
-3. Mở rộng ZAP cho luồng đăng nhập; thêm kiểm tra thư viện và container.
-4. Mở rộng bộ đánh giá và nhờ người khác chạy lại.
-
-Kết quả nằm trong `security-results/runs/week-6/`; xem liên kết tại
-[README](../README.md). Tài liệu này chỉ dùng dữ liệu sạch.
