@@ -91,6 +91,8 @@ _RECEIPT_OUTCOME_LABELS = {
 _SAFE_REASON_LABELS = {
     "approval_rejected": "Người dùng từ chối",
     "endpoint_not_allowed": "Endpoint nằm ngoài allowlist",
+    "header_not_allowed": "Header nằm ngoài allowlist",
+    "test_case_not_allowed": "Test case không được phép cho endpoint",
 }
 
 _INJECTION_REASON_LABELS = {
@@ -444,6 +446,25 @@ class TerminalDemoPresenter:
             _text(sum(item.metrics.requests_sent for item in reports)),
         )
         totals.add_row(
+            "Tổng phê duyệt / từ chối",
+            _text(
+                f"{sum(item.metrics.approvals for item in reports)} / "
+                f"{sum(item.metrics.rejections for item in reports)}"
+            ),
+        )
+        totals.add_row(
+            "Tổng cảnh báo injection",
+            _text(sum(item.metrics.injection_flags for item in reports)),
+        )
+        totals.add_row(
+            "Tổng dữ liệu đã che",
+            _text(sum(item.metrics.redactions for item in reports)),
+        )
+        totals.add_row(
+            "Tổng lỗi",
+            _text(sum(item.metrics.errors for item in reports)),
+        )
+        totals.add_row(
             "Kỳ vọng",
             _text(
                 "Đạt" if expectations_met else "Chưa đạt",
@@ -468,7 +489,11 @@ class TerminalDemoPresenter:
     @staticmethod
     def _run_label(run_id: str) -> str:
         labels = {
+            "-test-case-denied": "Test case không được phép",
+            "-header-denied": "Header không được phép",
             "-admin-negative": "Đường dẫn admin bị chặn",
+            "-wrong-type": "Sai kiểu dữ liệu có kiểm soát",
+            "-status": "GET trạng thái không cần phê duyệt",
             "-injection": "Prompt injection bị cách ly",
             "-approve": "Người dùng phê duyệt",
             "-reject": "Người dùng từ chối",

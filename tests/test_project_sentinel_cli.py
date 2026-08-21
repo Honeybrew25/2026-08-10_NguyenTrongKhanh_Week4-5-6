@@ -3,12 +3,37 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import re
+from types import SimpleNamespace
 
 import project_sentinel.__main__ as cli_module
 from project_sentinel.runner import GatewayPreflightError
 
 
 main = cli_module.main
+
+
+SUMMARY_RUN_KEYS = {
+    "scenario_id",
+    "run_id",
+    "status",
+    "endpoint_id",
+    "test_case_id",
+    "method",
+    "path",
+    "human_decision",
+    "requests_sent",
+    "approvals",
+    "rejections",
+    "injection_flags",
+    "redactions",
+    "errors",
+    "receipt_outcome",
+    "http_status",
+    "expected_status",
+    "expected_status_matched",
+    "safe_code",
+    "guard_state",
+}
 
 
 def _empty_bandit(path: Path) -> Path:
@@ -24,6 +49,94 @@ def _empty_bandit(path: Path) -> Path:
         encoding="utf-8",
     )
     return path
+
+
+def test_demo_scenario_set_defaults_to_core_and_extended_order_is_stable() -> None:
+    parser = cli_module._parser()
+
+    core = parser.parse_args(["demo"])
+    extended = parser.parse_args(["demo", "--scenario-set", "extended"])
+
+    assert core.scenario_set == "core"
+    assert [item.scenario_id for item in cli_module._scenario_plan(core.scenario_set)] == [
+        "reject",
+        "approve",
+        "injection",
+        "admin",
+    ]
+    assert [
+        item.scenario_id for item in cli_module._scenario_plan(extended.scenario_set)
+    ] == [
+        "reject",
+        "approve",
+        "injection",
+        "admin",
+        "status",
+        "wrong-type",
+        "test-case-denied",
+        "header-denied",
+    ]
+
+
+def test_proposal_factory_accepts_test_case_and_requested_headers() -> None:
+    factory = cli_module._proposal_factory(
+        "input-validation",
+        "wrong-type",
+        {"authorization": "blocked-fixture"},
+        rationale="Controlled policy check.",
+    )
+
+    proposal = factory(SimpleNamespace(source_finding_ids=["finding-1"]))
+
+    assert proposal.endpoint_id == "input-validation"
+    assert proposal.test_case_id == "wrong-type"
+    assert proposal.requested_headers == {"authorization": "blocked-fixture"}
+
+
+def test_demo_summary_run_record_is_complete_and_omits_sensitive_details() -> None:
+    report = SimpleNamespace(
+        run_id="demo-contract-header-denied",
+        status="blocked",
+        proposal=SimpleNamespace(
+            endpoint_id="input-validation",
+            test_case_id="empty",
+            rationale="rationale-must-not-print",
+            requested_headers={"authorization": "header-value-must-not-print"},
+        ),
+        execution_receipt=SimpleNamespace(
+            endpoint_id="input-validation",
+            test_case_id="empty",
+            method=None,
+            path=None,
+            outcome="policy_denied",
+            status_code=None,
+            expected_status=None,
+            expected_status_matched=None,
+            reason="header_not_allowed",
+            response_excerpt="response-excerpt-must-not-print",
+        ),
+        guarded_response=None,
+        human_decision="not_required",
+        safe_error_codes=["fallback-must-not-win"],
+        metrics=SimpleNamespace(
+            requests_sent=0,
+            approvals=0,
+            rejections=0,
+            injection_flags=0,
+            redactions=0,
+            errors=0,
+        ),
+    )
+
+    record = cli_module._demo_run_record("header-denied", report)
+    serialized = json.dumps(record)
+
+    assert set(record) == SUMMARY_RUN_KEYS
+    assert record["safe_code"] == "header_not_allowed"
+    assert record["guard_state"] == "not_run"
+    assert "header-value-must-not-print" not in serialized
+    assert "response-excerpt-must-not-print" not in serialized
+    assert "rationale-must-not-print" not in serialized
 
 
 def test_demo_json_mode_keeps_machine_readable_output(
