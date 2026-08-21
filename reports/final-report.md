@@ -2,8 +2,7 @@
 
 ## Mục tiêu
 
-Tổng kết quá trình từ tuần 1 đến tuần 6, đồng thời nêu rõ
-kết quả đã đạt, điểm mạnh và phần còn giới hạn.
+Tổng kết quá trình từ tuần 1 đến tuần 6, đồng thời nêu kết quả đã đạt, điểm mạnh và phần còn giới hạn.
 
 ## Quá trình
 
@@ -36,10 +35,6 @@ kết quả cuối có thể giải thích và kiểm tra lại, thay vì chỉ 
 Điểm quan trọng nhất của sản phẩm là AI không được tự quyết định hành động. AI
 chỉ hỗ trợ giải thích; code giới hạn đường dẫn và dữ liệu; người dùng quyết định
 có gửi hay không; Envoy kiểm tra lại trước khi yêu cầu đến ứng dụng. Mỗi bước
-đều có nguồn và kết quả đối chiếu. Đây là phần thể hiện rõ tư duy an toàn của dự
-án và cũng là giá trị chính khi trình bày với mentor.
+đều có nguồn và kết quả đối chiếu.
 
-Sản phẩm hiện đủ để demo và bàn giao trong môi trường học tập. Tuy nhiên, ZAP
-mới quét thụ động, Keycloak còn chạy chế độ phát triển và giới hạn số yêu cầu
-chưa dùng chung khi mở rộng. Trước khi gọi là bản phát hành cuối, dự án vẫn cần
-CI đạt trên commit sạch và một người khác chạy lại theo README.
+Tuy nhiên, ZAP mới quét thụ động, Keycloak còn chạy chế độ phát triển và giới hạn số yêu cầu.

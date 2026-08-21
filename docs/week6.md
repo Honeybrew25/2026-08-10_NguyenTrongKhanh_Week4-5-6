@@ -54,5 +54,3 @@ Các chức năng chính đã có bằng chứng local. Giới hạn của lab: 
 động `/health`, Keycloak chạy chế độ phát triển, số yêu cầu được nhớ riêng theo
 từng tiến trình.
 
-Bản cuối còn chờ commit sạch, CI trên GitHub và người khác chạy lại từ README.
-Xem [phiếu nghiệm thu](release-acceptance.md).
