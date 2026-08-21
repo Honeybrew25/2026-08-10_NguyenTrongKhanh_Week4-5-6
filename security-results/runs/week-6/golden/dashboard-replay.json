@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "source_summary_sha256": "340761b3ef2dfb017686ea3eaf88ae5f898317dd2f29821da7c9f14933142ba9",
-  "demo_id": "demo-20260820-095312-52e9fe74",
+  "source_summary_sha256": "cc4389007ae1b2535c9700f5dfedae6b175175b4ddc14bb8e9d8446a6953048c",
+  "demo_id": "demo-20260821-014708-cbe62d12",
   "scenario_set": "extended",
   "scenario_ids": [
     "reject",
@@ -13,17 +13,17 @@
     "test-case-denied",
     "header-denied"
   ],
-  "validated_summary_sha256": "dbb714e5cd8d0b61ae7b7d966d760832da54f59117eecb56157e336865923930",
+  "validated_summary_sha256": "f1112f795bc3359d38a21826cdd09cf1e8bffe308332f228176564e001a802af",
   "validated_summary": {
     "schema_version": "1.0",
-    "demo_id": "demo-20260820-095312-52e9fe74",
+    "demo_id": "demo-20260821-014708-cbe62d12",
     "one_proposal_per_run": true,
     "expectations_met": true,
     "scenario_set": "extended",
     "runs": [
       {
         "scenario_id": "reject",
-        "run_id": "demo-20260820-095312-52e9fe74-reject",
+        "run_id": "demo-20260821-014708-cbe62d12-reject",
         "status": "rejected",
         "endpoint_id": "input-validation",
         "test_case_id": "empty",
@@ -45,7 +45,7 @@
       },
       {
         "scenario_id": "approve",
-        "run_id": "demo-20260820-095312-52e9fe74-approve",
+        "run_id": "demo-20260821-014708-cbe62d12-approve",
         "status": "completed",
         "endpoint_id": "input-validation",
         "test_case_id": "empty",
@@ -67,7 +67,7 @@
       },
       {
         "scenario_id": "injection",
-        "run_id": "demo-20260820-095312-52e9fe74-injection",
+        "run_id": "demo-20260821-014708-cbe62d12-injection",
         "status": "completed",
         "endpoint_id": "prompt-injection-fixture",
         "test_case_id": "empty",
@@ -89,7 +89,7 @@
       },
       {
         "scenario_id": "admin",
-        "run_id": "demo-20260820-095312-52e9fe74-admin-negative",
+        "run_id": "demo-20260821-014708-cbe62d12-admin-negative",
         "status": "blocked",
         "endpoint_id": "admin",
         "test_case_id": "empty",
@@ -111,7 +111,7 @@
       },
       {
         "scenario_id": "status",
-        "run_id": "demo-20260820-095312-52e9fe74-status",
+        "run_id": "demo-20260821-014708-cbe62d12-status",
         "status": "completed",
         "endpoint_id": "test-status",
         "test_case_id": "empty",
@@ -133,7 +133,7 @@
       },
       {
         "scenario_id": "wrong-type",
-        "run_id": "demo-20260820-095312-52e9fe74-wrong-type",
+        "run_id": "demo-20260821-014708-cbe62d12-wrong-type",
         "status": "completed",
         "endpoint_id": "input-validation",
         "test_case_id": "wrong-type",
@@ -155,7 +155,7 @@
       },
       {
         "scenario_id": "test-case-denied",
-        "run_id": "demo-20260820-095312-52e9fe74-test-case-denied",
+        "run_id": "demo-20260821-014708-cbe62d12-test-case-denied",
         "status": "blocked",
         "endpoint_id": "test-status",
         "test_case_id": "wrong-type",
@@ -177,7 +177,7 @@
       },
       {
         "scenario_id": "header-denied",
-        "run_id": "demo-20260820-095312-52e9fe74-header-denied",
+        "run_id": "demo-20260821-014708-cbe62d12-header-denied",
         "status": "blocked",
         "endpoint_id": "input-validation",
         "test_case_id": "empty",
@@ -277,8 +277,8 @@
     "scenarios": [
       {
         "id": "reject",
-        "runId": "demo-20260820-095312-52e9fe74-reject",
-        "sourceLabel": "Demo demo-20260820-095312-52e9fe74",
+        "runId": "demo-20260821-014708-cbe62d12-reject",
+        "sourceLabel": "Demo demo-20260821-014708-cbe62d12",
         "label": "Xem Reject",
         "tag": "HUMAN DECISION",
         "focusStage": "approval",
@@ -357,8 +357,8 @@
       },
       {
         "id": "approve",
-        "runId": "demo-20260820-095312-52e9fe74-approve",
-        "sourceLabel": "Demo demo-20260820-095312-52e9fe74",
+        "runId": "demo-20260821-014708-cbe62d12-approve",
+        "sourceLabel": "Demo demo-20260821-014708-cbe62d12",
         "label": "Xem Approve",
         "tag": "BOUNDED EXECUTION",
         "focusStage": "approval",
@@ -437,8 +437,8 @@
       },
       {
         "id": "injection",
-        "runId": "demo-20260820-095312-52e9fe74-injection",
-        "sourceLabel": "Demo demo-20260820-095312-52e9fe74",
+        "runId": "demo-20260821-014708-cbe62d12-injection",
+        "sourceLabel": "Demo demo-20260821-014708-cbe62d12",
         "label": "Xem Injection",
         "tag": "UNTRUSTED RESPONSE",
         "focusStage": "response_guard",
@@ -517,8 +517,8 @@
       },
       {
         "id": "admin",
-        "runId": "demo-20260820-095312-52e9fe74-admin-negative",
-        "sourceLabel": "Demo demo-20260820-095312-52e9fe74",
+        "runId": "demo-20260821-014708-cbe62d12-admin-negative",
+        "sourceLabel": "Demo demo-20260821-014708-cbe62d12",
         "label": "Xem Admin bị chặn",
         "tag": "NEGATIVE CONTROL",
         "focusStage": "proposal",
@@ -597,8 +597,8 @@
       },
       {
         "id": "status",
-        "runId": "demo-20260820-095312-52e9fe74-status",
-        "sourceLabel": "Demo demo-20260820-095312-52e9fe74",
+        "runId": "demo-20260821-014708-cbe62d12-status",
+        "sourceLabel": "Demo demo-20260821-014708-cbe62d12",
         "label": "Xem trạng thái",
         "tag": "SAFE GET",
         "focusStage": "request",
@@ -677,8 +677,8 @@
       },
       {
         "id": "wrong-type",
-        "runId": "demo-20260820-095312-52e9fe74-wrong-type",
-        "sourceLabel": "Demo demo-20260820-095312-52e9fe74",
+        "runId": "demo-20260821-014708-cbe62d12-wrong-type",
+        "sourceLabel": "Demo demo-20260821-014708-cbe62d12",
         "label": "Xem sai kiểu",
         "tag": "EXPECTED VALIDATION",
         "focusStage": "request",
@@ -757,8 +757,8 @@
       },
       {
         "id": "test-case-denied",
-        "runId": "demo-20260820-095312-52e9fe74-test-case-denied",
-        "sourceLabel": "Demo demo-20260820-095312-52e9fe74",
+        "runId": "demo-20260821-014708-cbe62d12-test-case-denied",
+        "sourceLabel": "Demo demo-20260821-014708-cbe62d12",
         "label": "Xem test case bị chặn",
         "tag": "POLICY DENY",
         "focusStage": "proposal",
@@ -837,8 +837,8 @@
       },
       {
         "id": "header-denied",
-        "runId": "demo-20260820-095312-52e9fe74-header-denied",
-        "sourceLabel": "Demo demo-20260820-095312-52e9fe74",
+        "runId": "demo-20260821-014708-cbe62d12-header-denied",
+        "sourceLabel": "Demo demo-20260821-014708-cbe62d12",
         "label": "Xem header bị chặn",
         "tag": "HEADER BOUNDARY",
         "focusStage": "proposal",

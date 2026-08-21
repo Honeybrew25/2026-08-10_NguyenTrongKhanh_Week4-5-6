@@ -400,3 +400,58 @@ def test_cli_hides_io_error_details(
     assert captured.out == ""
     assert captured.err.strip() == "dashboard_replay_error:io_error"
     assert sensitive_detail not in captured.err
+
+
+def test_cli_success_explains_how_to_view_the_updated_dashboard(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    summary_path, dashboard_path, snapshot_path = _write_inputs(tmp_path, _summary())
+
+    exit_code = replay_cli.main(
+        [
+            str(summary_path),
+            "--dashboard-data",
+            str(dashboard_path),
+            "--snapshot-output",
+            str(snapshot_path),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert captured.err == ""
+    assert "DASHBOARD ĐÃ CẬP NHẬT" in captured.out
+    assert "Demo: demo-safe" in captured.out
+    assert "Tình huống: 8/8" in captured.out
+    assert str(dashboard_path) in captured.out
+    assert str(snapshot_path) in captured.out
+    assert "docker compose up --build" in captured.out
+    assert "http://localhost:8080/ui/" in captured.out
+
+
+def test_cli_json_format_remains_machine_readable(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    summary_path, dashboard_path, snapshot_path = _write_inputs(tmp_path, _summary())
+
+    exit_code = replay_cli.main(
+        [
+            str(summary_path),
+            "--dashboard-data",
+            str(dashboard_path),
+            "--snapshot-output",
+            str(snapshot_path),
+            "--format",
+            "json",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    result = json.loads(captured.out)
+    assert exit_code == 0
+    assert captured.err == ""
+    assert result["dashboard_replay"] == "updated"
+    assert result["demo_id"] == "demo-safe"
+    assert result["scenarios"] == 8

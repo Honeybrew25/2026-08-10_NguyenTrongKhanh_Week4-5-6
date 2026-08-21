@@ -370,3 +370,93 @@ def test_guided_demo_renders_four_text_results_without_raw_response_or_ansi(
     assert HEADER_VALUE not in rendered
     assert "x-api-key" not in normalized
     assert not re.search(r"\x1b\[[0-9;]*m", rendered)
+
+
+def test_failed_demo_summary_explains_which_expectation_was_missed(
+    tmp_path: Path,
+) -> None:
+    reports = [
+        _report(
+            run_id="demo-contract-reject",
+            status="completed",
+            decision="approve",
+            sent=True,
+        ),
+        _report(
+            run_id="demo-contract-approve",
+            status="completed",
+            decision="approve",
+            sent=True,
+        ),
+        _report(
+            run_id="demo-contract-injection",
+            status="completed",
+            decision="not_required",
+            sent=True,
+            injection=True,
+        ),
+        _report(
+            run_id="demo-contract-admin-negative",
+            status="blocked",
+            decision="not_required",
+            sent=False,
+            endpoint_id="admin",
+        ),
+    ]
+    failures = {
+        reports[0].run_id: (
+            "Quyết định: mong đợi Reject, thực tế Approve.",
+            "Request đã gửi: mong đợi 0, thực tế 1.",
+            "Chạy lại và nhập Reject ở lần phê duyệt đầu tiên.",
+        )
+    }
+    console, output = _console()
+
+    TerminalDemoPresenter(console).demo_summary(
+        reports,
+        tmp_path / "demo-contract-summary.json",
+        False,
+        expectation_failures=failures,
+    )
+    rendered = output.getvalue()
+
+    assert "NGUYÊN NHÂN CHƯA ĐẠT" in rendered
+    assert "Người dùng từ chối" in rendered
+    assert "mong đợi Reject, thực tế Approve" in rendered
+    assert "mong đợi 0, thực tế 1" in rendered
+    assert "nhập Reject ở lần phê duyệt đầu tiên" in rendered
+    assert "1/4 tình huống lệch kỳ vọng" in rendered
+    assert RAW_RESPONSE not in rendered
+    assert HEADER_VALUE not in rendered
+
+
+def test_demo_summary_prints_a_complete_copyable_dashboard_command(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    summary_path = (
+        tmp_path
+        / "security-results"
+        / "runs"
+        / "week-6"
+        / "demo-contract-summary.json"
+    )
+    report = _report(
+        run_id="demo-contract-approve",
+        status="completed",
+        decision="approve",
+        sent=True,
+    )
+    console, output = _console()
+
+    TerminalDemoPresenter(console).demo_summary([report], summary_path, True)
+    rendered = output.getvalue()
+    expected_command = (
+        'python scripts/build_dashboard_replay.py '
+        '"security-results/runs/week-6/demo-contract-summary.json"'
+    )
+
+    assert "Lệnh cập nhật dashboard:" in rendered
+    assert expected_command in rendered
+    assert "demo-contract-summary…" not in rendered

@@ -129,6 +129,15 @@ def _text(value: object, style: str | None = None) -> Text:
     return Text(_safe(value), style=style)
 
 
+def _copyable_path(path: Path) -> str:
+    """Prefer a short path from the current directory without hiding characters."""
+
+    try:
+        return path.resolve().relative_to(Path.cwd().resolve()).as_posix()
+    except (OSError, ValueError):
+        return str(path.resolve())
+
+
 def _scenario_title(scenario: object) -> str:
     if isinstance(scenario, str):
         return _safe(scenario)
@@ -413,7 +422,15 @@ class TerminalDemoPresenter:
         reports: Sequence[FinalReport],
         summary_path: Path,
         expectations_met: bool,
+        *,
+        expectation_failures: Mapping[str, Sequence[str]] | None = None,
     ) -> None:
+        failures = expectation_failures or {}
+        summary_display_path = _copyable_path(summary_path)
+        dashboard_command = (
+            'python scripts/build_dashboard_replay.py '
+            f'"{summary_display_path}"'
+        )
         table = Table(show_header=True, header_style="bold blue", box=None)
         table.add_column("#", justify="right")
         table.add_column("Tình huống")
@@ -422,6 +439,7 @@ class TerminalDemoPresenter:
         table.add_column("Request", justify="right")
         table.add_column("Injection", justify="right")
         table.add_column("Lỗi", justify="right")
+        table.add_column("Kỳ vọng")
 
         for index, report in enumerate(reports, start=1):
             status_label, status_color = _STATUS_LABELS.get(
@@ -435,11 +453,15 @@ class TerminalDemoPresenter:
                 str(report.metrics.requests_sent),
                 str(report.metrics.injection_flags),
                 str(report.metrics.errors),
+                _text(
+                    "CHƯA ĐẠT" if report.run_id in failures else "ĐẠT",
+                    "bold red" if report.run_id in failures else "green",
+                ),
             )
 
         totals = Table.grid(padding=(0, 1))
         totals.add_column(style="bold")
-        totals.add_column()
+        totals.add_column(overflow="fold")
         totals.add_row("Tổng số run", _text(len(reports)))
         totals.add_row(
             "Tổng request đã gửi",
@@ -471,16 +493,54 @@ class TerminalDemoPresenter:
                 "bold green" if expectations_met else "bold red",
             ),
         )
-        totals.add_row("Tóm tắt", _text(summary_path))
+        totals.add_row("Tóm tắt", _text(summary_display_path))
 
         self.console.print(Panel(table, title="TỔNG KẾT DEMO", border_style="blue"))
         self.console.print(totals)
+        self.console.print(_text("Lệnh cập nhật dashboard:", "bold"))
+        self.console.print(_text(dashboard_command, "cyan"), soft_wrap=True)
+
+        if not expectations_met:
+            details = Table.grid(padding=(0, 1))
+            details.add_column(style="bold red", no_wrap=True)
+            details.add_column(overflow="fold")
+            for index, report in enumerate(reports, start=1):
+                run_failures = failures.get(report.run_id)
+                if not run_failures:
+                    continue
+                details.add_row(
+                    f"{index}.",
+                    _text(self._run_label(report.run_id), "bold red"),
+                )
+                for reason in run_failures:
+                    details.add_row("", _text(f"• {reason}"))
+            for reason in failures.get("__demo__", ()):
+                details.add_row("Demo", _text(f"• {reason}"))
+            if not failures:
+                details.add_row(
+                    "Demo",
+                    _text("• Không có chi tiết; xem file tổng kết để kiểm tra."),
+                )
+            self.console.print(
+                Panel(
+                    details,
+                    title="NGUYÊN NHÂN CHƯA ĐẠT",
+                    border_style="red",
+                )
+            )
+
+        failed_runs = sum(report.run_id in failures for report in reports)
         self.console.print(
             _text(
                 (
                     f"DEMO PASS · {len(reports)}/{len(reports)} kỳ vọng đạt"
                     if expectations_met
-                    else "DEMO CHƯA ĐẠT · xem trạng thái từng tình huống"
+                    else (
+                        f"DEMO CHƯA ĐẠT · {failed_runs}/{len(reports)} "
+                        "tình huống lệch kỳ vọng"
+                        if failed_runs
+                        else "DEMO CHƯA ĐẠT · xem phần nguyên nhân bên trên"
+                    )
                 ),
                 "bold green" if expectations_met else "bold red",
             )

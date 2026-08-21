@@ -78,6 +78,35 @@ def test_demo_scenario_set_defaults_to_core_and_extended_order_is_stable() -> No
     ]
 
 
+def test_demo_expectation_failure_explains_the_wrong_first_decision() -> None:
+    expected = cli_module._demo_expected_run_facts()
+    runs = [
+        {"scenario_id": item.scenario_id, **expected[item.scenario_id]}
+        for item in cli_module._scenario_plan("extended")
+    ]
+    runs[0].update(
+        human_decision="approve",
+        status="completed",
+        requests_sent=1,
+        approvals=1,
+        rejections=0,
+        receipt_outcome="success",
+        http_status=200,
+        expected_status_matched=True,
+        safe_code=None,
+        guard_state="sanitized",
+    )
+
+    failures = cli_module._demo_expectation_failures("extended", runs)
+    details = " ".join(failures["reject"])
+
+    assert list(failures) == ["reject"]
+    assert "Quyết định: mong đợi Reject, thực tế Approve" in details
+    assert "Request đã gửi: mong đợi 0, thực tế 1" in details
+    assert "nhập Reject ở lần phê duyệt đầu tiên" in details
+    assert not cli_module._demo_expectations_met("extended", runs)
+
+
 def test_proposal_factory_accepts_test_case_and_requested_headers() -> None:
     factory = cli_module._proposal_factory(
         "input-validation",
