@@ -7,6 +7,38 @@ toàn và lưu báo cáo. Code quyết định đường dẫn và cần ngườ
 
 ## Luồng xử lý
 
+```mermaid
+flowchart TD
+    A["Bandit hoặc ZAP<br/>tạo kết quả quét"] --> B["Chuẩn hóa về cùng một mẫu"]
+    B --> C["Agent gộp và giải thích cảnh báo<br/>dựa trên nguồn đã có"]
+    C --> D["Đề xuất một phép kiểm tra an toàn"]
+    D --> E{"Đường dẫn và mẫu thử<br/>có được phép?"}
+
+    E -- "Không" --> X["Chặn trước khi gửi request"]
+    E -- "Có" --> F{"Request có rủi ro?"}
+    F -- "Không" --> G["Gửi qua Envoy Gateway"]
+    F -- "Có" --> H{"Người dùng quyết định"}
+    H -- "Reject" --> X
+    H -- "Approve" --> I["Kiểm tra lại quyền và thời hạn"]
+    I -- "Không hợp lệ" --> X
+    I -- "Hợp lệ" --> G
+
+    G --> J["Ứng dụng thử nghiệm trong Docker"]
+    J --> K["Che dữ liệu nhạy cảm<br/>và kiểm tra phản hồi"]
+    K --> L{"Có chỉ dẫn đáng ngờ?"}
+    L -- "Có" --> M["Cách ly phản hồi<br/>không làm theo chỉ dẫn"]
+    L -- "Không" --> N["Giữ phần kết quả an toàn"]
+
+    X --> O["Báo cáo cuối, nhật ký và số liệu"]
+    M --> O
+    N --> O
+    O --> P["Terminal và dashboard<br/>chỉ hiển thị dữ liệu đã làm sạch"]
+```
+
+Sơ đồ có ba điểm dừng chính: yêu cầu nằm ngoài danh sách cho phép, người dùng
+chọn Reject, hoặc phê duyệt không còn hợp lệ. Chỉ nhánh hợp lệ mới đi qua Envoy
+đến ứng dụng. Phản hồi quay về luôn được kiểm tra trước khi ghi báo cáo.
+
 | Bước | Việc thực hiện | Kết quả |
 |---|---|---|
 | 1. Nhận dữ liệu | Đọc JSON mới từ Bandit hoặc ZAP | Bản sao và mã SHA-256 |
@@ -64,25 +96,12 @@ Mỗi lần chạy có một thư mục riêng. Các file chính gồm:
 - `final-report.json`: kết quả cuối;
 - `manifest.json`: mã SHA-256 của các file.
 
-`run_id` nối các file. Trước khi làm bằng chứng, file được kiểm định dạng và dữ
-liệu nhạy cảm. Báo cáo tách dữ liệu quét, phần AI, quyết định và kết quả gửi.
-
 ## Docker, CI và giao diện
 
-Compose chạy Keycloak, API, `authz-service`, Envoy và `runner`. Runner không
-chạy bằng root, không mở cổng và chỉ đọc file cần thiết.
+Compose chạy Keycloak, API, `authz-service`, Envoy và `runner`.
 
 CI dùng Bandit Low làm dữ liệu, Bandit High để chặn phát hành và ZAP quét thụ
 động từ `/health`. Kết quả được kiểm định dạng và SHA-256 trước khi tải lên.
 
 Giao diện chỉ phát lại dữ liệu sạch; không giữ API key hay Approve thật.
 
-## Giới hạn hiện tại
-
-- Keycloak dùng `start-dev` và HTTP local, chỉ phù hợp lab.
-- Bộ giới hạn số yêu cầu lưu trong từng tiến trình và mất khi khởi động lại.
-- ZAP chưa quét các API cần đăng nhập; Bandit chưa kiểm tra thư viện và image Docker.
-- Bộ lọc dựa vào mẫu chữ nên có thể nhận nhầm hoặc bỏ sót.
-- Gemini là tùy chọn; release mặc định dùng kết quả cố định để dễ lặp lại.
-- Một số image/action mới ghim theo phiên bản, chưa ghim SHA hoặc digest.
-- Bản cuối cần commit sạch, CI GitHub đạt và một người khác chạy lại.
