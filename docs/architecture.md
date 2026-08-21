@@ -3,7 +3,7 @@
 ## Hệ thống làm gì?
 
 Project Sentinel gộp kết quả quét, giải thích cảnh báo, đề xuất phép kiểm tra an
-toàn và lưu báo cáo. Code quyết định đường dẫn và lúc cần người dùng đồng ý.
+toàn và lưu báo cáo. Code quyết định đường dẫn và cần người dùng đồng ý.
 
 ## Luồng xử lý
 
@@ -54,8 +54,6 @@ API key trước khi chuyển đến ứng dụng.
 - Phản hồi đáng ngờ bị cách ly, không lưu bản thô.
 - Lỗi được đổi thành mã ngắn, không lưu chi tiết hệ thống.
 - HTTP 200 chỉ cho biết đường dẫn đã trả lời, không chứng minh có lỗ hổng.
-
-Phê duyệt gắn với `run_id`, nội dung, quy tắc và thời hạn nên không dùng lại được.
 
 ## Kết quả được lưu
 

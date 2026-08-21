@@ -25,7 +25,7 @@ xuất, phê duyệt, gửi qua cổng Envoy, kiểm tra phản hồi và tạo 
 Lệnh ở phần khởi động dùng bộ mặc định gồm bốn tình huống đã có bằng chứng:
 Reject, Approve, phản hồi đáng ngờ và đường dẫn quản trị bị chặn.
 
-Muốn kiểm tra thêm sự thay đổi trên dashboard, chạy bộ mở rộng:
+Chạy bộ mở rộng:
 
 ```bash
 python -m project_sentinel demo --provider deterministic --execute --scenario-set extended --format human
@@ -43,12 +43,9 @@ Approve cuối dành cho tình huống `wrong-type`. Hai tình huống bị poli
 không mở bước phê duyệt và không gửi request.
 
 Nếu demo chưa đạt, terminal sẽ ghi rõ tình huống bị lệch, kết quả mong đợi,
-kết quả thực tế và cách chạy lại. Ví dụ, nếu nhập `Approve` ở câu hỏi đầu,
-terminal sẽ báo tình huống Reject đã gửi một request thay vì dừng lại. File
-tổng kết cũng lưu các chi tiết này trong trường `expectation_failures`.
+kết quả thực tế và cách chạy lại.
 
-Khi demo kết thúc, terminal in sẵn lệnh đầy đủ với đường dẫn tương đối. Copy
-nguyên dòng `Lệnh cập nhật dashboard` để cập nhật dữ liệu trên giao diện:
+Khi demo kết thúc, terminal in sẵn lệnh đầy đủ với đường dẫn tương đối.
 
 ```bash
 python scripts/build_dashboard_replay.py "<demo-summary>"
@@ -57,15 +54,12 @@ python scripts/build_dashboard_replay.py "<demo-summary>"
 Lệnh này chỉ nhận bản tổng kết `extended` đủ tám tình huống rồi cập nhật dữ
 liệu phát lại đã làm sạch. Khi thành công, terminal sẽ báo `DASHBOARD ĐÃ CẬP
 NHẬT`, tên demo, số tình huống, hai file đã thay đổi và lệnh mở lại giao diện.
+
 Nếu giao diện đang chạy trong Docker, build lại container rồi nhấn `Ctrl+F5`:
 
 ```bash
 docker compose up --build --detach --wait --wait-timeout 180
 ```
-
-Để trang GitHub Pages thay đổi, cần commit file dashboard, đưa commit vào
-`main` và chờ workflow deploy chạy xong. Thay đổi local không tự xuất hiện trên
-trang công khai.
 
 ## Chọn kiểu hiển thị
 

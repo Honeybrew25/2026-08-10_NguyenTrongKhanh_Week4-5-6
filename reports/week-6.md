@@ -19,11 +19,7 @@ evaluation và lệnh demo tái hiện được.
 
 ## Kết quả
 
-- Bandit tìm 41 cảnh báo mức Low, được gộp thành 6 nhóm; không có cảnh báo High.
-- Bộ đánh giá đạt 10/10: 5 trường hợp phân tích và 5 trường hợp xử lý. Kết quả
-  TP=6, FP=0, FN=0; không thấy dữ kiện bịa, rò rỉ dữ liệu hoặc vượt quy tắc.
-- Kiểm thử trên máy đạt 216 bài. Bằng chứng Docker gần nhất ghi nhận 244 bài đạt
-  và môi trường được dọn sạch sau khi chạy.
+- Kết quả TP=6, FP=0, FN=0; không thấy dữ kiện bịa, rò rỉ dữ liệu hoặc vượt quy tắc.
 - Khi chọn `Reject`, hệ thống không gửi yêu cầu. Khi chọn `Approve`, hệ thống chỉ
   gửi đúng một yêu cầu qua Envoy.
 - Phản hồi chứa chỉ dẫn xấu bị cách ly; đường dẫn `/api/admin` bị chặn trước khi
@@ -31,7 +27,6 @@ evaluation và lệnh demo tái hiện được.
 
 ## Kết luận
 
-Sản phẩm hiện đủ để demo và bàn giao trong môi trường học tập. Tuy nhiên, ZAP
-mới quét thụ động, Keycloak còn chạy chế độ phát triển và giới hạn số yêu cầu
-chưa dùng chung khi mở rộng. Trước khi gọi là bản phát hành cuối, dự án vẫn cần
-CI đạt trên commit sạch và một người khác chạy lại theo README.
+Project Sentinel đi từ một ứng dụng có kết quả quét rời rạc thành một sản phẩm
+có quy trình rõ ràng: nhận cảnh báo, gộp dữ liệu, giải thích, đề xuất kiểm tra,
+xin phê duyệt và lưu báo cáo cuối.

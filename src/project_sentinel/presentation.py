@@ -304,7 +304,7 @@ class TerminalDemoPresenter:
         request.add_row("Rủi ro", _text(f"{view.method} · cần người dùng phê duyệt"))
         request.add_row("Giới hạn mạng", _text("Tối đa 1 request qua Gateway"))
         request.add_row(
-            "Mục đích dễ hiểu",
+            "Mục đích",
             _text(
                 "Dùng endpoint kiểm thử với payload cố định để thu thêm tín hiệu "
                 "an toàn cho cảnh báo đã chọn."
