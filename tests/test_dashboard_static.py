@@ -323,8 +323,8 @@ def test_dashboard_is_self_contained_and_main_deploy_is_gated() -> None:
         ROOT / ".github" / "workflows" / "deploy-ui-pages.yml"
     ).read_text(encoding="utf-8")
 
-    assert 'href="./styles.css?v=control-scenarios-5"' in index
-    assert 'src="./app.js?v=control-scenarios-5"' in index
+    assert 'href="./styles.css?v=beginner-copy-6"' in index
+    assert 'src="./app.js?v=beginner-copy-6"' in index
     assert "Content-Security-Policy" in index
     assert 'role="tabpanel"' in index
     assert 'aria-controls="proposal-output"' in index
@@ -366,14 +366,14 @@ def test_dashboard_is_self_contained_and_main_deploy_is_gated() -> None:
     assert "initializeRuntimeRadar" in script
     assert "selectRuntimeLayer" in script
     assert 'document.querySelectorAll(".radar-hotspot")' in script
-    assert 'dashboard-data.json?v=control-scenarios-5' in script
+    assert 'dashboard-data.json?v=beginner-copy-6' in script
     assert script.count("fetch(") == 2
     assert script.count('credentials: "omit"') == 2
     assert "renderE2eReplay" in script
     assert "renderE2eScenario" in script
     assert "renderE2eStageDetail" in script
     assert "Đúng kỳ vọng" in script
-    assert 'failed: "FAILED"' in script
+    assert 'failed: "THẤT BẠI"' in script
     e2e_script = script[
         script.index("function e2eStateTone") : script.index(
             "function populateEndpoints"
@@ -389,8 +389,13 @@ def test_dashboard_is_self_contained_and_main_deploy_is_gated() -> None:
         assert network_api not in e2e_script
     assert 'setRuntimeLayer("gateway", "live"' in script
     assert 'setRuntimeLayer("gateway", "static"' in script
-    assert '"CONTROLLED DENY"' in script
-    assert '"DRY-RUN ALLOW"' in script
+    assert '"ĐÃ CHẶN AN TOÀN"' in script
+    assert '"MÔ PHỎNG: ĐƯỢC PHÉP"' in script
+    assert "LỚP 3 · BẰNG CHỨNG" in script
+    assert "BIÊN NHẬN MÔ PHỎNG" in script
+    assert "Đã ghi kết quả" in script
+    assert "INNER RING" not in index + script
+    assert "DRY-RUN RECEIPT" not in index + script
     assert "SAFE_API_TOOL_API_KEY" not in (
         index + styles + script + json.dumps(data)
     )

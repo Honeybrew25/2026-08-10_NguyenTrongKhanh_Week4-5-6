@@ -20,8 +20,8 @@
       "initialState": "unchecked",
       "origin": "http://localhost:8080",
       "healthPath": "/health",
-      "title": "Gateway connectivity",
-      "description": "Kiểm tra same-origin GET /health mà không gửi credential hoặc gọi protected endpoint."
+      "title": "Kết nối tới Gateway",
+      "description": "Nút kiểm tra chỉ gọi GET /health công khai; không gửi thông tin bí mật và không gọi API cần quyền."
     },
     "policy": {
       "layer": "middle",
@@ -30,8 +30,8 @@
       "sha256": "0181e74d35ced610750e1ced2e42f0e1733439d3ce830b6cb62cf2cfee7562a8",
       "capabilityCount": 3,
       "testCaseCount": 4,
-      "title": "Policy integrity",
-      "description": "Policy SHA, capability và test-case contract được đối chiếu với source; dry-run cập nhật ALLOW hoặc DENY."
+      "title": "Quy tắc cho phép request",
+      "description": "Hệ thống đối chiếu chức năng, bộ dữ liệu thử và header. Kết quả mô phỏng cho biết đề xuất được phép hay bị chặn; không gửi request."
     },
     "evidence": {
       "layer": "inner",
@@ -42,8 +42,8 @@
       "sourceWeek": 4,
       "successCount": 2,
       "deniedCount": 1,
-      "title": "Execution evidence",
-      "description": "Durable receipt Week 4 được tái xác minh trong baseline Week 5; receipt mới trên giao diện vẫn là dry-run và không mở network."
+      "title": "Bằng chứng đã lưu",
+      "description": "Hai request thành công và một request bị chặn từ demo Week 4 đã được kiểm tra lại ngày 2026-08-20. Biên nhận mới trên dashboard chỉ là mô phỏng và không gửi request."
     }
   },
   "metrics": [
