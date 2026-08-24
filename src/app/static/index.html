@@ -8,8 +8,8 @@
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; connect-src 'self'; font-src 'self'; form-action 'none'; frame-src 'none'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self'">
   <title>Project Sentinel · Week 6</title>
-  <link rel="stylesheet" href="./styles.css?v=control-scenarios-5">
-  <script src="./app.js?v=control-scenarios-5" defer></script>
+  <link rel="stylesheet" href="./styles.css?v=beginner-copy-6">
+  <script src="./app.js?v=beginner-copy-6" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main-content">Bỏ qua đến nội dung chính</a>
@@ -68,48 +68,48 @@
 
       <aside class="hero-console" aria-label="Tóm tắt policy runtime">
         <div class="console-topbar">
-          <span>policy.runtime</span>
-          <span class="console-state" id="runtime-overall-state" data-state="snapshot">VERIFIED SNAPSHOT</span>
+          <span>TRẠNG THÁI KIỂM SOÁT</span>
+          <span class="console-state" id="runtime-overall-state" data-state="snapshot">BẢN GHI ĐÃ XÁC MINH</span>
         </div>
         <div class="radar" id="runtime-radar" role="group" aria-label="Chọn một vòng để xem trạng thái runtime" aria-describedby="runtime-radar-summary">
-          <div class="radar-ring ring-one" id="radar-gateway-layer" data-label="GATEWAY" data-state="unchecked"></div>
-          <div class="radar-ring ring-two" id="radar-policy-layer" data-label="POLICY" data-state="verified"></div>
-          <div class="radar-ring ring-three" id="radar-evidence-layer" data-label="EVIDENCE" data-state="snapshot"></div>
+          <div class="radar-ring ring-one" id="radar-gateway-layer" data-label="KẾT NỐI" data-state="unchecked"></div>
+          <div class="radar-ring ring-two" id="radar-policy-layer" data-label="QUY TẮC" data-state="verified"></div>
+          <div class="radar-ring ring-three" id="radar-evidence-layer" data-label="BẰNG CHỨNG" data-state="snapshot"></div>
           <div class="radar-axis axis-x"></div>
           <div class="radar-axis axis-y"></div>
           <div class="radar-core" aria-hidden="true">S</div>
           <button class="radar-hotspot hotspot-gateway" type="button" data-runtime-layer="gateway" data-state="unchecked" aria-controls="runtime-layer-detail" aria-pressed="false"><span aria-hidden="true"></span>Gateway</button>
-          <button class="radar-hotspot hotspot-policy is-active" type="button" data-runtime-layer="policy" data-state="verified" aria-controls="runtime-layer-detail" aria-pressed="true"><span aria-hidden="true"></span>Policy</button>
-          <button class="radar-hotspot hotspot-evidence" type="button" data-runtime-layer="evidence" data-state="snapshot" aria-controls="runtime-layer-detail" aria-pressed="false"><span aria-hidden="true"></span>Evidence</button>
+          <button class="radar-hotspot hotspot-policy is-active" type="button" data-runtime-layer="policy" data-state="verified" aria-controls="runtime-layer-detail" aria-pressed="true"><span aria-hidden="true"></span>Quy tắc</button>
+          <button class="radar-hotspot hotspot-evidence" type="button" data-runtime-layer="evidence" data-state="snapshot" aria-controls="runtime-layer-detail" aria-pressed="false"><span aria-hidden="true"></span>Bằng chứng</button>
         </div>
         <p class="visually-hidden" id="runtime-radar-summary" aria-live="polite">
-          Gateway chưa kiểm tra. Policy đã xác minh từ snapshot. Evidence đã xác minh từ receipt bền vững.
+          Gateway chưa được kiểm tra. Quy tắc an toàn và bằng chứng đang hiển thị từ bản ghi đã xác minh.
         </p>
         <div class="runtime-inspector" id="runtime-layer-detail" aria-live="polite">
           <div class="runtime-inspector-topline">
-            <span id="runtime-inspector-layer">MIDDLE RING · POLICY</span>
-            <span id="runtime-inspector-state" data-state="verified">VERIFIED · v1.0</span>
+            <span id="runtime-inspector-layer">LỚP 2 · QUY TẮC AN TOÀN</span>
+            <span id="runtime-inspector-state" data-state="verified">ĐÃ KIỂM TRA · v1.0</span>
           </div>
-          <strong id="runtime-inspector-title">Policy integrity</strong>
-          <p id="runtime-inspector-description">Policy SHA, capability và test-case contract đã được đối chiếu với source.</p>
-          <small id="runtime-inspector-detail">3 capabilities · 4 test cases</small>
+          <strong id="runtime-inspector-title">Quy tắc cho phép request</strong>
+          <p id="runtime-inspector-description">Hệ thống kiểm tra chức năng, bộ dữ liệu thử và header trước khi dựng request.</p>
+          <small id="runtime-inspector-detail">3 chức năng được phép · 4 bộ dữ liệu thử</small>
         </div>
         <dl class="runtime-list">
           <div class="runtime-row">
-            <dt><span class="runtime-signal" id="gateway-signal" data-state="unchecked" aria-hidden="true"></span>Gateway</dt>
-            <dd><strong id="gateway-runtime-state">UNCHECKED</strong><small id="gateway-runtime-detail">localhost:8080</small></dd>
+            <dt><span class="runtime-signal" id="gateway-signal" data-state="unchecked" aria-hidden="true"></span>Kết nối Gateway</dt>
+            <dd><strong id="gateway-runtime-state">CHƯA KIỂM TRA</strong><small id="gateway-runtime-detail">Nút kiểm tra sẽ gọi localhost:8080/health</small></dd>
           </div>
           <div class="runtime-row">
-            <dt><span class="runtime-signal" id="policy-signal" data-state="verified" aria-hidden="true"></span>Policy</dt>
-            <dd><strong id="policy-runtime-state">VERIFIED · v1.0</strong><small id="policy-runtime-detail">3 capabilities · 4 test cases</small></dd>
+            <dt><span class="runtime-signal" id="policy-signal" data-state="verified" aria-hidden="true"></span>Quy tắc an toàn</dt>
+            <dd><strong id="policy-runtime-state">ĐÃ KIỂM TRA · v1.0</strong><small id="policy-runtime-detail">3 chức năng được phép · 4 bộ dữ liệu thử</small></dd>
           </div>
           <div class="runtime-row">
-            <dt><span class="runtime-signal" id="evidence-signal" data-state="snapshot" aria-hidden="true"></span>Evidence</dt>
-            <dd><strong id="evidence-runtime-state">VERIFIED SNAPSHOT</strong><small id="evidence-runtime-detail">2 success · 1 policy denied</small></dd>
+            <dt><span class="runtime-signal" id="evidence-signal" data-state="snapshot" aria-hidden="true"></span>Bằng chứng</dt>
+            <dd><strong id="evidence-runtime-state">BẢN GHI ĐÃ XÁC MINH</strong><small id="evidence-runtime-detail">2 request thành công · 1 request bị chặn</small></dd>
           </div>
           <div class="runtime-row">
-            <dt><span class="runtime-signal" data-state="protected" aria-hidden="true"></span>Secret surface</dt>
-            <dd><strong>RUNTIME ONLY</strong><small>Không vào browser</small></dd>
+            <dt><span class="runtime-signal" data-state="protected" aria-hidden="true"></span>Thông tin bí mật</dt>
+            <dd><strong>CHỈ Ở RUNTIME</strong><small>Không đưa vào trình duyệt</small></dd>
           </div>
         </dl>
         <p class="console-caption" id="health-status" role="status" aria-live="polite">
@@ -252,7 +252,7 @@
     <section class="content-section section-shell simulator-section" id="simulator" aria-labelledby="simulator-title">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">03 · INTERACTIVE DRY-RUN</p>
+          <p class="eyebrow">03 · MÔ PHỎNG TƯƠNG TÁC</p>
           <h2 id="simulator-title">Agent đề xuất. Policy quyết định.</h2>
         </div>
         <div class="offline-pill"><span aria-hidden="true"></span> MÔ PHỎNG CỤC BỘ · KHÔNG GỬI REQUEST</div>
@@ -261,16 +261,16 @@
       <div class="simulator-grid">
         <form class="proposal-form panel" id="proposal-form">
           <div class="panel-header">
-            <div><span class="step-index">A</span><strong>Request proposal</strong></div>
-            <span class="panel-label">UNTRUSTED INPUT</span>
+            <div><span class="step-index">A</span><strong>1. Phiếu đề xuất</strong></div>
+            <span class="panel-label">DỮ LIỆU CHƯA TIN CẬY</span>
           </div>
 
-          <label for="endpoint-select">Capability endpoint</label>
+          <label for="endpoint-select">Chức năng muốn kiểm tra</label>
           <select id="endpoint-select" name="endpoint" required></select>
 
-          <label for="test-case-select">Safe test case</label>
+          <label for="test-case-select">Bộ dữ liệu thử an toàn</label>
           <select id="test-case-select" name="testCase" required></select>
-          <p class="field-help" id="test-case-help">Payload được materialize từ catalog, không nhập trực tiếp.</p>
+          <p class="field-help" id="test-case-help">Dữ liệu gửi được lấy từ danh sách đã duyệt, không nhập payload tùy ý.</p>
 
           <label for="rationale-input">Mục đích kiểm tra</label>
           <textarea id="rationale-input" name="rationale" maxlength="180" rows="3" required>Kiểm tra validation bằng dữ liệu thử nghiệm không phá hoại.</textarea>
@@ -300,29 +300,29 @@
           </div>
 
           <div class="form-actions">
-            <button class="button button-primary" type="submit">Chạy policy dry-run</button>
+            <button class="button button-primary" type="submit">Kiểm tra đề xuất (không gửi request)</button>
             <button class="button button-ghost" id="reset-button" type="reset">Đặt lại</button>
           </div>
         </form>
 
         <div class="decision-panel panel" aria-live="polite">
           <div class="panel-header">
-            <div><span class="step-index">B</span><strong>Policy decision</strong></div>
-            <span class="decision-badge is-idle" id="decision-badge">READY</span>
+            <div><span class="step-index">B</span><strong>2. Kết quả kiểm tra</strong></div>
+            <span class="decision-badge is-idle" id="decision-badge">SẴN SÀNG</span>
           </div>
 
           <div class="decision-summary" id="decision-summary">
             <span class="decision-icon" aria-hidden="true">◇</span>
             <div>
-              <strong>Chờ proposal</strong>
-              <p>Chọn capability và safe test case để xem request đã materialize.</p>
+              <strong>Chờ phiếu đề xuất</strong>
+              <p>Chọn chức năng và bộ dữ liệu thử để xem request an toàn sẽ được dựng như thế nào.</p>
             </div>
           </div>
 
           <div class="code-tabs" role="tablist" aria-label="Dữ liệu dry-run">
-            <button class="code-tab is-active" id="proposal-tab" type="button" role="tab" aria-controls="proposal-output" aria-selected="true" tabindex="0" data-panel="proposal-output">PROPOSAL</button>
-            <button class="code-tab" id="request-tab" type="button" role="tab" aria-controls="request-output" aria-selected="false" tabindex="-1" data-panel="request-output">MATERIALIZED</button>
-            <button class="code-tab" id="receipt-tab" type="button" role="tab" aria-controls="receipt-output" aria-selected="false" tabindex="-1" data-panel="receipt-output">RECEIPT</button>
+            <button class="code-tab is-active" id="proposal-tab" type="button" role="tab" aria-controls="proposal-output" aria-selected="true" tabindex="0" data-panel="proposal-output">ĐỀ XUẤT</button>
+            <button class="code-tab" id="request-tab" type="button" role="tab" aria-controls="request-output" aria-selected="false" tabindex="-1" data-panel="request-output">REQUEST ĐÃ DỰNG</button>
+            <button class="code-tab" id="receipt-tab" type="button" role="tab" aria-controls="receipt-output" aria-selected="false" tabindex="-1" data-panel="receipt-output">BIÊN NHẬN</button>
           </div>
           <pre class="code-output is-active" id="proposal-output" role="tabpanel" aria-labelledby="proposal-tab" tabindex="0"><code>{
   "state": "waiting_for_input"

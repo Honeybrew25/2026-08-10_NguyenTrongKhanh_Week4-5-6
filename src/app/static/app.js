@@ -23,46 +23,58 @@ function replaceChildren(target, children) {
 }
 
 const RUNTIME_LAYER_TITLES = {
-  gateway: "Gateway",
-  policy: "Policy",
-  evidence: "Evidence",
+  gateway: "Kết nối Gateway",
+  policy: "Quy tắc an toàn",
+  evidence: "Bằng chứng",
+};
+
+const RUNTIME_LAYER_HEADINGS = {
+  gateway: "LỚP 1 · KẾT NỐI GATEWAY",
+  policy: "LỚP 2 · QUY TẮC AN TOÀN",
+  evidence: "LỚP 3 · BẰNG CHỨNG",
 };
 
 const E2E_STATE_LABELS = {
-  success: "SUCCESS",
-  approved: "APPROVED",
-  rejected: "REJECTED",
-  blocked: "BLOCKED",
-  quarantined: "QUARANTINED",
-  not_required: "NOT REQUIRED",
-  skipped: "SKIPPED",
-  not_run: "NOT RUN",
-  pending: "PENDING",
-  failed: "FAILED",
+  success: "THÀNH CÔNG",
+  approved: "ĐÃ PHÊ DUYỆT",
+  rejected: "ĐÃ TỪ CHỐI",
+  blocked: "BỊ CHẶN",
+  quarantined: "ĐÃ CÁCH LY",
+  not_required: "KHÔNG CẦN",
+  skipped: "BỎ QUA",
+  not_run: "CHƯA CHẠY",
+  pending: "ĐANG CHỜ",
+  failed: "THẤT BẠI",
+};
+
+const DRY_RUN_REASON_LABELS = {
+  policy_allowed: "Đề xuất phù hợp quy tắc an toàn",
+  proposal_invalid: "Đề xuất chưa hợp lệ",
+  header_value_not_printable_ascii: "Header chứa ký tự không được phép",
 };
 
 function refreshOverallRuntimeState() {
   const values = Object.values(state.runtime);
-  let status = "INITIALIZING";
+  let status = "ĐANG KHỞI TẠO";
   let tone = "snapshot";
 
   if (values.some((item) => ["failed", "unavailable"].includes(item.state))) {
-    status = "DEGRADED";
+    status = "CẦN KIỂM TRA";
     tone = "failed";
   } else if (state.runtime.policy?.state === "deny") {
-    status = "CONTROLLED DENY";
+    status = "ĐÃ CHẶN AN TOÀN";
     tone = "deny";
   } else if (state.runtime.evidence?.state === "dry-run") {
-    status = state.runtime.policy?.state === "allow" ? "DRY-RUN ALLOW" : "DRY-RUN";
+    status = state.runtime.policy?.state === "allow" ? "MÔ PHỎNG: ĐƯỢC PHÉP" : "MÔ PHỎNG: ĐÃ GHI NHẬN";
     tone = "dry-run";
   } else if (state.runtime.gateway?.state === "live") {
-    status = "LIVE · VERIFIED";
+    status = "GATEWAY ĐANG HOẠT ĐỘNG";
     tone = "live";
   } else if (state.runtime.gateway?.state === "static") {
-    status = "STATIC SNAPSHOT";
+    status = "DỮ LIỆU TĨNH";
     tone = "static";
   } else if (state.runtime.policy?.state === "verified" && state.runtime.evidence?.state === "snapshot") {
-    status = "VERIFIED SNAPSHOT";
+    status = "BẢN GHI ĐÃ XÁC MINH";
     tone = "snapshot";
   }
 
@@ -95,13 +107,12 @@ function renderRuntimeInspector(layer) {
   const runtime = state.runtime[layer];
   if (!runtime) return;
   const definition = state.data?.runtimeRadar?.[layer];
-  const position = definition?.layer?.toUpperCase() || "RUNTIME";
-  byId("runtime-inspector-layer").textContent = `${position} RING · ${RUNTIME_LAYER_TITLES[layer].toUpperCase()}`;
+  byId("runtime-inspector-layer").textContent = RUNTIME_LAYER_HEADINGS[layer];
   const inspectorState = byId("runtime-inspector-state");
   inspectorState.textContent = runtime.label;
   inspectorState.dataset.state = runtime.state;
   byId("runtime-inspector-title").textContent = definition?.title || RUNTIME_LAYER_TITLES[layer];
-  byId("runtime-inspector-description").textContent = definition?.description || "Runtime metadata không khả dụng.";
+  byId("runtime-inspector-description").textContent = definition?.description || "Chưa có thông tin để hiển thị.";
   byId("runtime-inspector-detail").textContent = runtime.detail;
 }
 
@@ -123,21 +134,21 @@ function restorePolicyAndEvidenceRadar() {
   setRuntimeLayer(
     "policy",
     policy.initialState,
-    `VERIFIED · v${policy.version}`,
-    `${policy.capabilityCount} capabilities · ${policy.testCaseCount} test cases · SHA ${policy.sha256.slice(0, 12)}…`,
+    `ĐÃ KIỂM TRA · v${policy.version}`,
+    `${policy.capabilityCount} chức năng được phép · ${policy.testCaseCount} bộ dữ liệu thử · mã ${policy.sha256.slice(0, 12)}…`,
   );
   setRuntimeLayer(
     "evidence",
     evidence.initialState,
-    "VERIFIED SNAPSHOT",
-    `${evidence.successCount} success · ${evidence.deniedCount} policy denied · ${evidence.verifiedAt}`,
+    "BẢN GHI ĐÃ XÁC MINH",
+    `${evidence.successCount} request thành công · ${evidence.deniedCount} request bị chặn · xác minh ${evidence.reverifiedAt || evidence.verifiedAt}`,
   );
 }
 
 function initializeRuntimeRadar() {
   const gateway = state.data.runtimeRadar.gateway;
   const gatewayHost = new URL(gateway.origin).host;
-  setRuntimeLayer("gateway", gateway.initialState, "UNCHECKED", `${gatewayHost}${gateway.healthPath}`);
+  setRuntimeLayer("gateway", gateway.initialState, "CHƯA KIỂM TRA", `Nút kiểm tra sẽ gọi ${gatewayHost}${gateway.healthPath}`);
   restorePolicyAndEvidenceRadar();
   selectRuntimeLayer("policy");
 }
@@ -185,11 +196,18 @@ function renderControls(controls) {
 function renderEvidence(events) {
   const rows = events.map((event) => {
     const row = createElement("div", "event-row");
+    const stateLabel = event.state === "ALLOW" ? "THÀNH CÔNG" : "BỊ CHẶN";
+    const summary = event.summary === "endpoint_not_allowed"
+      ? "Endpoint không nằm trong danh sách cho phép"
+      : event.summary;
+    const result = event.result === "pre-transport"
+      ? "Dừng trước khi gửi request"
+      : event.result;
     row.append(
-      createElement("span", `event-state ${event.tone}`, event.state),
+      createElement("span", `event-state ${event.tone}`, stateLabel),
       createElement("code", "", event.requestId),
-      createElement("strong", "", event.summary),
-      createElement("small", "", event.result),
+      createElement("strong", "", summary),
+      createElement("small", "", result),
     );
     return row;
   });
@@ -541,7 +559,7 @@ async function runDryRun(event) {
   renderJson("receipt-output", receipt);
 
   const badge = byId("decision-badge");
-  badge.textContent = allowed ? "ALLOW" : "DENY";
+  badge.textContent = allowed ? "ĐƯỢC PHÉP" : "BỊ TỪ CHỐI";
   badge.className = `decision-badge ${allowed ? "is-allow" : "is-deny"}`;
 
   const summary = byId("decision-summary");
@@ -549,24 +567,26 @@ async function runDryRun(event) {
   icon.setAttribute("aria-hidden", "true");
   const copy = document.createElement("div");
   copy.append(
-    createElement("strong", "", allowed ? "Proposal hợp lệ với policy" : "Proposal bị từ chối trước transport"),
+    createElement("strong", "", allowed ? "Đề xuất phù hợp quy tắc an toàn" : "Đề xuất bị chặn trước khi gửi"),
     createElement("p", "", allowed
-      ? `${endpoint.method} ${endpoint.path} · expected ${testCase.expectedStatus} · không có network call`
-      : "Không request nào được materialize hoặc gửi đi."),
+      ? `${endpoint.method} ${endpoint.path} có thể được dựng · mong đợi HTTP ${testCase.expectedStatus} · dashboard không gửi request`
+      : "Không có request nào được dựng hoặc gửi đi."),
   );
   replaceChildren(summary, [icon, copy]);
   state.lastDecision = receipt;
   setRuntimeLayer(
     "policy",
     allowed ? "allow" : "deny",
-    allowed ? "ALLOW" : "DENY",
-    allowed ? `${endpoint.id} · expected ${testCase.expectedStatus}` : receipt.reason,
+    allowed ? "ĐƯỢC PHÉP" : "BỊ TỪ CHỐI",
+    allowed
+      ? `Có thể dùng chức năng ${endpoint.id} · mong đợi HTTP ${testCase.expectedStatus} · chưa gửi request`
+      : `${DRY_RUN_REASON_LABELS[receipt.reason] || "Không phù hợp quy tắc an toàn"} · chưa gửi request`,
   );
   setRuntimeLayer(
     "evidence",
     "dry-run",
-    "DRY-RUN RECEIPT",
-    `${receipt.decision.toUpperCase()} · proposal ${receipt.proposal_id}`,
+    "BIÊN NHẬN MÔ PHỎNG",
+    `Đã ghi kết quả ${allowed ? "được phép" : "bị từ chối"} · không gửi request`,
   );
   selectRuntimeLayer("policy");
   activateTab("proposal-output");
@@ -576,15 +596,15 @@ function resetSimulator() {
   window.setTimeout(() => {
     byId("endpoint-select").value = "input-validation";
     populateTestCases();
-    byId("decision-badge").textContent = "READY";
+    byId("decision-badge").textContent = "SẴN SÀNG";
     byId("decision-badge").className = "decision-badge is-idle";
     const summary = byId("decision-summary");
     const icon = createElement("span", "decision-icon", "◇");
     icon.setAttribute("aria-hidden", "true");
     const copy = document.createElement("div");
     copy.append(
-      createElement("strong", "", "Chờ proposal"),
-      createElement("p", "", "Chọn capability và safe test case để xem request đã materialize."),
+      createElement("strong", "", "Chờ phiếu đề xuất"),
+      createElement("p", "", "Chọn chức năng và bộ dữ liệu thử để xem request an toàn sẽ được dựng như thế nào."),
     );
     replaceChildren(summary, [icon, copy]);
     renderJson("proposal-output", { state: "waiting_for_input" });
@@ -604,12 +624,12 @@ async function checkHealth() {
   selectRuntimeLayer("gateway");
   button.classList.remove("is-ok", "is-error", "is-static");
   status.textContent = "Đang kiểm tra endpoint public cùng origin…";
-  setRuntimeLayer("gateway", "checking", "CHECKING", "GET /health · credentials omitted");
+  setRuntimeLayer("gateway", "checking", "ĐANG KIỂM TRA", "Gọi GET /health công khai · không gửi thông tin xác thực");
 
   if (!isFullStackUiPath()) {
     button.classList.add("is-static");
     status.textContent = "Kênh static showcase; full stack được xác minh riêng trong CI.";
-    setRuntimeLayer("gateway", "static", "STATIC", "Không có live backend trên kênh showcase");
+    setRuntimeLayer("gateway", "static", "TRANG TĨNH", "Bản giới thiệu này không kết nối backend trực tiếp");
     button.disabled = false;
     return;
   }
@@ -617,7 +637,7 @@ async function checkHealth() {
   if (!['http:', 'https:'].includes(window.location.protocol)) {
     button.classList.add("is-error");
     status.textContent = "Health check chỉ khả dụng khi dashboard được phục vụ qua HTTP(S).";
-    setRuntimeLayer("gateway", "failed", "UNAVAILABLE", "Dashboard không được phục vụ qua HTTP(S)");
+    setRuntimeLayer("gateway", "failed", "KHÔNG KHẢ DỤNG", "Dashboard chưa được phục vụ qua HTTP(S)");
     button.disabled = false;
     return;
   }
@@ -635,11 +655,11 @@ async function checkHealth() {
     if (!response.ok || body.status !== "ok") throw new Error("health_unavailable");
     button.classList.add("is-ok");
     status.textContent = "Public /health phản hồi OK; không gọi endpoint được bảo vệ.";
-    setRuntimeLayer("gateway", "live", "LIVE", `${healthUrl.host}/health · HTTP ${response.status}`);
+    setRuntimeLayer("gateway", "live", "ĐANG HOẠT ĐỘNG", `${healthUrl.host}/health phản hồi HTTP ${response.status}`);
   } catch (_error) {
     button.classList.add("is-error");
     status.textContent = "Không kết nối được /health. Dashboard và dry-run vẫn hoạt động offline.";
-    setRuntimeLayer("gateway", "failed", "FAILED", "Không xác minh được public /health");
+    setRuntimeLayer("gateway", "failed", "KIỂM TRA THẤT BẠI", "Không kết nối được endpoint công khai /health");
   } finally {
     button.disabled = false;
   }
@@ -651,7 +671,7 @@ function configureHostingMode() {
   button.classList.add("is-static");
   byId("health-label").textContent = "Static showcase";
   byId("health-status").textContent = "Dashboard tĩnh không chứa credential hoặc gọi protected API.";
-  setRuntimeLayer("gateway", "static", "STATIC", "Không có live backend trên kênh showcase");
+  setRuntimeLayer("gateway", "static", "TRANG TĨNH", "Bản giới thiệu này không kết nối backend trực tiếp");
 }
 
 function isFullStackUiPath() {
@@ -690,7 +710,7 @@ function wireInteractions() {
 
 async function initialize() {
   try {
-    const response = await fetch("./dashboard-data.json?v=control-scenarios-5", { cache: "no-store", credentials: "omit" });
+    const response = await fetch("./dashboard-data.json?v=beginner-copy-6", { cache: "no-store", credentials: "omit" });
     if (!response.ok) throw new Error(`dashboard_data_${response.status}`);
     state.data = await response.json();
     renderMetrics(state.data.metrics);
@@ -709,9 +729,9 @@ async function initialize() {
     byId("decision-badge").textContent = "OFFLINE";
     byId("decision-badge").className = "decision-badge is-deny";
     byId("proposal-form").querySelectorAll("input, select, textarea, button").forEach((control) => { control.disabled = true; });
-    setRuntimeLayer("policy", "unavailable", "UNAVAILABLE", "Không tải được curated policy metadata");
-    setRuntimeLayer("evidence", "unavailable", "UNAVAILABLE", "Không tải được evidence snapshot");
-    setRuntimeLayer("gateway", "unchecked", "UNCHECKED", "Chưa thực hiện health check");
+    setRuntimeLayer("policy", "unavailable", "KHÔNG KHẢ DỤNG", "Không tải được thông tin quy tắc an toàn");
+    setRuntimeLayer("evidence", "unavailable", "KHÔNG KHẢ DỤNG", "Không tải được bản ghi bằng chứng");
+    setRuntimeLayer("gateway", "unchecked", "CHƯA KIỂM TRA", "Chưa kiểm tra endpoint /health");
     byId("health-button").addEventListener("click", checkHealth);
     configureHostingMode();
   }
