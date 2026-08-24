@@ -1,0 +1,23 @@
+Project Sentinel - Gemini mentor demo verification
+Date: 2026-08-24
+
+Command:
+python -m security_pipeline analyze security-results/normalized-findings.json --knowledge-base data/vulnerabilities.json --provider gemini --output security-results/runs/week-6/gemini-mentor-demo-2026-08-24/security-analysis.jsonl
+
+Result:
+PASS - Analyzed 27 findings into 9 grounded JSONL records.
+Provider: gemini:gemini-3.5-flash-lite
+Verified copy: security-results/runs/week-6/golden/gemini-mentor-demo-2026-08-24/
+
+Validation:
+PASS - 9/9 JSONL records match AnalysisFinding.
+PASS - 9/9 records identify a Gemini provider.
+PASS - No configured API key, client secret or admin password value was found in the JSONL output.
+
+SHA-256:
+normalized-findings.json: 2d0e6bc845d619996f66acef7d9dbb31bcc3c440f279de37206d5837db237380
+vulnerabilities.json: 763b363b4d464f8a7ab568308984567a6915d6bd819d12bfd339b0c48dcdf387
+security-analysis.jsonl: 6e87c885bc75ab07e83a298286c36aca51209d942f7e56d08f5e7f04154dd172
+security-analysis.pretty.json: 5f548808dccdaa80bda8ea415e190d0ffe4dd8164c454f71a8bad9a20aba3061
+
+No secret value is recorded in this verification log.
