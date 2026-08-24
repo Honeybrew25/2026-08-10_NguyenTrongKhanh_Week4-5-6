@@ -36,4 +36,4 @@ nhưng code giới hạn capability.
      --output "$env:TEMP\security-analysis-gemini.jsonl"
    ```
 Bản tóm tắt lần chạy : 
-security-results\runs\week-6\golden\gemini-mentor-demo-2026-08-24
+reports\gemini-mentor-demo-2026-08-24

@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "run_id": "gemini-mentor-demo-2026-08-24",
+  "provider": "gemini:gemini-3.5-flash-lite",
+  "input_findings": 27,
+  "output_groups": 9,
+  "files": {
+    "data/vulnerabilities.json": "763b363b4d464f8a7ab568308984567a6915d6bd819d12bfd339b0c48dcdf387",
+    "security-results/normalized-findings.json": "2d0e6bc845d619996f66acef7d9dbb31bcc3c440f279de37206d5837db237380",
+    "security-analysis.jsonl": "6e87c885bc75ab07e83a298286c36aca51209d942f7e56d08f5e7f04154dd172",
+    "security-analysis.pretty.json": "5f548808dccdaa80bda8ea415e190d0ffe4dd8164c454f71a8bad9a20aba3061"
+  },
+  "checks": {
+    "all_records_match_pydantic_contract": true,
+    "all_records_report_gemini_provider": true,
+    "configured_secret_values_found": 0
+  }
+}
