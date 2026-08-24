@@ -1,4 +1,4 @@
-# Báo cáo ngắn: LLM, deterministic và mức độ bám đề bài
+# Báo cáo ngắn: LLM, deterministic
 
 ## Tại sao sử dụng Deterministic?
 
